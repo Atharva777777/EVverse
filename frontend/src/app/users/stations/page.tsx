@@ -5,7 +5,7 @@ import dynamic from "next/dynamic";
 import { useState, useRef, useCallback } from "react";
 import { BrandLogo } from "@/components/BrandLogo";
 import { useLiveData } from "@/hooks/useLiveData";
-import { CountryCitySelector, CITY_CONFIGS } from "@/components/CountryCitySelector";
+import { CountryCitySelector } from "@/components/CountryCitySelector";
 import type { ChargingMapHandle } from "@/components/ChargingMap";
 import type { LiveStation } from "@/types/api";
 
@@ -28,11 +28,10 @@ export default function EVUsersDashboard() {
 
   const {
     data: liveData,
+    loading,
+    error,
     isLive,
     stationCount,
-    lastUpdatedTime,
-    fallbackReason,
-    source
   } = useLiveData(selectedCity);
 
   const handleCountrySelect = useCallback((country: string) => {
@@ -72,7 +71,13 @@ export default function EVUsersDashboard() {
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-          {liveData && (
+          {/* Data source status badge */}
+          {loading && (
+            <div style={{ fontFamily: "Times New Roman, serif", fontSize: "12px", color: "var(--color-ink-4)", padding: "6px 12px" }}>
+              Loading stations…
+            </div>
+          )}
+          {!loading && liveData && (
             <div
               style={{
                 display: "flex",
@@ -101,16 +106,37 @@ export default function EVUsersDashboard() {
                   display: "inline-block",
                 }}
               />
-              <span style={{ fontWeight: 700, textTransform: "uppercase" }}>
-                {isLive ? "LIVE DATA" : "BASELINE DATA"}
+              <span style={{ fontWeight: 700, textTransform: "uppercase" as const }}>
+                {isLive ? "LIVE" : "BASELINE"}
               </span>
               <span style={{ color: isLive ? "rgba(4,120,87,0.7)" : "var(--color-ink-4)", fontSize: "11px" }}>
-                · {stationCount} stations
+                {stationCount} stations
               </span>
             </div>
           )}
         </div>
       </header>
+
+      {/* ── BACKEND ERROR BANNER ────────────────────────────── */}
+      {error && !loading && (
+        <div
+          style={{
+            background: "rgba(243, 244, 246, 0.9)",
+            borderBottom: "1px solid var(--color-border)",
+            padding: "10px 32px",
+            display: "flex",
+            alignItems: "center",
+            gap: "12px",
+          }}
+        >
+          <div style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#9ca3af", flexShrink: 0 }} />
+          <p style={{ fontFamily: "Times New Roman, serif", fontSize: "13px", color: "var(--color-ink-3)", margin: 0 }}>
+            Live station data is currently unavailable. Showing baseline dataset.
+            {" "}
+            <span style={{ color: "var(--color-ink-4)", fontSize: "12px" }}>Backend: {error}</span>
+          </p>
+        </div>
+      )}
 
       {/* ── MAP & SIDEBAR ──────────────────────────────────── */}
       <div style={{ flex: 1, display: "flex", flexDirection: "row", flexWrap: "wrap", position: "relative" }}>
@@ -139,13 +165,16 @@ export default function EVUsersDashboard() {
 
           <div style={{ flex: 1, overflowY: "auto", padding: "24px" }}>
             {!selectedStation ? (
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", color: "var(--color-ink-4)", textAlign: "center", gap: "12px" }}>
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", color: "var(--color-ink-4)", textAlign: "center", gap: "12px", paddingTop: "40px" }}>
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ opacity: 0.5 }}>
                   <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
                   <circle cx="12" cy="10" r="3"></circle>
                 </svg>
                 <div style={{ fontFamily: "Times New Roman, serif", fontSize: "15px" }}>
-                  Select a station on the map to view details.
+                  Select a station on the map
+                </div>
+                <div style={{ fontFamily: "Times New Roman, serif", fontSize: "13px", color: "var(--color-ink-4)", maxWidth: "240px", lineHeight: 1.5 }}>
+                  {loading ? "Loading station data…" : liveData ? `${stationCount} stations in ${selectedCity}` : "Station data unavailable for this region"}
                 </div>
               </div>
             ) : (
