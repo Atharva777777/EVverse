@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import Link from "next/link";
 
 import dynamic from "next/dynamic";
+import { BrandLogo } from "@/components/BrandLogo";
 
 import { useOptimize } from "@/hooks/useOptimize";
 import { useLiveData } from "@/hooks/useLiveData";
@@ -188,16 +189,7 @@ export default function Page() {
             ← Back
           </Link>
           <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-            <div style={{ width: "28px", height: "28px", borderRadius: "50%", background: "var(--color-navy-900)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                <circle cx="6" cy="6" r="2" fill="white" />
-                <circle cx="6" cy="6" r="4.5" stroke="white" strokeWidth="0.8" fill="none" opacity="0.45" />
-                <circle cx="6" cy="6" r="6" stroke="white" strokeWidth="0.4" fill="none" opacity="0.2" />
-              </svg>
-            </div>
-            <span style={{ fontFamily: "Times New Roman, serif", fontSize: "16px", color: "var(--color-ink)", letterSpacing: "-0.01em" }}>
-              EVverse
-            </span>
+            <BrandLogo />
           </div>
         </div>
 

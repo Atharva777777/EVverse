@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import React from "react";
+import { BrandLogo } from "@/components/BrandLogo";
 
 export default function InvestorDashboard() {
   return (
@@ -12,17 +13,8 @@ export default function InvestorDashboard() {
         style={{ position: "sticky", top: 0, zIndex: 50, height: "64px", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "0 32px", borderBottom: "1px solid var(--color-border-subtle)" }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-          <Link href="/" style={{ textDecoration: "none", display: "flex", alignItems: "center", gap: "12px" }}>
-            <div style={{ width: "28px", height: "28px", borderRadius: "50%", background: "var(--color-navy-900)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-              <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
-                <circle cx="6" cy="6" r="2" fill="white" />
-                <circle cx="6" cy="6" r="4.5" stroke="white" strokeWidth="0.8" fill="none" opacity="0.45" />
-                <circle cx="6" cy="6" r="6" stroke="white" strokeWidth="0.4" fill="none" opacity="0.2" />
-              </svg>
-            </div>
-            <span style={{ fontFamily: "Times New Roman, serif", fontSize: "16px", color: "var(--color-ink)", letterSpacing: "-0.01em" }}>
-              EVverse Investor
-            </span>
+          <Link href="/" style={{ textDecoration: "none", display: "flex", alignItems: "center" }}>
+            <BrandLogo suffix="Investor" />
           </Link>
         </div>
         
@@ -73,7 +65,7 @@ export default function InvestorDashboard() {
           <h2 style={{ fontFamily: "Times New Roman, serif", fontSize: "24px", fontWeight: 400, color: "var(--color-ink)", borderBottom: "1px solid var(--color-border)", paddingBottom: "12px", marginBottom: "24px" }}>
             Reference Data & Scenario Assumptions
           </h2>
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(250px, 1fr))", gap: "24px" }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 250px), 1fr))", gap: "24px" }}>
             
             {[
               { label: "Tracked Global Sites", value: "~242k", sub: "Source: Open Charge Map", status: "Verified" },
@@ -81,12 +73,18 @@ export default function InvestorDashboard() {
               { label: "Target Utilization Rate", value: "15%", sub: "Assumption: Baseline", status: "Scenario Input" },
               { label: "Demand Proxy", value: "Population", sub: "Source: Census / Density", status: "Modeled" }
             ].map((stat, idx) => (
-              <div key={idx} style={{ padding: "24px", borderRadius: "8px", border: "1px solid var(--color-border)", background: "white" }}>
-                <div style={{ fontFamily: "Times New Roman, serif", fontSize: "14px", color: "var(--color-ink-3)", marginBottom: "12px" }}>{stat.label}</div>
-                <div style={{ fontFamily: "Times New Roman, serif", fontSize: "28px", fontWeight: 400, color: "var(--color-ink)", marginBottom: "12px", letterSpacing: "-0.02em" }}>{stat.value}</div>
+              <div 
+                key={idx} 
+                className={`anim-fade-up d-${idx}`} 
+                style={{ padding: "24px", borderRadius: "12px", border: "1px solid var(--color-border)", background: "white", transition: "all 0.2s ease", cursor: "default" }}
+                onMouseEnter={(e) => { e.currentTarget.style.transform = "translateY(-4px)"; e.currentTarget.style.boxShadow = "0 8px 24px rgba(10,22,40,0.06)"; e.currentTarget.style.borderColor = "var(--color-navy-200)"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "none"; e.currentTarget.style.borderColor = "var(--color-border)"; }}
+              >
+                <div style={{ fontFamily: "Times New Roman, serif", fontSize: "14px", color: "var(--color-ink-3)", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.05em" }}>{stat.label}</div>
+                <div className="numeric" style={{ fontFamily: "Times New Roman, serif", fontSize: "36px", fontWeight: 400, color: "var(--color-navy-900)", marginBottom: "16px", letterSpacing: "-0.02em" }}>{stat.value}</div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", borderTop: "1px solid var(--color-border-subtle)", paddingTop: "12px" }}>
                   <div style={{ fontFamily: "Times New Roman, serif", fontSize: "13px", color: "var(--color-ink-3)" }}>{stat.sub}</div>
-                  <div style={{ fontFamily: "Times New Roman, serif", fontSize: "11px", color: "var(--color-ink-3)", background: "var(--color-canvas)", padding: "4px 8px", borderRadius: "4px", border: "1px solid var(--color-border-subtle)" }}>{stat.status}</div>
+                  <div style={{ fontFamily: "Times New Roman, serif", fontSize: "11px", color: stat.status === "Verified" ? "var(--color-positive)" : "var(--color-ink-3)", background: stat.status === "Verified" ? "var(--color-positive-bg)" : "var(--color-canvas)", padding: "4px 8px", borderRadius: "4px", border: "1px solid", borderColor: stat.status === "Verified" ? "rgba(15,122,74,0.2)" : "var(--color-border-subtle)", fontWeight: 600, letterSpacing: "0.02em" }}>{stat.status}</div>
                 </div>
               </div>
             ))}
@@ -94,7 +92,7 @@ export default function InvestorDashboard() {
           </div>
         </section>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(400px, 1fr))", gap: "48px", marginBottom: "48px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(min(100%, 400px), 1fr))", gap: "48px", marginBottom: "48px", alignItems: "start" }}>
           
           {/* ── CANDIDATE LOCATIONS ─────────────────────────────── */}
           <section>

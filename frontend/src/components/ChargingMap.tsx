@@ -22,6 +22,7 @@ interface ChargingMapProps {
   onSequenceStep?: (step: number) => void;
   onReady?: () => void;
   liveStations?: LiveStation[];
+  onStationClick?: (station: LiveStation) => void;
 }
 
 function haversine(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -59,7 +60,7 @@ function delay(ms: number) {
 }
 
 const ChargingMap = forwardRef<ChargingMapHandle, ChargingMapProps>(
-  ({ onSequenceStep, onReady, liveStations }, ref) => {
+  ({ onSequenceStep, onReady, liveStations, onStationClick }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const mapRef = useRef<any>(null);
     const userMarkerRef = useRef<any>(null);
@@ -406,10 +407,15 @@ const ChargingMap = forwardRef<ChargingMapHandle, ChargingMapProps>(
               </div>
             `)
           );
+          m.on("click", () => {
+            if (onStationClick) {
+              onStationClick(s);
+            }
+          });
           liveStationLayersRef.current.push(m);
         });
       });
-    }, [clearLiveStationLayers, liveStations, showLiveStations]);
+    }, [clearLiveStationLayers, liveStations, showLiveStations, onStationClick]);
 
     // Re-render live stations when toggled or when liveStations data updates
     useEffect(() => {
