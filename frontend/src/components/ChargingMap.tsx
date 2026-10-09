@@ -23,6 +23,7 @@ interface ChargingMapProps {
   onReady?: () => void;
   liveStations?: LiveStation[];
   onStationClick?: (station: LiveStation) => void;
+  selectedStationId?: string;
 }
 
 function haversine(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -60,7 +61,7 @@ function delay(ms: number) {
 }
 
 const ChargingMap = forwardRef<ChargingMapHandle, ChargingMapProps>(
-  ({ onSequenceStep, onReady, liveStations, onStationClick }, ref) => {
+  ({ onSequenceStep, onReady, liveStations, onStationClick, selectedStationId }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const mapRef = useRef<any>(null);
     const userMarkerRef = useRef<any>(null);
@@ -358,12 +359,17 @@ const ChargingMap = forwardRef<ChargingMapHandle, ChargingMapProps>(
 
         liveStations.forEach((s) => {
           const isOcm = s.source === "open_charge_map";
-          const markerColor = isOcm ? "#059669" : "#2563eb";
+          const isSelected = selectedStationId === s.station_id;
+          const markerColor = isSelected ? "#e11d48" : (isOcm ? "#059669" : "#2563eb");
+          const size = isSelected ? 20 : 14;
+          const innerSize = isSelected ? 6 : 4;
+          const offset = size / 2;
+
           const icon = L.divIcon({
             className: "",
             html: `<div style="
-              width: 14px;
-              height: 14px;
+              width: ${size}px;
+              height: ${size}px;
               border-radius: 50%;
               background: ${markerColor};
               border: 2px solid white;
@@ -372,9 +378,10 @@ const ChargingMap = forwardRef<ChargingMapHandle, ChargingMapProps>(
               align-items: center;
               justify-content: center;
               cursor: pointer;
-              transform: translate(-7px, -7px);
+              transform: translate(-${offset}px, -${offset}px);
+              ${isSelected ? 'box-shadow: 0 0 0 4px rgba(225,29,72,0.3);' : ''}
             ">
-              <div style="width: 4px; height: 4px; border-radius: 50%; background: white;"></div>
+              <div style="width: ${innerSize}px; height: ${innerSize}px; border-radius: 50%; background: white;"></div>
             </div>`,
             iconSize: [0, 0],
             iconAnchor: [0, 0],
@@ -415,7 +422,7 @@ const ChargingMap = forwardRef<ChargingMapHandle, ChargingMapProps>(
           liveStationLayersRef.current.push(m);
         });
       });
-    }, [clearLiveStationLayers, liveStations, showLiveStations, onStationClick]);
+    }, [clearLiveStationLayers, liveStations, showLiveStations, onStationClick, selectedStationId]);
 
     // Re-render live stations when toggled or when liveStations data updates
     useEffect(() => {
