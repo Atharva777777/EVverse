@@ -72,6 +72,7 @@ app.add_middleware(
     allow_origins=[
         "https://quant-ev.vercel.app",
         "http://localhost:3000",
+        "http://localhost:3001",
     ],
 
     # Also allow Vercel preview deployments.
