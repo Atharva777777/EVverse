@@ -48,12 +48,12 @@ export default function DriverMobileMap({
         attributionControl: false,
       });
 
-      // CartoDB Positron tiles for an ultra-clean, minimalist Apple-style cartography
+      // Clean Google Maps tiles (no watermark, crisp mobile navigation style)
       L.tileLayer(
-        "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png",
+        "https://mt{s}.google.com/vt/lyrs=m&hl=en&x={x}&y={y}&z={z}",
         {
-          maxZoom: 19,
-          subdomains: "abcd",
+          maxZoom: 20,
+          subdomains: ["0", "1", "2", "3"],
         }
       ).addTo(map);
 
@@ -116,8 +116,8 @@ export default function DriverMobileMap({
 
       // 2. Station Markers
       stations.forEach((st) => {
-        const isSelected = selectedStation?.id === st.id;
-        const isTarget = navigationStation?.id === st.id;
+        const isSelected = selectedStation?.station_id === st.station_id;
+        const isTarget = navigationStation?.station_id === st.station_id;
         const isUltra = (st.power_kw ?? 0) >= 150;
         const isFast = (st.power_kw ?? 0) >= 50;
 
@@ -176,7 +176,7 @@ export default function DriverMobileMap({
         });
       });
     });
-  }, [stations, selectedStation?.id, navigationStation?.id, userLocation[0], userLocation[1]]);
+  }, [stations, selectedStation?.station_id, navigationStation?.station_id, userLocation[0], userLocation[1]]);
 
   // ── Render Navigation Route ───────────────────────────────────────────────
   useEffect(() => {

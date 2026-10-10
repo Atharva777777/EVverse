@@ -167,7 +167,7 @@ export default function EVVerseDriverPage() {
   // Filters
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<"all" | "ultra" | "fast" | "available" | "ccs">("all");
-  const [savedStations, setSavedStations] = useState<Set<number>>(new Set());
+  const [savedStations, setSavedStations] = useState<Set<string>>(new Set());
 
   // Navigation mode state
   const [navStation, setNavStation] = useState<LiveStation | null>(null);
@@ -272,7 +272,7 @@ export default function EVVerseDriverPage() {
     };
   }, [isCharging]);
 
-  const toggleFavorite = (id: number) => {
+  const toggleFavorite = (id: string) => {
     setSavedStations((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
@@ -430,7 +430,7 @@ export default function EVVerseDriverPage() {
             fontSize: "12px",
             fontWeight: 600,
             color: "#151817",
-            zIndex: 40,
+            zIndex: 1200,
             background: activeTab === "explore" ? "transparent" : "#F7F8F6",
           }}
         >
@@ -652,7 +652,7 @@ export default function EVVerseDriverPage() {
                 <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
                   {filteredStations.slice(0, 3).map((st) => (
                     <div
-                      key={st.id}
+                      key={st.station_id}
                       onClick={() => {
                         setSelectedStation(st);
                         setMapCenter([st.latitude, st.longitude]);
@@ -731,7 +731,7 @@ export default function EVVerseDriverPage() {
                   top: "12px",
                   left: "14px",
                   right: "14px",
-                  zIndex: 30,
+                  zIndex: 1100,
                   display: "flex",
                   flexDirection: "column",
                   gap: "8px",
@@ -817,7 +817,7 @@ export default function EVVerseDriverPage() {
                     top: "112px",
                     left: "14px",
                     right: "14px",
-                    zIndex: 30,
+                    zIndex: 1100,
                     background: "#151817",
                     color: "#ffffff",
                     borderRadius: "18px",
@@ -866,7 +866,7 @@ export default function EVVerseDriverPage() {
                     bottom: "76px",
                     left: "12px",
                     right: "12px",
-                    zIndex: 35,
+                    zIndex: 1150,
                     background: "#ffffff",
                     borderRadius: "24px",
                     border: "1px solid #E2E5DF",
@@ -906,7 +906,7 @@ export default function EVVerseDriverPage() {
                     </div>
 
                     <button
-                      onClick={() => toggleFavorite(selectedStation.id)}
+                      onClick={() => toggleFavorite(selectedStation.station_id)}
                       style={{
                         background: "#F7F8F6",
                         border: "none",
@@ -921,8 +921,8 @@ export default function EVVerseDriverPage() {
                     >
                       <Heart
                         size={17}
-                        fill={savedStations.has(selectedStation.id) ? "#ef4444" : "none"}
-                        color={savedStations.has(selectedStation.id) ? "#ef4444" : "#151817"}
+                        fill={savedStations.has(selectedStation.station_id) ? "#ef4444" : "none"}
+                        color={savedStations.has(selectedStation.station_id) ? "#ef4444" : "#151817"}
                       />
                     </button>
                   </div>
@@ -1472,7 +1472,7 @@ export default function EVVerseDriverPage() {
             gridTemplateColumns: "repeat(5, 1fr)",
             alignItems: "center",
             padding: "0 8px 6px",
-            zIndex: 50,
+            zIndex: 1200,
           }}
         >
           {/* Tab 1: Home */}
