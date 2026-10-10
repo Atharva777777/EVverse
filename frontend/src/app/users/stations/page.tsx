@@ -26,6 +26,11 @@ export default function EVUsersDashboard() {
   const [selectedCity, setSelectedCity] = useState("Mumbai");
   const [selectedStation, setSelectedStation] = useState<LiveStation | null>(null);
 
+  // Workspace layout states
+  const [showStationsLayer, setShowStationsLayer] = useState(true);
+  const [leftOpen, setLeftOpen] = useState(true);
+  const [rightOpen, setRightOpen] = useState(true);
+
   const {
     data: liveData,
     loading,
@@ -50,6 +55,7 @@ export default function EVUsersDashboard() {
 
   const handleStationClick = useCallback((station: LiveStation) => {
     setSelectedStation(station);
+    setRightOpen(true); // Open details panel when a station is clicked
   }, []);
 
   return (
@@ -138,21 +144,22 @@ export default function EVUsersDashboard() {
         </div>
       )}
 
-      {/* ── MAP & SIDEBAR ──────────────────────────────────── */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "row", flexWrap: "wrap", position: "relative" }}>
+      {/* ── WORKSPACE ──────────────────────────────────────── */}
+      <div className="flex-1 flex flex-col lg:flex-row relative lg:overflow-hidden">
         
-        {/* SIDEBAR */}
-        <div style={{ flex: "1 1 350px", maxWidth: "420px", background: "white", borderRight: "1px solid var(--color-border)", display: "flex", flexDirection: "column", zIndex: 10, boxShadow: "4px 0 24px rgba(10,22,40,0.02)" }}>
-          
-          <div style={{ padding: "24px", borderBottom: "1px solid var(--color-border-subtle)" }}>
-            <h1 style={{ fontFamily: "Times New Roman, serif", fontSize: "24px", fontWeight: 400, color: "var(--color-ink)", marginBottom: "8px", letterSpacing: "-0.01em" }}>
+        {/* LEFT PANEL: Location, Layers, Station List */}
+        <div 
+          className={`bg-white z-10 flex-col shadow-[4px_0_24px_rgba(10,22,40,0.02)] transition-all duration-300 border-b lg:border-b-0 lg:border-r border-[var(--color-border)] ${leftOpen ? 'flex w-full lg:w-[360px] lg:min-w-[320px]' : 'hidden lg:flex lg:w-0 lg:min-w-0 lg:overflow-hidden lg:border-r-0'}`}
+        >
+          <div className="p-6 border-b border-[var(--color-border-subtle)] shrink-0 min-w-[320px]">
+            <h1 className="font-serif text-[24px] text-[var(--color-ink)] mb-2 tracking-tight">
               Station Discovery
             </h1>
-            <p style={{ fontFamily: "Times New Roman, serif", fontSize: "14px", color: "var(--color-ink-3)", marginBottom: "24px", lineHeight: 1.5 }}>
+            <p className="font-serif text-[14px] text-[var(--color-ink-3)] mb-6 leading-relaxed">
               Find charging stations across the global network. View operational status, supported connectors, and location details.
             </p>
 
-            <div style={{ fontFamily: "Times New Roman, serif", fontSize: "12px", color: "var(--color-ink-4)", marginBottom: "8px", textTransform: "uppercase", letterSpacing: "0.05em" }}>
+            <div className="font-serif text-[12px] text-[var(--color-ink-4)] mb-2 uppercase tracking-wider">
               Search Region
             </div>
             <CountryCitySelector
@@ -161,77 +168,186 @@ export default function EVUsersDashboard() {
               onCountrySelect={handleCountrySelect}
               onCitySelect={handleCitySelect}
             />
+
+            <div className="mt-6 pt-5 border-t border-[var(--color-border-subtle)]">
+              <div className="font-serif text-[12px] text-[var(--color-ink-4)] mb-3 uppercase tracking-wider">
+                Map Layers
+              </div>
+              <label className="flex items-center gap-2 cursor-pointer font-serif text-[14px] text-[var(--color-ink-2)] hover:text-[var(--color-ink)] transition-colors">
+                <input 
+                  type="checkbox" 
+                  checked={showStationsLayer} 
+                  onChange={(e) => setShowStationsLayer(e.target.checked)} 
+                  className="w-4 h-4 cursor-pointer accent-[var(--color-navy-900)]"
+                />
+                Charging Stations
+              </label>
+            </div>
           </div>
 
-          <div style={{ flex: 1, overflowY: "auto", padding: "24px" }}>
-            {!selectedStation ? (
-              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", height: "100%", color: "var(--color-ink-4)", textAlign: "center", gap: "12px", paddingTop: "40px" }}>
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" style={{ opacity: 0.5 }}>
-                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-                  <circle cx="12" cy="10" r="3"></circle>
-                </svg>
-                <div style={{ fontFamily: "Times New Roman, serif", fontSize: "15px" }}>
-                  Select a station on the map
-                </div>
-                <div style={{ fontFamily: "Times New Roman, serif", fontSize: "13px", color: "var(--color-ink-4)", maxWidth: "240px", lineHeight: 1.5 }}>
-                  {loading ? "Loading station data…" : liveData ? `${stationCount} stations in ${selectedCity}` : "Station data unavailable for this region"}
-                </div>
+          <div className="flex-1 overflow-y-auto min-w-[320px]">
+            {loading ? (
+              <div className="p-8 text-center text-[var(--color-ink-4)] font-serif text-[14px]">
+                Loading stations…
+              </div>
+            ) : (!liveData?.stations || liveData.stations.length === 0) ? (
+              <div className="p-8 text-center text-[var(--color-ink-4)] font-serif text-[14px]">
+                No stations found in this region.
               </div>
             ) : (
-              <div className="anim-fade-in" style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+              <div className="flex flex-col">
+                {liveData.stations.map((station) => {
+                  const isSelected = selectedStation?.station_id === station.station_id;
+                  return (
+                    <div 
+                      key={station.station_id}
+                      onClick={() => handleStationClick(station)}
+                      className="p-4 px-6 border-b border-[var(--color-border-subtle)] cursor-pointer transition-colors"
+                      style={{ 
+                        background: isSelected ? "rgba(10,22,40,0.03)" : "transparent",
+                        borderLeft: isSelected ? "3px solid var(--color-navy-800)" : "3px solid transparent",
+                      }}
+                    >
+                      <div className={`font-serif text-[15px] mb-1 ${isSelected ? 'font-semibold text-[var(--color-ink)]' : 'font-normal text-[var(--color-ink-2)]'}`}>
+                        {station.name}
+                      </div>
+                      <div className="font-serif text-[13px] text-[var(--color-ink-3)] mb-3 truncate">
+                        {station.address || "No address provided."}
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span 
+                          className="text-[10px] tracking-wider uppercase px-2 py-0.5 rounded-[4px] font-bold"
+                          style={{
+                            background: station.is_operational ? "rgba(16,185,129,0.1)" : "rgba(220,38,38,0.1)",
+                            color: station.is_operational ? "#047857" : "#b91c1c",
+                          }}
+                        >
+                          {station.status}
+                        </span>
+                        <span className="text-[10px] tracking-wider uppercase px-2 py-0.5 rounded-[4px] font-semibold bg-[var(--color-canvas)] text-[var(--color-ink-3)] border border-[var(--color-border-subtle)]">
+                          {station.power_kw ? `${station.power_kw} kW` : "Standard"}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* LEFT TOGGLE */}
+        <div 
+          className="hidden lg:block absolute top-1/2 -translate-y-1/2 z-20 transition-all duration-300"
+          style={{ left: leftOpen ? "360px" : "0" }}
+        >
+          <button 
+            onClick={() => setLeftOpen(!leftOpen)}
+            className="bg-white border border-[var(--color-border)] border-l-0 py-4 px-2 rounded-r-lg cursor-pointer shadow-[4px_0_12px_rgba(10,22,40,0.05)] text-[var(--color-ink-3)] flex items-center justify-center hover:text-[var(--color-ink)] transition-colors"
+            title={leftOpen ? "Collapse sidebar" : "Expand sidebar"}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d={leftOpen ? "M15 18l-6-6 6-6" : "M9 18l6-6-6-6"} />
+            </svg>
+          </button>
+        </div>
+
+        {/* CENTER: MAP */}
+        <div className="flex-1 relative z-0 h-[400px] lg:h-auto min-h-[400px]">
+          <ChargingMap
+            ref={mapRef}
+            liveStations={liveData?.stations}
+            onStationClick={handleStationClick}
+            selectedStationId={selectedStation?.station_id}
+            showLiveStationsOverride={showStationsLayer}
+            hideInternalLayerControls={true}
+          />
+        </div>
+
+        {/* RIGHT TOGGLE */}
+        {selectedStation && (
+          <div 
+            className="hidden lg:block absolute top-1/2 -translate-y-1/2 z-20 transition-all duration-300"
+            style={{ right: rightOpen ? "360px" : "0" }}
+          >
+            <button 
+              onClick={() => setRightOpen(!rightOpen)}
+              className="bg-white border border-[var(--color-border)] border-r-0 py-4 px-2 rounded-l-lg cursor-pointer shadow-[-4px_0_12px_rgba(10,22,40,0.05)] text-[var(--color-ink-3)] flex items-center justify-center hover:text-[var(--color-ink)] transition-colors"
+              title={rightOpen ? "Collapse details" : "Expand details"}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d={rightOpen ? "M9 18l6-6-6-6" : "M15 18l-6-6 6-6"} />
+              </svg>
+            </button>
+          </div>
+        )}
+
+        {/* RIGHT PANEL: Station Details */}
+        <div 
+          className={`bg-white z-10 flex-col shadow-[-4px_0_24px_rgba(10,22,40,0.02)] transition-all duration-300 border-t lg:border-t-0 lg:border-l border-[var(--color-border)] ${rightOpen && selectedStation ? 'flex w-full lg:w-[360px] lg:min-w-[320px]' : 'hidden lg:flex lg:w-0 lg:min-w-0 lg:overflow-hidden lg:border-l-0'}`}
+        >
+          <div className="flex-1 overflow-y-auto p-6 min-w-[320px] flex flex-col">
+            {selectedStation ? (
+              <div className="anim-fade-in flex flex-col gap-6 flex-1">
                 <div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px", marginBottom: "12px" }}>
-                    <span style={{ fontSize: "11px", letterSpacing: "0.06em", textTransform: "uppercase", padding: "4px 8px", borderRadius: "4px", background: selectedStation.is_operational ? "rgba(16,185,129,0.1)" : "rgba(220,38,38,0.1)", color: selectedStation.is_operational ? "#047857" : "#b91c1c", fontWeight: 700 }}>
+                  <div className="flex items-center gap-2 mb-3">
+                    <span 
+                      className="text-[11px] tracking-wider uppercase px-2 py-1 rounded-[4px] font-bold"
+                      style={{
+                        background: selectedStation.is_operational ? "rgba(16,185,129,0.1)" : "rgba(220,38,38,0.1)",
+                        color: selectedStation.is_operational ? "#047857" : "#b91c1c",
+                      }}
+                    >
                       {selectedStation.status}
                     </span>
-                    <span style={{ fontSize: "11px", letterSpacing: "0.06em", textTransform: "uppercase", padding: "4px 8px", borderRadius: "4px", background: "var(--color-canvas)", color: "var(--color-ink-3)", border: "1px solid var(--color-border-subtle)" }}>
+                    <span className="text-[11px] tracking-wider uppercase px-2 py-1 rounded-[4px] bg-[var(--color-canvas)] text-[var(--color-ink-3)] border border-[var(--color-border-subtle)]">
                       {selectedStation.source === "open_charge_map" ? "Open Charge Map" : "Baseline Data"}
                     </span>
                   </div>
-                  <h2 style={{ fontFamily: "Times New Roman, serif", fontSize: "22px", color: "var(--color-ink)", marginBottom: "8px", lineHeight: 1.2 }}>
+                  <h2 className="font-serif text-[22px] text-[var(--color-ink)] mb-2 leading-tight">
                     {selectedStation.name}
                   </h2>
-                  <p style={{ fontFamily: "Times New Roman, serif", fontSize: "14px", color: "var(--color-ink-3)", margin: 0, lineHeight: 1.5 }}>
+                  <p className="font-serif text-[14px] text-[var(--color-ink-3)] m-0 leading-relaxed">
                     {selectedStation.address || "No address provided."}
                   </p>
                 </div>
 
-                <div style={{ display: "flex", flexDirection: "column", gap: "12px", borderTop: "1px solid var(--color-border-subtle)", paddingTop: "24px" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: "12px", borderBottom: "1px solid var(--color-border-subtle)" }}>
-                    <span style={{ fontFamily: "Times New Roman, serif", fontSize: "14px", color: "var(--color-ink-4)" }}>Operator</span>
-                    <span style={{ fontFamily: "Times New Roman, serif", fontSize: "15px", color: "var(--color-ink)", fontWeight: 600 }}>{selectedStation.operator || "Independent"}</span>
+                <div className="flex flex-col gap-3 border-t border-[var(--color-border-subtle)] pt-6">
+                  <div className="flex justify-between items-center pb-3 border-b border-[var(--color-border-subtle)]">
+                    <span className="font-serif text-[14px] text-[var(--color-ink-4)]">Operator</span>
+                    <span className="font-serif text-[15px] text-[var(--color-ink)] font-semibold">{selectedStation.operator || "Independent"}</span>
                   </div>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: "12px", borderBottom: "1px solid var(--color-border-subtle)" }}>
-                    <span style={{ fontFamily: "Times New Roman, serif", fontSize: "14px", color: "var(--color-ink-4)" }}>Total Bays</span>
-                    <span style={{ fontFamily: "Times New Roman, serif", fontSize: "15px", color: "var(--color-ink)", fontWeight: 600 }}>{selectedStation.bays} bays</span>
+                  <div className="flex justify-between items-center pb-3 border-b border-[var(--color-border-subtle)]">
+                    <span className="font-serif text-[14px] text-[var(--color-ink-4)]">Total Bays</span>
+                    <span className="font-serif text-[15px] text-[var(--color-ink)] font-semibold">{selectedStation.bays} bays</span>
                   </div>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: "12px", borderBottom: "1px solid var(--color-border-subtle)" }}>
-                    <span style={{ fontFamily: "Times New Roman, serif", fontSize: "14px", color: "var(--color-ink-4)" }}>Power Capacity</span>
-                    <span style={{ fontFamily: "Times New Roman, serif", fontSize: "15px", color: "var(--color-ink)", fontWeight: 600 }}>{selectedStation.power_kw ? `${selectedStation.power_kw} kW` : "Standard AC/DC"}</span>
+                  <div className="flex justify-between items-center pb-3 border-b border-[var(--color-border-subtle)]">
+                    <span className="font-serif text-[14px] text-[var(--color-ink-4)]">Power Capacity</span>
+                    <span className="font-serif text-[15px] text-[var(--color-ink)] font-semibold">{selectedStation.power_kw ? `${selectedStation.power_kw} kW` : "Standard AC/DC"}</span>
                   </div>
                   {selectedStation.connector_types && selectedStation.connector_types.length > 0 && (
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", paddingBottom: "12px", borderBottom: "1px solid var(--color-border-subtle)" }}>
-                      <span style={{ fontFamily: "Times New Roman, serif", fontSize: "14px", color: "var(--color-ink-4)" }}>Plugs</span>
-                      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "4px" }}>
+                    <div className="flex justify-between items-start pb-3 border-b border-[var(--color-border-subtle)]">
+                      <span className="font-serif text-[14px] text-[var(--color-ink-4)]">Plugs</span>
+                      <div className="flex flex-col items-end gap-1">
                         {selectedStation.connector_types.map((plug, i) => (
-                          <span key={i} style={{ fontFamily: "Times New Roman, serif", fontSize: "14px", color: "var(--color-ink)", fontWeight: 600 }}>{plug}</span>
+                          <span key={i} className="font-serif text-[14px] text-[var(--color-ink)] font-semibold">{plug}</span>
                         ))}
                       </div>
                     </div>
                   )}
-                  {selectedStation.usage_cost && (
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", paddingBottom: "12px" }}>
-                      <span style={{ fontFamily: "Times New Roman, serif", fontSize: "14px", color: "var(--color-ink-4)" }}>Usage Cost</span>
-                      <span style={{ fontFamily: "Times New Roman, serif", fontSize: "14px", color: "var(--color-ink)", textAlign: "right", maxWidth: "60%" }}>{selectedStation.usage_cost}</span>
-                    </div>
-                  )}
+                  <div className="flex justify-between items-start pb-3">
+                    <span className="font-serif text-[14px] text-[var(--color-ink-4)]">Usage Cost</span>
+                    <span className={`font-serif text-[14px] text-right ${selectedStation.usage_cost ? 'text-[var(--color-ink)] max-w-[60%]' : 'text-[var(--color-ink-3)]'}`}>
+                      {selectedStation.usage_cost || "Unknown"}
+                    </span>
+                  </div>
                 </div>
 
-                <div style={{ marginTop: "auto", padding: "16px", background: "var(--color-canvas)", borderRadius: "8px", border: "1px solid var(--color-border-subtle)" }}>
-                  <div style={{ fontFamily: "Times New Roman, serif", fontSize: "12px", color: "var(--color-ink-4)", marginBottom: "4px" }}>
+                <div className="mt-auto p-4 bg-[var(--color-canvas)] rounded-lg border border-[var(--color-border-subtle)]">
+                  <div className="font-serif text-[12px] text-[var(--color-ink-4)] mb-1">
                     Source Reliability
                   </div>
-                  <p style={{ fontFamily: "Times New Roman, serif", fontSize: "12px", color: "var(--color-ink-3)", margin: 0, lineHeight: 1.5 }}>
+                  <p className="font-serif text-[12px] text-[var(--color-ink-3)] m-0 leading-relaxed">
                     {selectedStation.source === "open_charge_map" 
                       ? "This data is aggregated from Open Charge Map (OCM) and may not reflect real-time live availability."
                       : "This is baseline dataset information. Live telemetry is currently unavailable for this region."
@@ -239,19 +355,18 @@ export default function EVUsersDashboard() {
                   </p>
                 </div>
               </div>
+            ) : (
+              <div className="flex-1 flex flex-col items-center justify-center text-center text-[var(--color-ink-4)] gap-3 opacity-60">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                  <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                  <circle cx="12" cy="10" r="3" />
+                </svg>
+                <div className="font-serif text-[15px]">Select a station to view details</div>
+              </div>
             )}
           </div>
         </div>
 
-        {/* MAP */}
-        <div style={{ flex: "1 1 400px", minWidth: 0, position: "relative", zIndex: 0, minHeight: "400px" }}>
-          <ChargingMap
-            ref={mapRef}
-            liveStations={liveData?.stations}
-            onStationClick={handleStationClick}
-            selectedStationId={selectedStation?.station_id}
-          />
-        </div>
       </div>
     </div>
   );

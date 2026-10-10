@@ -24,6 +24,8 @@ interface ChargingMapProps {
   liveStations?: LiveStation[];
   onStationClick?: (station: LiveStation) => void;
   selectedStationId?: string;
+  showLiveStationsOverride?: boolean;
+  hideInternalLayerControls?: boolean;
 }
 
 function haversine(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -61,7 +63,7 @@ function delay(ms: number) {
 }
 
 const ChargingMap = forwardRef<ChargingMapHandle, ChargingMapProps>(
-  ({ onSequenceStep, onReady, liveStations, onStationClick, selectedStationId }, ref) => {
+  ({ onSequenceStep, onReady, liveStations, onStationClick, selectedStationId, showLiveStationsOverride, hideInternalLayerControls }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const mapRef = useRef<any>(null);
     const userMarkerRef = useRef<any>(null);
@@ -355,7 +357,8 @@ const ChargingMap = forwardRef<ChargingMapHandle, ChargingMapProps>(
         if (!map) return;
         clearLiveStationLayers();
 
-        if (!showLiveStations || !liveStations || liveStations.length === 0) return;
+        const effectiveShowLiveStations = showLiveStationsOverride ?? showLiveStations;
+        if (!effectiveShowLiveStations || !liveStations || liveStations.length === 0) return;
 
         liveStations.forEach((s) => {
           const isOcm = s.source === "open_charge_map";
@@ -422,7 +425,7 @@ const ChargingMap = forwardRef<ChargingMapHandle, ChargingMapProps>(
           liveStationLayersRef.current.push(m);
         });
       });
-    }, [clearLiveStationLayers, liveStations, showLiveStations, onStationClick, selectedStationId]);
+    }, [clearLiveStationLayers, liveStations, showLiveStations, showLiveStationsOverride, onStationClick, selectedStationId]);
 
     // Re-render live stations when toggled or when liveStations data updates
     useEffect(() => {
@@ -595,7 +598,7 @@ const ChargingMap = forwardRef<ChargingMapHandle, ChargingMapProps>(
         <div ref={containerRef} style={{ position: "absolute", inset: 0, background: "#e8edf4" }} />
 
         {/* GIS Map Layer Controls */}
-        {(hasResults || (liveStations && liveStations.length > 0)) && (
+        {!hideInternalLayerControls && (hasResults || (liveStations && liveStations.length > 0)) && (
           <div
             className="anim-fade-in glass"
             style={{
