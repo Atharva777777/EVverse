@@ -172,6 +172,37 @@ export default function EVUsersDashboard() {
               </span>
             </div>
           )}
+
+          {/* EV Knowledge Hub Button */}
+          <Link href="/users/knowledge" style={{ textDecoration: "none" }}>
+            <button
+              type="button"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                padding: "6px 14px",
+                borderRadius: "8px",
+                border: "1px solid var(--color-navy-200)",
+                background: "var(--color-navy-50)",
+                color: "var(--color-navy-900)",
+                fontFamily: "Times New Roman, serif",
+                fontSize: "13px",
+                fontWeight: 600,
+                cursor: "pointer",
+                transition: "all 0.15s ease",
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.background = "var(--color-navy-100)";
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.background = "var(--color-navy-50)";
+              }}
+            >
+              <span>📖</span>
+              <span>EV Knowledge Hub</span>
+            </button>
+          </Link>
         </div>
       </header>
 

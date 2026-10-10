@@ -302,6 +302,30 @@ export default function Page() {
             Municipal Briefing
           </button>
 
+          <Link href="/users/knowledge" style={{ textDecoration: "none" }}>
+            <button
+              type="button"
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+                padding: "5px 12px",
+                borderRadius: "8px",
+                border: "1px solid var(--color-border)",
+                background: "white",
+                color: "var(--color-ink-2)",
+                fontFamily: "Times New Roman, serif",
+                fontSize: "12px",
+                cursor: "pointer",
+                transition: "all 0.15s ease",
+              }}
+              title="Explore EV Powertrains, Charging Standards & Knowledge"
+            >
+              <span>📖</span>
+              <span>EV Knowledge</span>
+            </button>
+          </Link>
+
           {phase !== "idle" && (
             <button
               onClick={handleReset}

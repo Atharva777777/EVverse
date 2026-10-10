@@ -41,6 +41,30 @@ export default function EVverseEntryPage() {
         <Link href="/" style={{ textDecoration: "none" }}>
           <BrandLogo />
         </Link>
+        <Link href="/users/knowledge" style={{ textDecoration: "none" }}>
+          <button
+            type="button"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "8px",
+              padding: "6px 14px",
+              borderRadius: "999px",
+              border: "1px solid rgba(0, 0, 0, 0.08)",
+              background: "#f5f5f7",
+              color: "#1d1d1f",
+              fontSize: "13px",
+              fontWeight: 500,
+              cursor: "pointer",
+              transition: "all 0.2s ease",
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = "#e5e5ea"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "#f5f5f7"; }}
+          >
+            <span>📖</span>
+            <span>EV Knowledge Hub</span>
+          </button>
+        </Link>
       </header>
 
       {/* ── MAIN CONTENT ───────────────────────────────────── */}
@@ -94,7 +118,7 @@ export default function EVverseEntryPage() {
           }}
         >
           {/* ── CARD 1: INVESTOR ─────────────────────────── */}
-          <Link href="/investor" style={{ textDecoration: "none" }}>
+          <Link href="/investor/map" style={{ textDecoration: "none" }}>
             <div
               onMouseEnter={() => setHoveredCard(1)}
               onMouseLeave={() => setHoveredCard(null)}
@@ -188,7 +212,7 @@ export default function EVverseEntryPage() {
           </Link>
 
           {/* ── CARD 2: GOVERNMENT ───────────────────────── */}
-          <Link href="/government" style={{ textDecoration: "none" }}>
+          <Link href="/government/map" style={{ textDecoration: "none" }}>
             <div
               onMouseEnter={() => setHoveredCard(2)}
               onMouseLeave={() => setHoveredCard(null)}
@@ -282,7 +306,7 @@ export default function EVverseEntryPage() {
           </Link>
 
           {/* ── CARD 3: EV USERS ─────────────────────────── */}
-          <Link href="/users" style={{ textDecoration: "none" }}>
+          <Link href="/users/stations" style={{ textDecoration: "none" }}>
             <div
               onMouseEnter={() => setHoveredCard(3)}
               onMouseLeave={() => setHoveredCard(null)}
