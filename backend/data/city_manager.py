@@ -188,9 +188,25 @@ class CityManager:
 
         if not load_cached:
             log.info("Generating candidate zones with real infrastructure-gap scores for city: %s", canonical_city)
-            stations_df = filter_stations_by_city(canonical_city)
-            if len(stations_df) == 0:
-                raise ValueError(f"No station data found for city {canonical_city}")
+            try:
+                stations_df = filter_stations_by_city(canonical_city)
+            except (FileNotFoundError, ValueError):
+                from backend.data.open_charge_map import OpenChargeMapService
+                ocm = OpenChargeMapService()
+                res = ocm.fetch_city_stations(canonical_city)
+                if len(res.stations) == 0:
+                    raise ValueError(f"No station data found for city {canonical_city}")
+                stations_df = pd.DataFrame([{
+                    "latitude": s.latitude,
+                    "longitude": s.longitude,
+                    "charging_capacity_kw": s.power_kw,
+                    "parking_spots": s.bays,
+                    "usage_stats_users_per_day": 0.0,
+                    "predicted_cost_usd": 0.0,
+                } for s in res.stations])
+
+            if len(stations_df) < 8:
+                raise ValueError(f"Insufficient stations ({len(stations_df)}) for city {canonical_city} to perform 8-zone optimization")
 
             coords = stations_df[["latitude", "longitude"]].to_numpy()
             kmeans = KMeans(n_clusters=8, random_state=42, n_init=10).fit(coords)

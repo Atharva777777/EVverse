@@ -140,7 +140,8 @@ export interface OptimizeResponse {
   demand_prediction: AIDemandResponse;
   qubo: QUBOResponse;
   classical: ClassicalResult;
-  qaoa: QAOAResult;
+  qaoa?: QAOAResult;
+  qaoa_status?: string;
   recommendation: RecommendationResponse;
 }
 

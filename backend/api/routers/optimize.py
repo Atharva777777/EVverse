@@ -205,7 +205,8 @@ class OptimizeResponse(BaseModel):
     demand_prediction: AIDemandResponse
     qubo: QUBOResponse
     classical: ClassicalResult
-    qaoa: QAOAResult
+    qaoa: Optional[QAOAResult] = None
+    qaoa_status: str = "unavailable"
     recommendation: RecommendationResponse
 
 
@@ -274,6 +275,12 @@ async def run_optimize(request: OptimizeRequest) -> OptimizeResponse:
             shots=request.shots,
             seed=request.seed,
         )
+    except ValueError as ve:
+        log.error("Pipeline validation failed: %s", ve)
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=str(ve),
+        )
     except Exception as exc:
         log.error("Pipeline failed: %s\n%s", exc, traceback.format_exc())
         raise HTTPException(
@@ -290,6 +297,7 @@ async def run_optimize(request: OptimizeRequest) -> OptimizeResponse:
         demand_prediction=AIDemandResponse(**raw["demand_prediction"]),
         qubo=QUBOResponse(**{**raw["qubo"], "lambda": raw["qubo"]["lambda"]}),
         classical=ClassicalResult(**raw["classical"]),
-        qaoa=QAOAResult(**raw["qaoa"]),
+        qaoa=QAOAResult(**raw["qaoa"]) if raw.get("qaoa") else None,
+        qaoa_status=raw.get("qaoa_status", "unavailable"),
         recommendation=RecommendationResponse(**raw["recommendation"]),
     )

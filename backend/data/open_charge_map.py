@@ -31,7 +31,8 @@ log = logging.getLogger(__name__)
 
 # Known metropolitan city centers (lat, lon)
 CITY_COORDINATES: Dict[str, Tuple[float, float]] = {
-    "Mumbai": (19.0467, 72.8911),
+    "Mumbai": (19.0760, 72.8777),
+    "Pune": (18.5204, 73.8567),
     "San Francisco": (37.8032, -122.4005),
     "Los Angeles": (34.0923, -118.2904),
     "Chicago": (41.9003, -87.7022),
@@ -139,7 +140,7 @@ class OpenChargeMapService:
         except Exception:
             pass
 
-        return (19.0467, 72.8911)  # Default Mumbai
+        raise ValueError(f"Unsupported city: {canonical_city}. Cannot resolve coordinates without explicit lat/lng parameters.")
 
     def _parse_ocm_poi(self, poi: Dict[str, Any]) -> NormalizedStation:
         """Parses a single Open Charge Map POI dictionary into a NormalizedStation."""
@@ -210,6 +211,18 @@ class OpenChargeMapService:
         )
         try:
             loader = get_loader()
+            if not getattr(loader, "has_dataset", True):
+                return LiveEnrichmentResult(
+                    city=canonical_city,
+                    is_live=False,
+                    source="unavailable",
+                    status_message="Data unavailable",
+                    live_station_count=0,
+                    last_updated=datetime.now(timezone.utc).isoformat(),
+                    stations=[],
+                    fallback_reason=f"{reason} AND Baseline dataset missing on disk",
+                )
+
             city_df = loader.filter_by_city(canonical_city)
             subset = city_df.head(max_results)
             stations: List[NormalizedStation] = []
@@ -236,21 +249,27 @@ class OpenChargeMapService:
                 )
 
             total_count = len(city_df)
+            source_val = "kaggle_baseline"
+            status_msg = "Baseline dataset (Open Charge Map API fallback)"
+            fallback_reason = reason
         except Exception as exc:
             log.warning("Fallback extraction failed for city %s: %s", canonical_city, exc)
             stations = []
             total_count = 0
+            source_val = "unavailable"
+            status_msg = "Data unavailable"
+            fallback_reason = f"{reason} AND Fallback extraction failed"
 
         now_iso = datetime.now(timezone.utc).isoformat()
         return LiveEnrichmentResult(
             city=canonical_city,
             is_live=False,
-            source="kaggle_baseline",
-            status_message="Baseline dataset (Open Charge Map API fallback)",
+            source=source_val,
+            status_message=status_msg,
             live_station_count=total_count,
             last_updated=now_iso,
             stations=stations,
-            fallback_reason=reason,
+            fallback_reason=fallback_reason,
         )
 
     def fetch_city_stations(
@@ -258,6 +277,8 @@ class OpenChargeMapService:
         city_name: str,
         distance_km: float = 25.0,
         max_results: int = 50,
+        explicit_lat: Optional[float] = None,
+        explicit_lng: Optional[float] = None,
     ) -> LiveEnrichmentResult:
         """
         Fetches live charging stations from Open Charge Map for the given city.
@@ -276,7 +297,10 @@ class OpenChargeMapService:
             if (now - ts) < CACHE_TTL_SECONDS:
                 return cached_result
 
-        lat, lon = self.resolve_city_center(canonical_city)
+        if explicit_lat is not None and explicit_lng is not None:
+            lat, lon = explicit_lat, explicit_lng
+        else:
+            lat, lon = self.resolve_city_center(canonical_city)
         api_key = self.get_api_key()
 
         # Build query parameters
@@ -315,14 +339,14 @@ class OpenChargeMapService:
                     )
                 else:
                     raw_data = json.loads(response.read().decode("utf-8"))
-                    if isinstance(raw_data, list) and len(raw_data) > 0:
+                    if isinstance(raw_data, list):
                         stations = [self._parse_ocm_poi(poi) for poi in raw_data if isinstance(poi, dict)]
                         now_iso = datetime.now(timezone.utc).isoformat()
                         result = LiveEnrichmentResult(
                             city=canonical_city,
                             is_live=True,
                             source="open_charge_map",
-                            status_message="Live station data from Open Charge Map",
+                            status_message="Live station data from Open Charge Map" if len(stations) > 0 else "No stations found in this area",
                             live_station_count=len(stations),
                             last_updated=now_iso,
                             stations=stations,
@@ -336,7 +360,7 @@ class OpenChargeMapService:
                     else:
                         result = self._fallback_to_baseline(
                             canonical_city,
-                            "OCM API returned empty station list",
+                            "OCM API returned invalid format",
                             max_results=max_results,
                         )
         except urllib.error.HTTPError as http_err:

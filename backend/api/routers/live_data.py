@@ -64,11 +64,19 @@ async def get_live_stations(
     city: str = Query(default="Mumbai", description="City name (e.g. Mumbai, San Francisco, Los Angeles, Chicago, Shenzhen)"),
     distance_km: float = Query(default=25.0, ge=1.0, le=100.0, description="Search radius in kilometers"),
     max_results: int = Query(default=50, ge=5, le=200, description="Maximum number of stations to return"),
+    lat: Optional[float] = Query(default=None, ge=-90.0, le=90.0, description="Explicit latitude override"),
+    lng: Optional[float] = Query(default=None, ge=-180.0, le=180.0, description="Explicit longitude override"),
 ) -> LiveDataResponse:
-    service = get_ocm_service()
-    result = service.fetch_city_stations(
-        city_name=city,
-        distance_km=distance_km,
-        max_results=max_results,
-    )
-    return LiveDataResponse(**result.to_dict())
+    try:
+        service = get_ocm_service()
+        result = service.fetch_city_stations(
+            city_name=city,
+            distance_km=distance_km,
+            max_results=max_results,
+            explicit_lat=lat,
+            explicit_lng=lng,
+        )
+        return LiveDataResponse(**result.to_dict())
+    except ValueError as ve:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=422, detail=str(ve))

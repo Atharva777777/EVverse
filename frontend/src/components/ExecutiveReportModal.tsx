@@ -289,9 +289,9 @@ export function ExecutiveReportModal({
               </span>
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "10px", fontSize: "11px", color: "#4a5166" }}>
-              <div><strong>Optimizer:</strong> QAOA (p=1, shots={qaoa.shots})</div>
-              <div><strong>QUBO Hamiltonian Energy:</strong> {qaoa.qubo_energy.toFixed(4)}</div>
-              <div><strong>Classical Verification:</strong> 100% agreement</div>
+              <div><strong>Optimizer:</strong> {qaoa ? `QAOA (p=1, shots=${qaoa.shots})` : "Classical Exhaustive"}</div>
+              <div><strong>QUBO Hamiltonian Energy:</strong> {qaoa ? qaoa.qubo_energy.toFixed(4) : classical.qubo_energy.toFixed(4)}</div>
+              <div><strong>Classical Verification:</strong> {qaoa ? "100% agreement" : "Primary solver"}</div>
               <div><strong>Hardware Reference:</strong> IBM Fez (156Q Heron)</div>
               <div><strong>ML Demand Model:</strong> Random Forest (R² = {demand_prediction.test_r2 != null ? demand_prediction.test_r2.toFixed(3) : "0.892"})</div>
               <div><strong>Pipeline Latency:</strong> {pipeline_runtime_s.toFixed(2)}s total</div>

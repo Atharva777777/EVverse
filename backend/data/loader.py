@@ -122,13 +122,15 @@ class GlobalDataLoader:
         elif _FALLBACK_CSV_PATH.exists():
             self.csv_path = _FALLBACK_CSV_PATH
         else:
-            raise FileNotFoundError(
-                f"Global EV dataset not found at {_DEFAULT_CSV_PATH} or {_FALLBACK_CSV_PATH}"
-            )
+            self.csv_path = _DEFAULT_CSV_PATH
 
         self._raw_df: Optional[pd.DataFrame] = None
         self._normalized_df: Optional[pd.DataFrame] = None
         self._city_cache: Dict[str, pd.DataFrame] = {}
+
+    @property
+    def has_dataset(self) -> bool:
+        return self.csv_path.exists()
 
     def load_data(self, reload: bool = False) -> pd.DataFrame:
         """
@@ -191,11 +193,7 @@ class GlobalDataLoader:
         if norm in _NORMALIZED_CITY_LOOKUP:
             return _NORMALIZED_CITY_LOOKUP[norm]
 
-        valid = ", ".join(sorted(CITY_TO_COUNTRY.keys()))
-        raise ValueError(
-            f"Unsupported city '{city_name}'. Supported cities are: {valid}"
-        )
-
+        return city_name.strip().title()
     def get_supported_cities(self) -> List[str]:
         """Returns the list of the 15 supported canonical city names."""
         return list(CITY_TO_COUNTRY.keys())

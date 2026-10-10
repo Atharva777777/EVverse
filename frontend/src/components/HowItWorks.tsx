@@ -240,17 +240,23 @@ export function HowItWorks({ data }: HowItWorksProps) {
 
                 {/* QAOA */}
                 <TechRow label="Quantum solver (QAOA)">
-                  <div style={{ display: "flex", gap: "32px", flexWrap: "wrap" }}>
-                    <TechStat label="Circuit depth" value={String(data.qaoa.circuit_depth)} />
-                    <TechStat label="Ansatz reps (p)" value={String(data.qaoa.reps)} />
-                    <TechStat label="Shots" value={data.qaoa.shots.toLocaleString()} />
-                    <TechStat label="Runtime" value={`${data.qaoa.runtime_s.toFixed(2)} s`} />
-                    <TechStat
-                      label="Optimal found"
-                      value={data.qaoa.matches_qubo_optimum ? "Yes ✓" : "Near-optimal"}
-                    />
-                    <TechStat label="Δ from optimum" value={data.qaoa.energy_gap.toFixed(4)} />
-                  </div>
+                  {data.qaoa ? (
+                    <div style={{ display: "flex", gap: "32px", flexWrap: "wrap" }}>
+                      <TechStat label="Circuit depth" value={String(data.qaoa.circuit_depth)} />
+                      <TechStat label="Ansatz reps (p)" value={String(data.qaoa.reps)} />
+                      <TechStat label="Shots" value={data.qaoa.shots.toLocaleString()} />
+                      <TechStat label="Runtime" value={`${data.qaoa.runtime_s.toFixed(2)} s`} />
+                      <TechStat
+                        label="Optimal found"
+                        value={data.qaoa.matches_qubo_optimum ? "Yes ✓" : "Near-optimal"}
+                      />
+                      <TechStat label="Δ from optimum" value={data.qaoa.energy_gap.toFixed(4)} />
+                    </div>
+                  ) : (
+                    <div style={{ fontFamily: "Times New Roman, serif", fontSize: "14px", color: "var(--color-ink-3)" }}>
+                      QAOA unavailable (Quantum solver bypassed)
+                    </div>
+                  )}
                 </TechRow>
 
                 {/* Classical comparison */}

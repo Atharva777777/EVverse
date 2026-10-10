@@ -165,7 +165,7 @@ def _load_cache() -> None:
             + "\n\nRe-deploy to trigger build.sh which trains the model."
         )
         log.critical(msg)
-        raise RuntimeError(msg)
+        raise ValueError(msg)
 
     # ── Step 1: load parquet filtered to the 8 candidate zones only ──────────
     # Using filters= pushes the row filter into the parquet reader so the full
@@ -582,13 +582,25 @@ def run_pipeline(
 
     if target_city:
         from backend.data.city_manager import get_city_manager, SCENARIO_MULTIPLIERS
-        from backend.data.loader import filter_stations_by_city
+        from backend.data.loader import filter_stations_by_city, CITY_TO_COUNTRY, get_loader
+        from backend.data.open_charge_map import CITY_COORDINATES
 
+        canonical_city = target_city.strip().title()
+        if canonical_city not in CITY_TO_COUNTRY and canonical_city not in CITY_COORDINATES:
+            raise ValueError(f"Unsupported city: {target_city}")
+
+        loader = get_loader()
         # ── STAGE 1: Real Station Data Ingestion ─────────────────────────────
         log.info("[STAGE 1/7: REAL DATA INGESTION] Loading real charging stations for %s...", target_city)
-        raw_stations = filter_stations_by_city(target_city)
-        n_raw = len(raw_stations)
-        tot_users = float(raw_stations["usage_stats_users_per_day"].sum()) if "usage_stats_users_per_day" in raw_stations else 0
+        try:
+            raw_stations = filter_stations_by_city(target_city)
+            n_raw = len(raw_stations)
+            tot_users = float(raw_stations["usage_stats_users_per_day"].sum()) if "usage_stats_users_per_day" in raw_stations else 0
+        except (FileNotFoundError, ValueError):
+            log.warning("Baseline dataset missing or city unsupported in baseline. Live station stats will be derived from OCM.")
+            raw_stations = pd.DataFrame()
+            n_raw = 0
+            tot_users = 0
         avg_cap = float(raw_stations["charging_capacity_kw"].mean()) if "charging_capacity_kw" in raw_stations else 0
         log.info(
             "[STAGE 1/7: REAL DATA INGESTION] Successfully loaded %d stations for %s. Total Daily Users: %d, Avg Capacity: %.1f kW.",
@@ -668,20 +680,27 @@ def run_pipeline(
             classical["selected_zones"], classical["runtime_s"] * 1000, classical["qubo_energy"]
         )
 
-        log.info(
-            "[STAGE 6/7: QUANTUM & CLASSICAL SOLVERS] Executing QAOA quantum simulator (reps=%d, shots=%d, seed=%d)...",
-            reps, shots, seed
-        )
-        qaoa = _solve_qaoa(
-            qubo, reps=reps, shots=shots, seed=seed,
-            opt_bits=opt_bits, opt_energy=opt_energy, opt_zones=opt_zones
-        )
-        log.info(
-            "[STAGE 6/7: QUANTUM & CLASSICAL SOLVERS] QAOA complete: best_bitstring=%s, success_prob=%.2f%%, runtime=%.3f s.",
-            qaoa["best_bitstring"], qaoa["success_probability"] * 100, qaoa["runtime_s"]
-        )
+        try:
+            import qiskit_aer
+            log.info(
+                "[STAGE 6/7: QUANTUM & CLASSICAL SOLVERS] Executing QAOA quantum simulator (reps=%d, shots=%d, seed=%d)...",
+                reps, shots, seed
+            )
+            qaoa = _solve_qaoa(
+                qubo, reps=reps, shots=shots, seed=seed,
+                opt_bits=opt_bits, opt_energy=opt_energy, opt_zones=opt_zones
+            )
+            log.info(
+                "[STAGE 6/7: QUANTUM & CLASSICAL SOLVERS] QAOA complete: best_bitstring=%s, success_prob=%.2f%%, runtime=%.3f s.",
+                qaoa["best_bitstring"], qaoa["success_probability"] * 100, qaoa["runtime_s"]
+            )
+            qaoa_status = "executed"
+        except ImportError:
+            log.warning("[STAGE 6/7: QUANTUM & CLASSICAL SOLVERS] qiskit_aer not installed. QAOA skipped.")
+            qaoa = None
+            qaoa_status = "unavailable"
 
-        if qaoa["feasible"]:
+        if qaoa and qaoa["feasible"]:
             rec_zones  = qaoa["selected_zones"]
             rec_method = "qaoa_aer_simulator"
             rec_energy = qaoa["qubo_energy"]
@@ -788,6 +807,7 @@ def run_pipeline(
             "qubo":               qubo_meta,
             "classical":          classical,
             "qaoa":               qaoa,
+            "qaoa_status":        qaoa_status,
             "recommendation": {
                 "selected_zones":               rec_zones,
                 "recommended_locations":        recommended_locations,
