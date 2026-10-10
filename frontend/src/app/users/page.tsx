@@ -120,9 +120,9 @@ export default function EVUsersLanding() {
                 </div>
                 <div style={{ marginTop: "auto", paddingTop: "24px", borderTop: "1px solid var(--color-border-subtle)" }}>
                   <div style={{ fontFamily: "var(--font-sans)", fontSize: "13px", color: "var(--color-ink-3)", display: "flex", flexDirection: "column", gap: "6px" }}>
-                    <span>Electric cars, bikes, and scooters</span>
-                    <span>Range, battery, and charging explained</span>
-                    <span>Ownership costs and maintenance</span>
+                    <span>Powertrain architectures explained</span>
+                    <span>Vehicle classes and Indian context</span>
+                    <span>Visual energy-flow diagrams</span>
                   </div>
                 </div>
                 <div style={{ fontFamily: "var(--font-sans)", fontSize: "14px", fontWeight: 600, color: "var(--color-navy-700)", display: "flex", alignItems: "center", gap: "6px" }}>
