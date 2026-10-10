@@ -98,47 +98,47 @@ const VEHICLE_CLASSES = [
 const FlowDiagram = ({ nodes, isRegen }: { nodes: string[], isRegen?: boolean }) => {
   return (
     <div className="relative p-6 bg-[var(--color-fog)] rounded-xl border border-[var(--color-border-subtle)] my-8 overflow-x-auto">
-      <div className="min-w-[600px]">
+      <div className="min-w-[600px] max-w-[800px] mx-auto">
         {/* Forward Path */}
-        <div className="flex items-center justify-between relative z-10">
+        <div className="flex justify-between items-start relative z-10 w-full">
           {nodes.map((node, i) => (
-            <React.Fragment key={i}>
-              <div className="flex flex-col items-center flex-1">
-                <div className="w-14 h-14 bg-white border border-[var(--color-border)] shadow-sm rounded-full flex items-center justify-center p-1.5 text-center mb-3">
-                   <div className="w-full h-full bg-[var(--color-canvas)] rounded-full flex items-center justify-center">
-                      <span className="text-[11px] uppercase font-bold text-[var(--color-navy-700)]">
-                        {i + 1}
-                      </span>
-                   </div>
-                </div>
-                <div className="text-[13px] font-serif font-semibold text-[var(--color-ink)] text-center leading-tight">
-                  {node.split('/').map((line, j) => <div key={j}>{line.trim()}</div>)}
-                </div>
+            <div key={i} className="flex flex-col items-center relative flex-1 px-2">
+              <div className="w-14 h-14 bg-white border border-[var(--color-border)] shadow-sm rounded-full flex items-center justify-center p-1.5 text-center mb-4 relative z-10">
+                 <div className="w-full h-full bg-[var(--color-canvas)] rounded-full flex items-center justify-center">
+                    <span className="text-[11px] uppercase font-bold text-[var(--color-navy-700)]">
+                      {i + 1}
+                    </span>
+                 </div>
+              </div>
+              <div className="text-[13px] font-serif font-semibold text-[var(--color-ink)] text-center leading-tight">
+                {node.split('/').map((line, j) => <div key={j}>{line.trim()}</div>)}
               </div>
               {i < nodes.length - 1 && (
-                <div className="flex-1 flex items-center justify-center -mx-6 text-[var(--color-navy-300)]">
-                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                    <path d="M5 12h14M12 5l7 7-7 7" />
-                  </svg>
+                <div className="absolute top-7 left-1/2 w-full flex items-center pointer-events-none z-0" style={{ transform: "translateY(-50%)" }}>
+                  <div className="w-full h-[2px] bg-[var(--color-border)] relative">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="absolute right-0 top-1/2 -translate-y-1/2 translate-x-1/2 text-[var(--color-navy-300)] bg-[var(--color-fog)]">
+                      <path d="M5 12h14M12 5l7 7-7 7" />
+                    </svg>
+                  </div>
                 </div>
               )}
-            </React.Fragment>
+            </div>
           ))}
         </div>
         
         {/* Reverse Regen Path */}
         {isRegen && (
-          <div className="mt-8 relative pt-4 border-t border-dashed border-[var(--color-border)]">
+          <div className="mt-10 relative pt-6 border-t border-dashed border-[var(--color-border-subtle)] w-full">
              <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-[var(--color-fog)] px-4">
                <span className="text-[10px] uppercase font-bold text-[var(--color-navy-600)] tracking-wider bg-white border border-[var(--color-border-subtle)] px-2 py-1 rounded">Regenerative Braking</span>
              </div>
-             <div className="flex items-center justify-between text-[var(--color-navy-400)] px-[10%] mt-4">
+             <div className="flex items-center justify-center text-[var(--color-navy-400)] px-[15%]">
                 <svg className="w-full h-4" preserveAspectRatio="none" viewBox="0 0 100 10" fill="none">
                    <line x1="100" y1="5" x2="2" y2="5" stroke="currentColor" strokeWidth="1.5" strokeDasharray="4 4" />
                    <polygon points="2,5 8,1 8,9" fill="currentColor" />
                 </svg>
              </div>
-             <div className="text-center mt-2 font-serif text-[13px] text-[var(--color-ink-4)] italic">
+             <div className="text-center mt-3 font-serif text-[13px] text-[var(--color-ink-4)] italic">
                 Kinetic energy from the wheels is recovered by the motor to recharge the battery during deceleration.
              </div>
           </div>

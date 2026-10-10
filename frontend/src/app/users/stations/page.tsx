@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import dynamic from "next/dynamic";
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useMemo } from "react";
 import { BrandLogo } from "@/components/BrandLogo";
 import { useLiveData } from "@/hooks/useLiveData";
 import { CountryCitySelector } from "@/components/CountryCitySelector";
@@ -31,6 +31,12 @@ export default function EVUsersDashboard() {
   const [leftOpen, setLeftOpen] = useState(true);
   const [rightOpen, setRightOpen] = useState(true);
 
+  // Filter states
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedConnector, setSelectedConnector] = useState("");
+  const [selectedPower, setSelectedPower] = useState("");
+  const [selectedOperator, setSelectedOperator] = useState("");
+
   const {
     data: liveData,
     loading,
@@ -48,6 +54,11 @@ export default function EVUsersDashboard() {
       setSelectedCity(city);
       setSelectedCountry(country);
       setSelectedStation(null);
+      // reset filters on city change
+      setSearchQuery("");
+      setSelectedConnector("");
+      setSelectedPower("");
+      setSelectedOperator("");
       mapRef.current?.setUserLocation(lat, lng);
     },
     []
@@ -57,6 +68,47 @@ export default function EVUsersDashboard() {
     setSelectedStation(station);
     setRightOpen(true); // Open details panel when a station is clicked
   }, []);
+
+  const clearFilters = () => {
+    setSearchQuery("");
+    setSelectedConnector("");
+    setSelectedPower("");
+    setSelectedOperator("");
+  };
+
+  const operators = useMemo(() => {
+    if (!liveData?.stations) return [];
+    const ops = new Set(liveData.stations.map(s => s.operator).filter(Boolean));
+    return Array.from(ops).sort() as string[];
+  }, [liveData]);
+
+  const connectors = useMemo(() => {
+    if (!liveData?.stations) return [];
+    const conns = new Set<string>();
+    liveData.stations.forEach(s => {
+       if (s.connector_types) s.connector_types.forEach(c => conns.add(c));
+    });
+    return Array.from(conns).sort();
+  }, [liveData]);
+
+  const filteredStations = useMemo(() => {
+    if (!liveData?.stations) return [];
+    return liveData.stations.filter(st => {
+       if (searchQuery && !st.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
+       if (selectedOperator && st.operator !== selectedOperator) return false;
+       if (selectedConnector && (!st.connector_types || !st.connector_types.includes(selectedConnector))) return false;
+       if (selectedPower) {
+         if (selectedPower === "Level 2") {
+            if (!st.power_kw || st.power_kw > 22) return false;
+         } else if (selectedPower === "DC Fast") {
+            if (!st.power_kw || st.power_kw <= 22 || st.power_kw > 150) return false;
+         } else if (selectedPower === "Ultra Fast") {
+            if (!st.power_kw || st.power_kw <= 150) return false;
+         }
+       }
+       return true;
+    });
+  }, [liveData, searchQuery, selectedOperator, selectedConnector, selectedPower]);
 
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: "var(--color-canvas)" }}>
@@ -151,7 +203,7 @@ export default function EVUsersDashboard() {
         <div 
           className={`bg-white z-10 flex-col shadow-[4px_0_24px_rgba(10,22,40,0.02)] transition-all duration-300 border-b lg:border-b-0 lg:border-r border-[var(--color-border)] ${leftOpen ? 'flex w-full lg:w-[360px] lg:min-w-[320px]' : 'hidden lg:flex lg:w-0 lg:min-w-0 lg:overflow-hidden lg:border-r-0'}`}
         >
-          <div className="p-6 border-b border-[var(--color-border-subtle)] shrink-0 min-w-[320px]">
+          <div className="p-6 border-b border-[var(--color-border-subtle)] shrink-0 min-w-[320px] overflow-y-auto max-h-[50vh] lg:max-h-[60vh]">
             <h1 className="font-serif text-[24px] text-[var(--color-ink)] mb-2 tracking-tight">
               Station Discovery
             </h1>
@@ -169,6 +221,58 @@ export default function EVUsersDashboard() {
               onCitySelect={handleCitySelect}
             />
 
+            {/* FILTERS */}
+            <div className="mt-6 pt-5 border-t border-[var(--color-border-subtle)]">
+              <div className="flex justify-between items-center mb-3">
+                <div className="font-serif text-[12px] text-[var(--color-ink-4)] uppercase tracking-wider">
+                  Filters
+                </div>
+                {(searchQuery || selectedConnector || selectedPower || selectedOperator) && (
+                  <button onClick={clearFilters} className="text-[11px] text-[var(--color-navy-600)] hover:text-[var(--color-navy-900)] font-serif cursor-pointer">
+                    Clear all
+                  </button>
+                )}
+              </div>
+              <div className="flex flex-col gap-3">
+                <input 
+                  type="text" 
+                  placeholder="Search station name..." 
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full px-3 py-2 border border-[var(--color-border)] rounded-md font-serif text-[14px] text-[var(--color-ink)] placeholder-[var(--color-ink-4)] outline-none focus:border-[var(--color-navy-500)] focus:ring-1 focus:ring-[var(--color-navy-500)]"
+                />
+                
+                <select 
+                  value={selectedConnector} 
+                  onChange={(e) => setSelectedConnector(e.target.value)}
+                  className="w-full px-3 py-2 border border-[var(--color-border)] rounded-md font-serif text-[14px] text-[var(--color-ink)] bg-white outline-none focus:border-[var(--color-navy-500)]"
+                >
+                  <option value="">All Connectors</option>
+                  {connectors.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+
+                <select 
+                  value={selectedPower} 
+                  onChange={(e) => setSelectedPower(e.target.value)}
+                  className="w-full px-3 py-2 border border-[var(--color-border)] rounded-md font-serif text-[14px] text-[var(--color-ink)] bg-white outline-none focus:border-[var(--color-navy-500)]"
+                >
+                  <option value="">All Power Levels</option>
+                  <option value="Level 2">Level 2 (≤22kW)</option>
+                  <option value="DC Fast">DC Fast (22kW - 150kW)</option>
+                  <option value="Ultra Fast">Ultra Fast (&gt;150kW)</option>
+                </select>
+
+                <select 
+                  value={selectedOperator} 
+                  onChange={(e) => setSelectedOperator(e.target.value)}
+                  className="w-full px-3 py-2 border border-[var(--color-border)] rounded-md font-serif text-[14px] text-[var(--color-ink)] bg-white outline-none focus:border-[var(--color-navy-500)]"
+                >
+                  <option value="">All Operators</option>
+                  {operators.map(o => <option key={o} value={o}>{o}</option>)}
+                </select>
+              </div>
+            </div>
+
             <div className="mt-6 pt-5 border-t border-[var(--color-border-subtle)]">
               <div className="font-serif text-[12px] text-[var(--color-ink-4)] mb-3 uppercase tracking-wider">
                 Map Layers
@@ -185,18 +289,53 @@ export default function EVUsersDashboard() {
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto min-w-[320px]">
+          <div className="flex-1 overflow-y-auto min-w-[320px] bg-[var(--color-fog)]">
+            <div className="px-6 py-3 border-b border-[var(--color-border-subtle)] bg-white flex justify-between items-center sticky top-0 z-10">
+              <span className="font-serif text-[13px] text-[var(--color-ink-3)]">
+                {selectedCity}
+              </span>
+              <span className="font-serif text-[13px] font-semibold text-[var(--color-navy-700)]">
+                {filteredStations.length} Results
+              </span>
+            </div>
+            
             {loading ? (
               <div className="p-8 text-center text-[var(--color-ink-4)] font-serif text-[14px]">
                 Loading stations…
               </div>
             ) : (!liveData?.stations || liveData.stations.length === 0) ? (
-              <div className="p-8 text-center text-[var(--color-ink-4)] font-serif text-[14px]">
-                No stations found in this region.
+              <div className="p-8 text-center flex flex-col items-center">
+                <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center border border-[var(--color-border-subtle)] mb-4 text-[var(--color-ink-4)]">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <path d="M10 21v-8a2 2 0 0 0-2-2H4" />
+                    <path d="M14 21v-8a2 2 0 0 1 2-2h4" />
+                    <circle cx="12" cy="7" r="3" />
+                  </svg>
+                </div>
+                <div className="font-serif text-[16px] text-[var(--color-ink)] mb-1">No stations found</div>
+                <div className="font-serif text-[13px] text-[var(--color-ink-3)] max-w-[250px] leading-relaxed">
+                  There are no documented charging stations for this region in the current dataset.
+                </div>
+              </div>
+            ) : filteredStations.length === 0 ? (
+              <div className="p-8 text-center flex flex-col items-center">
+                <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center border border-[var(--color-border-subtle)] mb-4 text-[var(--color-ink-4)]">
+                  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </div>
+                <div className="font-serif text-[16px] text-[var(--color-ink)] mb-1">No matches found</div>
+                <div className="font-serif text-[13px] text-[var(--color-ink-3)] max-w-[250px] leading-relaxed mb-4">
+                  Adjust your filters to see more stations in {selectedCity}.
+                </div>
+                <button onClick={clearFilters} className="px-4 py-2 bg-white border border-[var(--color-border)] rounded-md font-serif text-[13px] text-[var(--color-ink)] hover:bg-[var(--color-canvas)] transition-colors cursor-pointer">
+                  Clear Filters
+                </button>
               </div>
             ) : (
-              <div className="flex flex-col">
-                {liveData.stations.map((station) => {
+              <div className="flex flex-col bg-white">
+                {filteredStations.map((station) => {
                   const isSelected = selectedStation?.station_id === station.station_id;
                   return (
                     <div 
@@ -256,7 +395,7 @@ export default function EVUsersDashboard() {
         <div className="flex-1 relative z-0 h-[400px] lg:h-auto min-h-[400px]">
           <ChargingMap
             ref={mapRef}
-            liveStations={liveData?.stations}
+            liveStations={filteredStations}
             onStationClick={handleStationClick}
             selectedStationId={selectedStation?.station_id}
             showLiveStationsOverride={showStationsLayer}

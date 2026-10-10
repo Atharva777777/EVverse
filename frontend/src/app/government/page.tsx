@@ -156,8 +156,10 @@ export default function GovernmentDashboard() {
               Coverage Gap Analysis
             </h2>
             <div style={{ padding: "32px", borderRadius: "8px", border: "1px solid var(--color-border)", background: "white", height: "100%" }}>
-              <p style={{ fontFamily: "Times New Roman, serif", fontSize: "15px", color: "var(--color-ink-2)", lineHeight: 1.6, marginBottom: "32px" }}>
-                The placement algorithms identify spatial charging deserts by comparing existing supply against population density proxies. This helps direct planning attention toward underserved regions.
+              <p style={{ fontFamily: "Times New Roman, serif", fontSize: "16px", color: "var(--color-ink-2)", lineHeight: 1.7, marginBottom: "32px" }}>
+                <strong>Data Analysis:</strong> The system maps the current coverage footprint using Open Charge Map telemetry.
+                <br/><br/>
+                <strong>AI Capability:</strong> The placement algorithms then identify spatial charging deserts by comparing existing supply against population density proxies. This helps direct planning attention toward underserved regions using mathematically optimized coverage.
               </p>
               <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "24px" }}>
                 {[
@@ -183,8 +185,8 @@ export default function GovernmentDashboard() {
               Planning Scenarios
             </h2>
             <div style={{ padding: "32px", borderRadius: "8px", border: "1px solid var(--color-border)", background: "white", height: "100%", display: "flex", flexDirection: "column", justifyContent: "center" }}>
-              <p style={{ fontFamily: "Times New Roman, serif", fontSize: "15px", color: "var(--color-ink-2)", lineHeight: 1.6, marginBottom: "32px" }}>
-                Evaluate different infrastructure deployments by altering spatial demand assumptions.
+              <p style={{ fontFamily: "Times New Roman, serif", fontSize: "16px", color: "var(--color-ink-2)", lineHeight: 1.7, marginBottom: "32px" }}>
+                <strong>AI Capability:</strong> Evaluate different infrastructure deployments by leveraging our AI models to alter spatial demand assumptions and observe resulting optimized networks.
                 <br/><br/>
                 <strong>Strategic Impact:</strong> Test the spatial implications of placing stations to support morning commutes versus continuous regional transit.
               </p>
@@ -207,11 +209,11 @@ export default function GovernmentDashboard() {
             <h3 style={{ fontFamily: "Times New Roman, serif", fontSize: "16px", fontWeight: 600, color: "var(--color-ink)", marginBottom: "16px" }}>
               Methodology & Limitations
             </h3>
-            <p style={{ fontFamily: "Times New Roman, serif", fontSize: "14px", color: "var(--color-ink-3)", lineHeight: 1.6, margin: 0 }}>
+            <p style={{ fontFamily: "Times New Roman, serif", fontSize: "15px", color: "var(--color-ink-3)", lineHeight: 1.7, margin: 0 }}>
               <strong>Data Sources:</strong> Coverage baselines integrate inputs from Open Charge Map (OCM) and municipal datasets where available. 
               Figures presented above are policy demonstration indicators. 
               <br/><br/>
-              <strong>Limitations:</strong> Infrastructure planning should be corroborated with local zoning records, detailed grid capacity studies from utilities, and environmental impact assessments prior to sanctioning deployment funds.
+              <strong>Limitations:</strong> AI-driven infrastructure planning should be corroborated with local zoning records, detailed grid capacity studies from utilities, and environmental impact assessments prior to sanctioning deployment funds.
             </p>
           </div>
         </section>

@@ -156,8 +156,10 @@ export default function InvestorDashboard() {
               Coverage Opportunity
             </h2>
             <div style={{ padding: "32px", borderRadius: "8px", border: "1px solid var(--color-border)", background: "white", height: "100%" }}>
-              <p style={{ fontFamily: "Times New Roman, serif", fontSize: "15px", color: "var(--color-ink-2)", lineHeight: 1.6, marginBottom: "32px" }}>
-                The placement engine uses combinatorial optimization to identify candidate locations based on existing supply and demand proxies. It is designed to maximize spatial coverage.
+              <p style={{ fontFamily: "Times New Roman, serif", fontSize: "16px", color: "var(--color-ink-2)", lineHeight: 1.7, marginBottom: "32px" }}>
+                <strong>Data Analysis:</strong> We aggregate the current network footprint using live telemetry from Open Charge Map.
+                <br/><br/>
+                <strong>AI Capability:</strong> The placement engine uses combinatorial optimization to identify optimal candidate locations based on existing supply gaps and demand proxies. It is mathematically designed to maximize spatial coverage.
               </p>
               <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: "24px" }}>
                 {[
@@ -183,8 +185,8 @@ export default function InvestorDashboard() {
               Financial Scenarios
             </h2>
             <div style={{ padding: "32px", borderRadius: "8px", border: "1px solid var(--color-border)", background: "white", height: "100%", display: "flex", flexDirection: "column", justifyContent: "center" }}>
-              <p style={{ fontFamily: "Times New Roman, serif", fontSize: "15px", color: "var(--color-ink-2)", lineHeight: 1.6, marginBottom: "32px" }}>
-                The deployment planner allows testing scenarios against different temporal demand patterns (e.g., morning vs. afternoon peaks). 
+              <p style={{ fontFamily: "Times New Roman, serif", fontSize: "16px", color: "var(--color-ink-2)", lineHeight: 1.7, marginBottom: "32px" }}>
+                <strong>AI Capability:</strong> The deployment planner allows testing optimization scenarios against different temporal demand patterns (e.g., morning vs. afternoon peaks) to see how candidate sites perform. 
                 <br/><br/>
                 <strong>Explicit Assumptions:</strong> The model uses fixed capital expenditure benchmarks and assumed utilization tariffs. These are scenario planning tools, not guaranteed financial returns or live market data.
               </p>
@@ -207,11 +209,11 @@ export default function InvestorDashboard() {
             <h3 style={{ fontFamily: "Times New Roman, serif", fontSize: "16px", fontWeight: 600, color: "var(--color-ink)", marginBottom: "16px" }}>
               Methodology & Limitations
             </h3>
-            <p style={{ fontFamily: "Times New Roman, serif", fontSize: "14px", color: "var(--color-ink-3)", lineHeight: 1.6, margin: 0 }}>
+            <p style={{ fontFamily: "Times New Roman, serif", fontSize: "15px", color: "var(--color-ink-3)", lineHeight: 1.7, margin: 0 }}>
               <strong>Data Sources:</strong> Station data is sourced from Open Charge Map (OCM) and the Kaggle baseline dataset. 
               Figures presented above are demonstration indicators. The live planning map fetches actual available station metadata when possible. 
               <br/><br/>
-              <strong>Limitations:</strong> Do not rely on these models for final financial commitment without independently verifying real estate, local grid capacity, and up-to-date regional EV adoption rates.
+              <strong>Limitations:</strong> Do not rely on these AI models for final financial commitment without independently verifying real estate availability, local grid capacity, and up-to-date regional EV adoption rates.
             </p>
           </div>
         </section>
