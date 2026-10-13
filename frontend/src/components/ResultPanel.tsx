@@ -35,6 +35,7 @@ interface ResultPanelProps {
   onSearch: () => void;
   onOpenQuantumModal?: () => void;
   onOpenReportModal?: () => void;
+  onOpenSpatialModal?: () => void;
 }
 
 const SCENARIO_LABELS: Record<string, string> = {
@@ -58,6 +59,7 @@ export function ResultPanel({
   onSearch,
   onOpenQuantumModal,
   onOpenReportModal,
+  onOpenSpatialModal,
 }: ResultPanelProps) {
   const [activeTab, setActiveTab] = useState<"sites" | "impact" | "compare" | "diagnostics">("sites");
 
@@ -634,6 +636,28 @@ export function ResultPanel({
       )}
 
       <div style={{ padding: "12px 22px", display: "flex", flexDirection: "column", gap: "8px" }}>
+        {onOpenSpatialModal && (
+          <button
+            onClick={onOpenSpatialModal}
+            style={{
+              width: "100%", padding: "10px", borderRadius: "10px",
+              border: "1px solid var(--color-navy-200)", background: "var(--color-navy-50)",
+              fontFamily: "Times New Roman, serif", fontSize: "12px", color: "var(--color-navy-900)",
+              cursor: "pointer", transition: "all 0.15s ease",
+              display: "flex", alignItems: "center", justifyContent: "center", gap: "6px",
+              fontWeight: 600,
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = "var(--color-navy-100)";
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = "var(--color-navy-50)";
+            }}
+          >
+            <span>🏛️</span>
+            <span>Inspect Candidate in 3D Urban Digital Twin →</span>
+          </button>
+        )}
         {onOpenQuantumModal && (
           <button
             onClick={onOpenQuantumModal}

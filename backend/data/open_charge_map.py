@@ -33,6 +33,8 @@ log = logging.getLogger(__name__)
 CITY_COORDINATES: Dict[str, Tuple[float, float]] = {
     "Mumbai": (19.0760, 72.8777),
     "Pune": (18.5204, 73.8567),
+    "Delhi": (28.6139, 77.2090),
+    "Bengaluru": (12.9716, 77.5946),
     "San Francisco": (37.8032, -122.4005),
     "Los Angeles": (34.0923, -118.2904),
     "Chicago": (41.9003, -87.7022),

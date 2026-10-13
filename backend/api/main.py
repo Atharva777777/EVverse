@@ -28,6 +28,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from backend.api.routers import health
 from backend.api.routers import live_data
 from backend.api.routers import optimize
+from backend.api.routers import spatial
 from backend.api.services.optimizer import warm_up
 
 
@@ -54,9 +55,9 @@ async def lifespan(app: FastAPI):
 # ---------------------------------------------------------------------------
 
 app = FastAPI(
-    title="EVision API",
-    description="AI + Quantum EV Charging Infrastructure Optimizer",
-    version="0.2.0",
+    title="EV Verse Spatial API",
+    description="3D Urban Infrastructure Digital Twin & Spatial Planning Engine",
+    version="2.0.0",
     lifespan=lifespan,
 )
 
@@ -104,4 +105,10 @@ app.include_router(
     optimize.router,
     prefix="/api/v1",
     tags=["optimization"],
+)
+
+app.include_router(
+    spatial.router,
+    prefix="/api/v1",
+    tags=["spatial"],
 )

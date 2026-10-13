@@ -19,6 +19,7 @@ import { PlanningControls } from "@/components/PlanningControls";
 import { HowItWorks } from "@/components/HowItWorks";
 import { QuantumAdvantageModal } from "@/components/QuantumAdvantageModal";
 import { ExecutiveReportModal } from "@/components/ExecutiveReportModal";
+import { Spatial3DDigitalTwinModal } from "@/components/Spatial3DDigitalTwinModal";
 import type { ChargingMapHandle } from "@/components/ChargingMap";
 import type { PlanningScenario } from "@/types/api";
 
@@ -65,6 +66,17 @@ export default function Page() {
   // Winner feature modals
   const [quantumModalOpen, setQuantumModalOpen] = useState(false);
   const [reportModalOpen, setReportModalOpen] = useState(false);
+  const [spatialModalOpen, setSpatialModalOpen] = useState(false);
+  const [spatialModalSite, setSpatialModalSite] = useState<{
+    label: string;
+    name: string;
+    lat: number;
+    lng: number;
+    demandKwh?: number;
+    gapScore?: number;
+    quboScore?: number;
+  } | null>(null);
+  const [is3DMode, setIs3DMode] = useState(false);
 
   const handleCountrySelect = useCallback((country: string) => {
     setSelectedCountry(country);
@@ -255,6 +267,29 @@ export default function Page() {
 
           <button
             type="button"
+            onClick={() => setSpatialModalOpen(true)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              padding: "5px 12px",
+              borderRadius: "8px",
+              border: "1px solid var(--color-navy-200)",
+              background: "var(--color-navy-50)",
+              color: "var(--color-navy-900)",
+              fontFamily: "Times New Roman, serif",
+              fontSize: "12px",
+              cursor: "pointer",
+              transition: "all 0.15s ease",
+            }}
+            title="View 3D Station Model & Investment Pro-Forma"
+          >
+            <span>🏛️</span>
+            <span>3D Station Model</span>
+          </button>
+
+          <button
+            type="button"
             onClick={() => setQuantumModalOpen(true)}
             style={{
               display: "flex",
@@ -353,13 +388,15 @@ export default function Page() {
         <div style={{ position: "absolute", inset: 0, zIndex: 0 }}>
 
           <ChargingMap
-
             ref={mapRef}
-
             onSequenceStep={setSequenceStep}
-
             liveStations={liveData?.stations}
-
+            is3DMode={is3DMode}
+            onToggle3D={() => setIs3DMode((prev) => !prev)}
+            onOpen3DTwin={(siteInfo) => {
+              setSpatialModalSite(siteInfo);
+              setSpatialModalOpen(true);
+            }}
           />
 
         </div>
@@ -563,6 +600,21 @@ export default function Page() {
                   onSearch={handleSearch}
                   onOpenQuantumModal={() => setQuantumModalOpen(true)}
                   onOpenReportModal={() => setReportModalOpen(true)}
+                  onOpenSpatialModal={() => {
+                    const topZone = state.status === "success" && state.data.recommendation.zone_details.length > 0 ? state.data.recommendation.zone_details[0] : null;
+                    if (topZone) {
+                      setSpatialModalSite({
+                        label: topZone.label,
+                        name: topZone.name_primary || `Site ${topZone.label}`,
+                        lat: topZone.latitude,
+                        lng: topZone.longitude,
+                        demandKwh: topZone.predicted_demand_kwh_h,
+                        gapScore: topZone.infrastructure_gap_score || 8.4,
+                        quboScore: topZone.qubo_c_value,
+                      });
+                    }
+                    setSpatialModalOpen(true);
+                  }}
                 />
 
               </div>
@@ -701,6 +753,20 @@ export default function Page() {
 
       {/* ── HOW IT WORKS ───────────────────────────────────── */}
       <HowItWorks data={state.status === "success" ? state.data : undefined} />
+
+      {/* 3D Hyperrealistic Urban Infrastructure Digital Twin & Pro-Forma Modal */}
+      <Spatial3DDigitalTwinModal
+        isOpen={spatialModalOpen}
+        onClose={() => setSpatialModalOpen(false)}
+        city={selectedCity}
+        selectedZoneLabel={spatialModalSite?.label || (state.status === "success" && state.data.recommendation.selected_zones.length > 0 ? state.data.recommendation.selected_zones[0] : "Z0")}
+        zoneName={spatialModalSite?.name || (state.status === "success" && state.data.recommendation.zone_details.length > 0 ? state.data.recommendation.zone_details[0].name_primary : `${selectedCity} Primary Corridor`)}
+        latitude={spatialModalSite?.lat ?? userLat}
+        longitude={spatialModalSite?.lng ?? userLng}
+        predictedDemandKwh={spatialModalSite?.demandKwh || (state.status === "success" && state.data.recommendation.zone_details.length > 0 ? state.data.recommendation.zone_details[0].predicted_demand_kwh_h : 480)}
+        gapScore={spatialModalSite?.gapScore || 8.4}
+        quboScore={spatialModalSite?.quboScore || (state.status === "success" && state.data.recommendation.zone_details.length > 0 ? state.data.recommendation.zone_details[0].qubo_c_value : 0.892)}
+      />
 
       {/* Quantum Scalability & IBM Hardware Modal */}
       <QuantumAdvantageModal

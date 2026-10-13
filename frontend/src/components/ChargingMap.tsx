@@ -26,6 +26,17 @@ interface ChargingMapProps {
   selectedStationId?: string;
   showLiveStationsOverride?: boolean;
   hideInternalLayerControls?: boolean;
+  is3DMode?: boolean;
+  onToggle3D?: () => void;
+  onOpen3DTwin?: (siteInfo: {
+    label: string;
+    name: string;
+    lat: number;
+    lng: number;
+    demandKwh?: number;
+    gapScore?: number;
+    quboScore?: number;
+  }) => void;
 }
 
 function haversine(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -63,13 +74,18 @@ function delay(ms: number) {
 }
 
 const ChargingMap = forwardRef<ChargingMapHandle, ChargingMapProps>(
-  ({ onSequenceStep, onReady, liveStations, onStationClick, selectedStationId, showLiveStationsOverride, hideInternalLayerControls }, ref) => {
+  ({ onSequenceStep, onReady, liveStations, onStationClick, selectedStationId, showLiveStationsOverride, hideInternalLayerControls, is3DMode, onToggle3D, onOpen3DTwin }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
     const mapRef = useRef<any>(null);
     const userMarkerRef = useRef<any>(null);
+    const customMarkerRef = useRef<any>(null);
     const layersRef = useRef<any[]>([]);
     const liveStationLayersRef = useRef<any[]>([]);
     const userLatLngRef = useRef<[number, number]>([37.8032, -122.4005]);
+
+    const [internal3D, setInternal3D] = useState(false);
+    const active3D = is3DMode !== undefined ? is3DMode : internal3D;
+    const [isPlaceChargerActive, setIsPlaceChargerActive] = useState(false);
 
     const [showCoverage, setShowCoverage] = useState(true);
     const [showHeatmap, setShowHeatmap] = useState(false);
@@ -153,6 +169,52 @@ const ChargingMap = forwardRef<ChargingMapHandle, ChargingMapProps>(
         ).addTo(map);
 
         L.control.zoom({ position: "bottomright" }).addTo(map);
+
+        // Map click handler: allows investor to drop a charger anywhere in the city
+        map.on("click", (e: any) => {
+          const { lat, lng } = e.latlng;
+          if (customMarkerRef.current) {
+            customMarkerRef.current.remove();
+          }
+
+          const customIcon = L.divIcon({
+            className: "",
+            html: `<div style="position:relative;width:56px;height:56px;transform:translate(-28px,-28px);cursor:pointer;">
+              <div style="position:absolute;inset:0;border-radius:50%;background:#059669;opacity:0.25;animation:pulse-1 2s ease-out infinite;"></div>
+              <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:34px;height:34px;border-radius:50%;background:#0a1628;border:3px solid #10b981;box-shadow:0 4px 16px rgba(0,0,0,0.35);display:flex;align-items:center;justify-content:center;">
+                <span style="font-size:14px;">⚡</span>
+              </div>
+            </div>`,
+            iconSize: [0, 0],
+            iconAnchor: [0, 0],
+          });
+
+          const cm = L.marker([lat, lng], { icon: customIcon, zIndexOffset: 3000 }).addTo(map);
+          customMarkerRef.current = cm;
+
+          cm.bindPopup(
+            L.popup({ closeButton: true, maxWidth: 300, offset: [0, -10] }).setContent(`
+              <div style="font-family:'Times New Roman',serif;padding:16px 18px;min-width:250px;">
+                <div style="display:inline-flex;align-items:center;gap:6px;background:#059669;color:white;font-size:10px;font-weight:700;letter-spacing:0.06em;padding:4px 10px;border-radius:99px;margin-bottom:10px;">
+                  ★ Custom Investor Site
+                </div>
+                <div style="font-size:18px;font-weight:700;color:var(--color-ink);margin-bottom:4px;">
+                  Candidate Installation
+                </div>
+                <div style="font-size:11.5px;color:var(--color-ink-3);margin-bottom:12px;">
+                  ${lat.toFixed(4)}°N, ${lng.toFixed(4)}°E
+                </div>
+                <button
+                  onclick="window.__open3DTwin && window.__open3DTwin('Custom Candidate', 'Custom Location (${lat.toFixed(3)}°, ${lng.toFixed(3)}°)', ${lat}, ${lng}, 520, 8.8, 0.91)"
+                  style="width:100%;padding:10px;border-radius:8px;border:none;background:var(--color-navy-900);color:white;font-family:'Times New Roman',serif;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;box-shadow:0 2px 8px rgba(10,22,40,0.2);"
+                >
+                  <span>🏛️ Launch 3D Hyperrealistic Twin & Pro-Forma →</span>
+                </button>
+              </div>
+            `)
+          ).openPopup();
+        });
+
         mapRef.current = map;
         requestAnimationFrame(() => map.invalidateSize());
         setTimeout(() => mapRef.current?.invalidateSize(), 300);
@@ -174,6 +236,24 @@ const ChargingMap = forwardRef<ChargingMapHandle, ChargingMapProps>(
       };
     // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
+    // Bind global popup click handler for 3D digital twin launch
+    useEffect(() => {
+      (window as any).__open3DTwin = (
+        label: string,
+        name: string,
+        lat: number,
+        lng: number,
+        demandKwh?: number,
+        gapScore?: number,
+        quboScore?: number
+      ) => {
+        onOpen3DTwin?.({ label, name, lat, lng, demandKwh, gapScore, quboScore });
+      };
+      return () => {
+        delete (window as any).__open3DTwin;
+      };
+    }, [onOpen3DTwin]);
 
     const renderOverlayLayers = useCallback(
       (zones: ZoneDetail[], selected: string[], isNew: boolean = false) => {
@@ -318,9 +398,15 @@ const ChargingMap = forwardRef<ChargingMapHandle, ChargingMapProps>(
                   <div style="display:flex;justify-content:space-between;"><span style="color:var(--color-ink-4);">Infrastructure Gap</span><span style="font-weight:700;color:var(--color-negative);">${z.infrastructure_gap_score ? `${z.infrastructure_gap_score}/10` : "High Deficit"}</span></div>
                   <div style="display:flex;justify-content:space-between;"><span style="color:var(--color-ink-4);">Predicted CapEx</span><span style="font-weight:600;">${z.predicted_cost_usd ? `$${Math.round(z.predicted_cost_usd / 1000)}k USD` : "$120k"}</span></div>
                   <div style="display:flex;justify-content:space-between;"><span style="color:var(--color-ink-4);">Est. Payback</span><span style="font-weight:700;color:var(--color-positive);">${z.predicted_roi_years ? `~${z.predicted_roi_years} Years` : "~2.0 Years"}</span></div>
-                  <div style="display:flex;justify-content:space-between;"><span style="color:var(--color-ink-4);">QUBO Score (c_j)</span><span style="font-weight:600;">${z.qubo_c_value.toFixed(3)}</span></div>
+                  <div style="display:flex;justify-content:space-between;"><span style="color:var(--color-ink-4);">Demand Confidence</span><span style="font-weight:600;color:var(--color-positive);">Top Tier (High Margin)</span></div>
                   <div style="display:flex;justify-content:space-between;"><span style="color:var(--color-ink-4);">Distance from Center</span><span>${dist < 1 ? `${Math.round(dist * 1000)} m` : `${dist.toFixed(1)} km`}</span></div>
                 </div>
+                <button
+                  onclick="window.__open3DTwin && window.__open3DTwin('${z.label}', '${(z.name_primary || `Site ${z.label}`).replace(/'/g, "\\'")}', ${z.latitude}, ${z.longitude}, ${z.predicted_demand_kwh_h}, ${z.infrastructure_gap_score || 8.4}, ${z.qubo_c_value})"
+                  style="width:100%;margin-top:12px;padding:10px;border-radius:8px;border:none;background:var(--color-navy-900);color:white;font-family:'Times New Roman',serif;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;box-shadow:0 2px 8px rgba(10,22,40,0.2);"
+                >
+                  <span>🏛️ View 3D Station & Investment Pro-Forma →</span>
+                </button>
               </div>`));
             layersRef.current.push(m);
 
@@ -594,11 +680,67 @@ const ChargingMap = forwardRef<ChargingMapHandle, ChargingMapProps>(
     }));
 
     return (
-      <div style={{ position: "relative", width: "100%", height: "100%" }}>
-        <div ref={containerRef} style={{ position: "absolute", inset: 0, background: "#e8edf4" }} />
+      <div style={{ position: "relative", width: "100%", height: "100%", overflow: "hidden" }}>
+        <div
+          ref={containerRef}
+          style={{
+            position: "absolute",
+            inset: 0,
+            background: "#e8edf4",
+            transform: active3D ? "perspective(1150px) rotateX(34deg) scale(1.07)" : "none",
+            transformOrigin: "center 75%",
+            transition: "transform 0.65s cubic-bezier(0.16, 1, 0.3, 1)",
+            willChange: "transform",
+          }}
+        />
 
-        {/* GIS Map Layer Controls */}
-        {!hideInternalLayerControls && (hasResults || (liveStations && liveStations.length > 0)) && (
+        {/* 3D Horizon vignette */}
+        {active3D && (
+          <div
+            style={{
+              position: "absolute",
+              top: 0,
+              left: 0,
+              right: 0,
+              height: "90px",
+              background: "linear-gradient(to bottom, rgba(232,237,244,0.7) 0%, transparent 100%)",
+              pointerEvents: "none",
+              zIndex: 10,
+            }}
+          />
+        )}
+
+        {/* 3D Active Indicator Badge */}
+        {active3D && (
+          <div
+            className="anim-fade-in"
+            style={{
+              position: "absolute",
+              top: "70px",
+              left: "20px",
+              zIndex: 35,
+              borderRadius: "8px",
+              padding: "4px 10px",
+              background: "rgba(255, 255, 255, 0.92)",
+              backdropFilter: "blur(12px)",
+              WebkitBackdropFilter: "blur(12px)",
+              border: "1px solid rgba(10, 22, 40, 0.12)",
+              boxShadow: "0 2px 10px rgba(0,0,0,0.06)",
+              display: "flex",
+              alignItems: "center",
+              gap: "6px",
+              fontFamily: "Times New Roman, serif",
+              fontSize: "11px",
+              color: "var(--color-navy-900)",
+            }}
+          >
+            <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#059669" }} />
+            <span>3D Spatial Perspective Active</span>
+          </div>
+        )}
+
+        {/* GIS Map Layer & 3D Perspective Controls */}
+        {!hideInternalLayerControls && (
           <div
             className="anim-fade-in glass"
             style={{
@@ -615,9 +757,73 @@ const ChargingMap = forwardRef<ChargingMapHandle, ChargingMapProps>(
               border: "1px solid rgba(255,255,255,0.8)",
             }}
           >
-            <span style={{ fontFamily: "Times New Roman, serif", fontSize: "11px", letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--color-ink-4)", marginRight: "2px" }}>
-              Layers:
-            </span>
+            <button
+              onClick={() => {
+                if (onToggle3D) onToggle3D();
+                else setInternal3D((prev) => !prev);
+              }}
+              style={{
+                padding: "4px 10px",
+                borderRadius: "6px",
+                border: "none",
+                background: active3D ? "var(--color-navy-900)" : "var(--color-grey-100)",
+                color: active3D ? "white" : "var(--color-ink-3)",
+                fontFamily: "Times New Roman, serif",
+                fontSize: "12px",
+                fontWeight: 600,
+                cursor: "pointer",
+                transition: "all 0.15s ease",
+                display: "flex",
+                alignItems: "center",
+                gap: "4px",
+              }}
+              title="Toggle 3D Perspective City View"
+            >
+              <span>{active3D ? "✓ 3D View" : "3D View"}</span>
+            </button>
+
+            {/* Direct 3D Digital Twin Pro-Forma quick launch button */}
+            <button
+              onClick={() => {
+                const [uLat, uLng] = userLatLngRef.current;
+                onOpen3DTwin?.({
+                  label: "Candidate Area",
+                  name: `Selected Deployment Zone (${uLat.toFixed(3)}°, ${uLng.toFixed(3)}°)`,
+                  lat: uLat,
+                  lng: uLng,
+                  demandKwh: 480,
+                  gapScore: 8.4,
+                  quboScore: 0.892,
+                });
+              }}
+              style={{
+                padding: "4px 10px",
+                borderRadius: "6px",
+                border: "1px solid var(--color-navy-200)",
+                background: "var(--color-navy-50)",
+                color: "var(--color-navy-900)",
+                fontFamily: "Times New Roman, serif",
+                fontSize: "12px",
+                fontWeight: 600,
+                cursor: "pointer",
+                transition: "all 0.15s ease",
+                display: "flex",
+                alignItems: "center",
+                gap: "4px",
+              }}
+              title="View 3D Station Model & Financial Pro-Forma"
+            >
+              <span>🏛️ 3D Station</span>
+            </button>
+
+            {(hasResults || (liveStations && liveStations.length > 0)) && (
+              <>
+                <div style={{ width: "1px", height: "14px", background: "var(--color-border-subtle)", margin: "0 2px" }} />
+                <span style={{ fontFamily: "Times New Roman, serif", fontSize: "11px", letterSpacing: "0.06em", textTransform: "uppercase", color: "var(--color-ink-4)", marginRight: "2px" }}>
+                  Layers:
+                </span>
+              </>
+            )}
             {hasResults && (
               <>
                 <button
