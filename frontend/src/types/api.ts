@@ -189,3 +189,91 @@ export interface LiveDataResponse {
   fallback_reason?: string | null;
 }
 
+// ── Driver Backend Types ─────────────────────────────────────────────────────
+
+export interface DriverSession {
+  driver_id: string;
+  token: string;
+  name: string;
+  created_at: string;
+}
+
+export interface DriverVehicle {
+  id: string;
+  make: string;
+  model: string;
+  year: number;
+  image?: string;
+  battery_kwh: number;
+  usable_kwh: number;
+  current_battery_pct: number;
+  wltp_range_km: number;
+  efficiency_kwh100km: number;
+  max_dc_speed_kw: number;
+  max_ac_speed_kw: number;
+  plug_type: string;
+  plug_image?: string;
+  vin?: string;
+  soh_pct: number;
+  is_active: boolean;
+}
+
+export interface DriverPreferences {
+  driver_id: string;
+  active_vehicle_id: string;
+  auto_compatibility: boolean;
+  default_city: string;
+}
+
+export interface DriverFavouritesResponse {
+  station_ids: string[];
+  total: number;
+  page: number;
+  limit: number;
+}
+
+export interface StationReportInput {
+  station_id: string;
+  category: string;
+  connector_type?: string;
+  notes?: string;
+}
+
+export interface StationReportItem {
+  id: string;
+  driver_id: string;
+  station_id: string;
+  category: string;
+  connector_type?: string | null;
+  notes?: string | null;
+  created_at: string;
+}
+
+export interface ChargingSessionInput {
+  station_id: string;
+  station_name: string;
+  kwh_delivered: number;
+  duration_seconds: number;
+  cost: number;
+  max_power_kw: number;
+}
+
+export interface ChargingSessionItem {
+  id: string;
+  driver_id: string;
+  station_id: string;
+  station_name: string;
+  kwh_delivered: number;
+  duration_seconds: number;
+  cost: number;
+  max_power_kw: number;
+  created_at: string;
+}
+
+export interface PaginatedResult<T> {
+  items: T[];
+  total: number;
+  page: number;
+  limit: number;
+}
+

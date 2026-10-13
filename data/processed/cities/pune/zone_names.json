@@ -1,0 +1,34 @@
+{
+  "Z0": {
+    "primary": "Pune Zone 0",
+    "secondary": "Deployment Cluster Z0"
+  },
+  "Z1": {
+    "primary": "Pune Zone 1",
+    "secondary": "Deployment Cluster Z1"
+  },
+  "Z2": {
+    "primary": "Pune Zone 2",
+    "secondary": "Deployment Cluster Z2"
+  },
+  "Z3": {
+    "primary": "Pune Zone 3",
+    "secondary": "Deployment Cluster Z3"
+  },
+  "Z4": {
+    "primary": "Pune Zone 4",
+    "secondary": "Deployment Cluster Z4"
+  },
+  "Z5": {
+    "primary": "Pune Zone 5",
+    "secondary": "Deployment Cluster Z5"
+  },
+  "Z6": {
+    "primary": "Pune Zone 6",
+    "secondary": "Deployment Cluster Z6"
+  },
+  "Z7": {
+    "primary": "Pune Zone 7",
+    "secondary": "Deployment Cluster Z7"
+  }
+}

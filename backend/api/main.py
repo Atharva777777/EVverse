@@ -29,7 +29,9 @@ from backend.api.routers import health
 from backend.api.routers import live_data
 from backend.api.routers import optimize
 from backend.api.routers import spatial
+from backend.api.routers import driver
 from backend.api.services.optimizer import warm_up
+from backend.data.driver_db import init_driver_db
 
 
 # ---------------------------------------------------------------------------
@@ -39,9 +41,14 @@ from backend.api.services.optimizer import warm_up
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """
-    Pre-warm the optimization pipeline when the server starts.
+    Pre-warm the optimization pipeline and initialize driver database on startup.
     If warm-up fails, allow the API to start so health checks still work.
     """
+    try:
+        init_driver_db()
+    except Exception as exc:
+        print(f"[EVision] Driver DB init warning: {exc}")
+
     try:
         warm_up()
     except Exception as exc:
@@ -111,4 +118,10 @@ app.include_router(
     spatial.router,
     prefix="/api/v1",
     tags=["spatial"],
+)
+
+app.include_router(
+    driver.router,
+    prefix="/api/v1/driver",
+    tags=["driver"],
 )

@@ -16,9 +16,10 @@ export function useLiveData(city: string) {
     try {
       const res = await fetchLiveStations(targetCity);
       setData(res);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.warn("[QuantEV] Live data fetch failed:", err);
-      setError(err?.message || "Failed to load live station data");
+      const msg = err instanceof Error ? err.message : "Failed to load live station data";
+      setError(msg);
     } finally {
       setLoading(false);
     }
@@ -36,10 +37,11 @@ export function useLiveData(city: string) {
         if (!ignore) {
           setData(res);
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         if (!ignore) {
           console.warn("[QuantEV] Live data fetch failed:", err);
-          setError(err?.message || "Failed to load live station data");
+          const msg = err instanceof Error ? err.message : "Failed to load live station data";
+          setError(msg);
         }
       } finally {
         if (!ignore) {

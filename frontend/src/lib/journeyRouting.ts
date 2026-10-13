@@ -231,7 +231,7 @@ export async function fetchRouteGeometry(
         };
       }
     }
-  } catch (err) {
+  } catch {
     // Network timeout or OSRM unreachable
   }
 

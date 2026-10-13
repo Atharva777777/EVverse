@@ -68,31 +68,34 @@ export function JourneyPlanner({
     return REGIONAL_CORRIDOR_DESTINATIONS[selectedCity] || REGIONAL_CORRIDOR_DESTINATIONS["Mumbai"];
   }, [selectedCity]);
 
-  const [selectedDestination, setSelectedDestination] = useState<JourneyDestination>(cityCorridors[0]);
-  const [customSearchQuery, setCustomSearchQuery] = useState("");
-  const [startingBatteryPct, setStartingBatteryPct] = useState(currentBatteryPct);
+  const [selectedDestinationOverride, setSelectedDestinationOverride] = useState<JourneyDestination | null>(null);
+  const selectedDestination = useMemo(() => {
+    if (selectedDestinationOverride && cityCorridors.some((c) => c.id === selectedDestinationOverride.id)) {
+      return selectedDestinationOverride;
+    }
+    return cityCorridors[0];
+  }, [cityCorridors, selectedDestinationOverride]);
+
+  const [customBatteryInput, setCustomBatteryInput] = useState<number | null>(null);
+  const startingBatteryPct = customBatteryInput !== null ? customBatteryInput : currentBatteryPct;
+
+  const setSelectedDestination = (d: JourneyDestination) => {
+    setSelectedDestinationOverride(d);
+  };
+
+  const setStartingBatteryPct = (pct: number) => {
+    setCustomBatteryInput(pct);
+  };
+
   const [primaryStopId, setPrimaryStopId] = useState<string | undefined>(undefined);
   const [backupStopId, setBackupStopId] = useState<string | undefined>(undefined);
   const [isComputing, setIsComputing] = useState(false);
   const [planResult, setPlanResult] = useState<JourneyPlanResult | null>(null);
   const [showAssumptionsModal, setShowAssumptionsModal] = useState(false);
 
-  // Sync battery if vehicle changes
-  useEffect(() => {
-    setStartingBatteryPct(currentBatteryPct);
-  }, [currentBatteryPct, activeVehicle.id]);
-
-  // Update selected destination if city changes
-  useEffect(() => {
-    if (cityCorridors.length > 0) {
-      setSelectedDestination(cityCorridors[0]);
-    }
-  }, [cityCorridors]);
-
   // Recompute journey plan whenever destination, battery, or charger selections change
   useEffect(() => {
     let isCancelled = false;
-    setIsComputing(true);
 
     computeEVJourneyPlan({
       origin: userLocation,
@@ -111,6 +114,7 @@ export function JourneyPlanner({
       .then((res) => {
         if (!isCancelled) {
           setPlanResult(res);
+          setIsComputing(false);
           // Set primary and backup if not yet explicitly selected
           if (!primaryStopId && res.primaryStopId) {
             setPrimaryStopId(res.primaryStopId);
@@ -120,9 +124,10 @@ export function JourneyPlanner({
           }
         }
       })
-      .finally(() => {
+      .catch((err) => {
         if (!isCancelled) {
           setIsComputing(false);
+          console.warn("[QuantEV] Journey plan error:", err);
         }
       });
 

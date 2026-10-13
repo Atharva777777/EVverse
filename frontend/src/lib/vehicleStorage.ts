@@ -1,4 +1,13 @@
 import type { EVVehicle } from "@/components/driver/VehicleCockpit";
+import type { DriverVehicle } from "@/types/api";
+import {
+  fetchDriverVehicles,
+  createDriverVehicle,
+  updateDriverVehicle,
+  deleteDriverVehicle,
+  fetchDriverPreferences,
+  updateDriverPreferences,
+} from "@/lib/driverApi";
 
 // ── Verified Production EV Initial Fleet (OEM Homologation Specs) ─────────────
 // Specifications verified from manufacturer homologation / EV-Database.
@@ -240,7 +249,7 @@ export function validateVehicleInput(data: Partial<EVVehicle>): VehicleValidatio
     errors.wltpRangeKm = "WLTP range must be greater than 0 km.";
   }
 
-  if (!data.plugType || !SUPPORTED_CONNECTOR_STANDARDS.includes(data.plugType as any)) {
+  if (!data.plugType || !SUPPORTED_CONNECTOR_STANDARDS.includes(data.plugType as ConnectorStandard)) {
     errors.plugType = `Connector standard must be one of: ${SUPPORTED_CONNECTOR_STANDARDS.join(", ")}. Never substitute connector standards.`;
   }
 
@@ -358,25 +367,145 @@ export function saveStoredAutoCompatibility(enabled: boolean): void {
   }
 }
 
-// ── Async Storage Client Adapter ──────────────────────────────────────────────
+// ── Backend Model Mapping ─────────────────────────────────────────────────────
+
+export function mapBackendVehicleToFrontend(v: DriverVehicle): EVVehicle {
+  return {
+    id: v.id,
+    make: v.make,
+    model: v.model,
+    year: v.year,
+    image: v.image || "/images/car-model.png",
+    batteryKwh: v.battery_kwh,
+    usableKwh: v.usable_kwh,
+    currentBatteryPct: v.current_battery_pct,
+    wltpRangeKm: v.wltp_range_km,
+    efficiencyKwh100km: v.efficiency_kwh100km,
+    maxDcSpeedKw: v.max_dc_speed_kw,
+    maxAcSpeedKw: v.max_ac_speed_kw,
+    plugType: v.plug_type,
+    plugImage: v.plug_image || "/images/plug-ccs2.png",
+    vin: v.vin || "",
+    sohPct: v.soh_pct,
+  };
+}
+
+export function mapFrontendVehicleToBackend(v: EVVehicle): Partial<DriverVehicle> {
+  return {
+    id: v.id,
+    make: v.make,
+    model: v.model,
+    year: v.year,
+    image: v.image,
+    battery_kwh: v.batteryKwh,
+    usable_kwh: v.usableKwh,
+    current_battery_pct: v.currentBatteryPct,
+    wltp_range_km: v.wltpRangeKm,
+    efficiency_kwh100km: v.efficiencyKwh100km,
+    max_dc_speed_kw: v.maxDcSpeedKw,
+    max_ac_speed_kw: v.maxAcSpeedKw,
+    plug_type: v.plugType,
+    plug_image: v.plugImage,
+    vin: v.vin,
+    soh_pct: v.sohPct,
+  };
+}
+
+// ── Integrated Garage Preferences Loader ──────────────────────────────────────
+
 export async function loadGaragePreferences(): Promise<{
   vehicles: EVVehicle[];
   activeVehicleId: string;
   autoCompatibility: boolean;
 }> {
-  // Simulate network/storage resolution with safe fallback
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      const vehicles = getStoredVehicles();
-      const activeId = getStoredActiveVehicleId();
-      const autoCompat = getStoredAutoCompatibility();
-      // Ensure active vehicle exists in loaded vehicles
-      const validActiveId = vehicles.some((v) => v.id === activeId) ? activeId : vehicles[0].id;
-      resolve({
-        vehicles,
+  try {
+    const [vehiclesRes, prefsRes] = await Promise.all([
+      fetchDriverVehicles(1, 50),
+      fetchDriverPreferences(),
+    ]);
+
+    if (vehiclesRes.items && vehiclesRes.items.length > 0) {
+      const frontendVehicles = vehiclesRes.items.map(mapBackendVehicleToFrontend);
+      saveStoredVehicles(frontendVehicles);
+
+      const activeId = prefsRes.active_vehicle_id || frontendVehicles[0].id;
+      const validActiveId = frontendVehicles.some((v) => v.id === activeId)
+        ? activeId
+        : frontendVehicles[0].id;
+
+      saveStoredActiveVehicleId(validActiveId);
+      saveStoredAutoCompatibility(prefsRes.auto_compatibility);
+
+      return {
+        vehicles: frontendVehicles,
         activeVehicleId: validActiveId,
-        autoCompatibility: autoCompat,
-      });
-    }, 60);
-  });
+        autoCompatibility: prefsRes.auto_compatibility,
+      };
+    }
+  } catch (err) {
+    console.warn("[QuantEV] Backend garage fetch unavailable; using cached garage:", err);
+  }
+
+  // Resilient offline fallback using local cache
+  const vehicles = getStoredVehicles();
+  const activeId = getStoredActiveVehicleId();
+  const autoCompat = getStoredAutoCompatibility();
+  const validActiveId = vehicles.some((v) => v.id === activeId) ? activeId : vehicles[0].id;
+
+  return {
+    vehicles,
+    activeVehicleId: validActiveId,
+    autoCompatibility: autoCompat,
+  };
 }
+
+// ── Backend Synchronization Helpers ───────────────────────────────────────────
+
+export async function syncAddVehicle(v: EVVehicle): Promise<EVVehicle> {
+  const backendPayload = mapFrontendVehicleToBackend(v);
+  try {
+    const created = await createDriverVehicle(backendPayload);
+    return mapBackendVehicleToFrontend(created);
+  } catch (err) {
+    console.warn("[QuantEV] Failed to persist vehicle to backend; keeping local copy:", err);
+    return v;
+  }
+}
+
+export async function syncUpdateVehicle(v: EVVehicle): Promise<EVVehicle> {
+  const backendPayload = mapFrontendVehicleToBackend(v);
+  try {
+    const updated = await updateDriverVehicle(v.id, backendPayload);
+    return mapBackendVehicleToFrontend(updated);
+  } catch (err) {
+    console.warn("[QuantEV] Failed to persist vehicle update to backend; keeping local copy:", err);
+    return v;
+  }
+}
+
+export async function syncDeleteVehicle(vehicleId: string): Promise<void> {
+  try {
+    await deleteDriverVehicle(vehicleId);
+  } catch (err) {
+    console.warn("[QuantEV] Failed to delete vehicle from backend:", err);
+  }
+}
+
+export async function syncActiveVehicleId(id: string): Promise<void> {
+  saveStoredActiveVehicleId(id);
+  try {
+    await updateDriverPreferences({ active_vehicle_id: id });
+  } catch (err) {
+    console.warn("[QuantEV] Failed to sync active vehicle ID to backend:", err);
+  }
+}
+
+export async function syncAutoCompatibility(enabled: boolean): Promise<void> {
+  saveStoredAutoCompatibility(enabled);
+  try {
+    await updateDriverPreferences({ auto_compatibility: enabled });
+  } catch (err) {
+    console.warn("[QuantEV] Failed to sync auto-compatibility preference to backend:", err);
+  }
+}
+

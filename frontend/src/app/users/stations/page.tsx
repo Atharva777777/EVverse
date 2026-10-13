@@ -22,7 +22,11 @@ import {
   OfflineNotice,
 } from "@/components/driver/StatusStates";
 import { StationDetailSheet } from "@/components/driver/StationDetailSheet";
-import { getPersistedFavourites, savePersistedFavourites } from "@/lib/stationAdapter";
+import {
+  syncFavouritesWithBackend,
+  addFavouriteToBackend,
+  removeFavouriteFromBackend,
+} from "@/lib/stationAdapter";
 import {
   VERIFIED_GARAGE_VEHICLES,
   getStoredVehicles,
@@ -33,7 +37,13 @@ import {
   saveStoredAutoCompatibility,
   loadGaragePreferences,
   isStationCompatibleWithVehicle,
+  syncAddVehicle,
+  syncUpdateVehicle,
+  syncDeleteVehicle,
+  syncActiveVehicleId,
+  syncAutoCompatibility,
 } from "@/lib/vehicleStorage";
+import { initDriverSession, recordChargingSession } from "@/lib/driverApi";
 
 import {
   Search,
@@ -188,9 +198,12 @@ export default function EVVerseDriverPage() {
       });
   }, []);
 
-  // Hydrate persisted favourites from localStorage
+  // Hydrate driver session & favourites from backend
   useEffect(() => {
-    setSavedStationIds(getPersistedFavourites());
+    initDriverSession().catch((err) => {
+      console.warn("[QuantEV] Driver session initialization error:", err);
+    });
+    syncFavouritesWithBackend().then(setSavedStationIds);
   }, []);
 
   // Center map on city change
@@ -316,10 +329,10 @@ export default function EVVerseDriverPage() {
   // Garage Vehicle Management Handlers
   const handleSelectVehicle = (id: string) => {
     setActiveVehicleId(id);
-    saveStoredActiveVehicleId(id);
+    syncActiveVehicleId(id);
   };
 
-  const handleAddVehicle = (newVehicle: EVVehicle) => {
+  const handleAddVehicle = async (newVehicle: EVVehicle) => {
     try {
       const updated = [newVehicle, ...vehicles];
       setVehicles(updated);
@@ -327,23 +340,26 @@ export default function EVVerseDriverPage() {
       setActiveVehicleId(newVehicle.id);
       saveStoredActiveVehicleId(newVehicle.id);
       setGarageErrorMessage(null);
+      await syncAddVehicle(newVehicle);
+      await syncActiveVehicleId(newVehicle.id);
     } catch (err: any) {
       setGarageErrorMessage(err?.message || "Failed to persist new vehicle.");
     }
   };
 
-  const handleUpdateVehicle = (updatedVehicle: EVVehicle) => {
+  const handleUpdateVehicle = async (updatedVehicle: EVVehicle) => {
     try {
       const updated = vehicles.map((v) => (v.id === updatedVehicle.id ? updatedVehicle : v));
       setVehicles(updated);
       saveStoredVehicles(updated);
       setGarageErrorMessage(null);
+      await syncUpdateVehicle(updatedVehicle);
     } catch (err: any) {
       setGarageErrorMessage(err?.message || "Failed to update vehicle.");
     }
   };
 
-  const handleRemoveVehicle = (id: string) => {
+  const handleRemoveVehicle = async (id: string) => {
     try {
       if (vehicles.length <= 1) return;
       const updated = vehicles.filter((v) => v.id !== id);
@@ -353,8 +369,10 @@ export default function EVVerseDriverPage() {
         const nextActive = updated[0].id;
         setActiveVehicleId(nextActive);
         saveStoredActiveVehicleId(nextActive);
+        await syncActiveVehicleId(nextActive);
       }
       setGarageErrorMessage(null);
+      await syncDeleteVehicle(id);
     } catch (err: any) {
       setGarageErrorMessage(err?.message || "Failed to remove vehicle.");
     }
@@ -362,17 +380,21 @@ export default function EVVerseDriverPage() {
 
   const handleToggleAutoCompatibility = (enabled: boolean) => {
     setAutoCompatibility(enabled);
-    saveStoredAutoCompatibility(enabled);
     setOnlyCompatible(enabled);
+    syncAutoCompatibility(enabled);
   };
 
-  // Toggle Save Station (persisted to localStorage)
+  // Toggle Save Station (persisted to backend and cached locally)
   const toggleSaveStation = (stationId: string) => {
     setSavedStationIds((prev) => {
       const next = new Set(prev);
-      if (next.has(stationId)) next.delete(stationId);
-      else next.add(stationId);
-      savePersistedFavourites(next);
+      if (next.has(stationId)) {
+        next.delete(stationId);
+        removeFavouriteFromBackend(stationId);
+      } else {
+        next.add(stationId);
+        addFavouriteToBackend(stationId);
+      }
       return next;
     });
   };
@@ -426,6 +448,19 @@ export default function EVVerseDriverPage() {
     if (chargeIntervalRef.current) clearInterval(chargeIntervalRef.current);
     setIsCharging(false);
     setShowReceiptModal(true);
+
+    if (chargeStation && chargeKwhDelivered > 0) {
+      recordChargingSession({
+        station_id: chargeStation.station_id,
+        station_name: chargeStation.name,
+        kwh_delivered: chargeKwhDelivered,
+        duration_seconds: chargeElapsedSeconds,
+        cost: chargeCost,
+        max_power_kw: chargeCurrentKw,
+      }).catch((err) => {
+        console.warn("[QuantEV] Could not save charging session to backend:", err);
+      });
+    }
   };
 
   // Live Charging Simulation Timer

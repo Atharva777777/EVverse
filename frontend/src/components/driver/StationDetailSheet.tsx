@@ -1,11 +1,12 @@
 "use client";
 
-import React, { useState, useId } from "react";
+import React, { useState, useEffect, useId } from "react";
 import Image from "next/image";
 import type { LiveStation } from "@/types/api";
 import {
   enrichStation,
-  savePersistedReport,
+  submitReportToBackend,
+  syncReportsWithBackend,
   type StationReport,
   type EnrichedStationDetail,
   type StationOperationalStatus,
@@ -16,16 +17,11 @@ import {
   Navigation,
   Zap,
   Clock,
-  MapPin,
   ExternalLink,
-  AlertTriangle,
   Flag,
   CheckCircle2,
-  HelpCircle,
   ShieldCheck,
   DollarSign,
-  Info,
-  Car,
   ChevronRight,
   Star,
 } from "lucide-react";
@@ -62,11 +58,19 @@ export const StationDetailSheet: React.FC<StationDetailSheetProps> = ({
   );
   const [reportNotes, setReportNotes] = useState("");
   const [selectedConnectorForReport, setSelectedConnectorForReport] = useState<string>("All Connectors");
+  const [liveReports, setLiveReports] = useState<StationReport[]>([]);
 
   // Form input unique IDs for accessibility
   const categoryId = useId();
   const connectorId = useId();
   const notesId = useId();
+
+  // Sync community reports from backend when sheet opens
+  useEffect(() => {
+    if (isOpen && station?.station_id) {
+      syncReportsWithBackend(station.station_id).then(setLiveReports);
+    }
+  }, [isOpen, station?.station_id]);
 
   if (!isOpen || !station) return null;
 
@@ -78,15 +82,16 @@ export const StationDetailSheet: React.FC<StationDetailSheetProps> = ({
   const estimatedEnergyLossPct = Math.round((kmToStation / vehicleWltpKm) * 100);
   const estimatedArrivalSoc = Math.max(2, activeVehicleSoc - estimatedEnergyLossPct);
 
-  // Handle submitting an issue report
-  const handleSubmitReport = (e: React.FormEvent) => {
+  // Handle submitting an issue report to backend
+  const handleSubmitReport = async (e: React.FormEvent) => {
     e.preventDefault();
-    savePersistedReport({
+    const created = await submitReportToBackend({
       stationId: station.station_id,
       category: reportCategory,
       connectorType: selectedConnectorForReport === "All Connectors" ? undefined : selectedConnectorForReport,
       notes: reportNotes.trim() || undefined,
     });
+    setLiveReports((prev) => [created, ...prev.filter((r) => r.id !== created.id)]);
 
     setReportSuccessMessage("Issue submitted. Station status updated for all local drivers.");
     setTimeout(() => {
@@ -452,9 +457,9 @@ export const StationDetailSheet: React.FC<StationDetailSheetProps> = ({
               </button>
             </div>
 
-            {details.communityReports.length > 0 ? (
+            {(liveReports.length > 0 ? liveReports : details.communityReports).length > 0 ? (
               <div className="space-y-1.5 pt-1">
-                {details.communityReports.map((report) => (
+                {(liveReports.length > 0 ? liveReports : details.communityReports).map((report) => (
                   <div
                     key={report.id}
                     className="p-2 bg-white rounded-xl border border-[rgba(17,19,18,0.06)] text-[11px] flex items-start justify-between gap-2"

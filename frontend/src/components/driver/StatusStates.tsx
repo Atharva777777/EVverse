@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { AlertCircle, RefreshCw, FilterX, WifiOff } from "lucide-react";
+import { AlertCircle, RefreshCw, FilterX } from "lucide-react";
 
 /**
  * Reusable Loading Skeleton for station cards and telemetry metrics

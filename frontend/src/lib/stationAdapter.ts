@@ -1,4 +1,11 @@
 import type { LiveStation } from "@/types/api";
+import {
+  fetchDriverFavourites,
+  addDriverFavourite,
+  removeDriverFavourite,
+  fetchStationReports,
+  submitStationReport,
+} from "@/lib/driverApi";
 
 export type StationOperationalStatus = "available" | "occupied" | "offline" | "unknown";
 
@@ -68,7 +75,8 @@ export interface EnrichedStationDetail {
 const FAVOURITES_KEY = "evverse_favourite_stations";
 const REPORTS_KEY = "evverse_station_reports";
 
-// ── Favourites Persistence ───────────────────────────────────────────────────
+// ── Favourites Persistence & Backend Sync ────────────────────────────────────
+
 export function getPersistedFavourites(): Set<string> {
   if (typeof window === "undefined") return new Set();
   try {
@@ -91,7 +99,44 @@ export function savePersistedFavourites(ids: Set<string>): void {
   }
 }
 
-// ── Reports Persistence ──────────────────────────────────────────────────────
+export async function syncFavouritesWithBackend(): Promise<Set<string>> {
+  try {
+    const res = await fetchDriverFavourites(1, 200);
+    if (res?.station_ids) {
+      const idSet = new Set(res.station_ids);
+      savePersistedFavourites(idSet);
+      return idSet;
+    }
+  } catch (err) {
+    console.warn("[QuantEV] Backend favourites fetch unavailable; using cache:", err);
+  }
+  return getPersistedFavourites();
+}
+
+export async function addFavouriteToBackend(id: string): Promise<void> {
+  const existing = getPersistedFavourites();
+  existing.add(id);
+  savePersistedFavourites(existing);
+  try {
+    await addDriverFavourite(id);
+  } catch (err) {
+    console.warn("[QuantEV] Failed to add favourite to backend:", err);
+  }
+}
+
+export async function removeFavouriteFromBackend(id: string): Promise<void> {
+  const existing = getPersistedFavourites();
+  existing.delete(id);
+  savePersistedFavourites(existing);
+  try {
+    await removeDriverFavourite(id);
+  } catch (err) {
+    console.warn("[QuantEV] Failed to remove favourite from backend:", err);
+  }
+}
+
+// ── Reports Persistence & Backend Sync ───────────────────────────────────────
+
 export function getPersistedReports(): StationReport[] {
   if (typeof window === "undefined") return [];
   try {
@@ -125,6 +170,51 @@ export function savePersistedReport(
   }
 
   return newReport;
+}
+
+export async function submitReportToBackend(
+  reportInput: Omit<StationReport, "id" | "timestamp">
+): Promise<StationReport> {
+  const local = savePersistedReport(reportInput);
+  try {
+    const created = await submitStationReport({
+      station_id: reportInput.stationId,
+      category: reportInput.category,
+      connector_type: reportInput.connectorType,
+      notes: reportInput.notes,
+    });
+    return {
+      id: created.id,
+      stationId: created.station_id,
+      category: created.category as StationReport["category"],
+      connectorType: created.connector_type || undefined,
+      notes: created.notes || undefined,
+      timestamp: created.created_at,
+    };
+  } catch (err) {
+    console.warn("[QuantEV] Backend report submission unavailable; kept locally:", err);
+    return local;
+  }
+}
+
+export async function syncReportsWithBackend(stationId?: string): Promise<StationReport[]> {
+  try {
+    const res = await fetchStationReports(stationId, 1, 50);
+    if (res?.items) {
+      const mapped: StationReport[] = res.items.map((it) => ({
+        id: it.id,
+        stationId: it.station_id,
+        category: it.category as StationReport["category"],
+        connectorType: it.connector_type || undefined,
+        notes: it.notes || undefined,
+        timestamp: it.created_at,
+      }));
+      return stationId ? mapped.filter((r) => r.stationId === stationId) : mapped;
+    }
+  } catch (err) {
+    console.warn("[QuantEV] Backend reports fetch unavailable; using cache:", err);
+  }
+  return stationId ? getReportsForStation(stationId) : getPersistedReports();
 }
 
 export function getReportsForStation(stationId: string): StationReport[] {

@@ -18,6 +18,8 @@ dist/
 build/
 .eggs/
 *.so
+*.db
+data/*.db
 .env
 
 # Jupyter

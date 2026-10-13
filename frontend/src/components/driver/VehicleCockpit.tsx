@@ -7,14 +7,8 @@ import {
   Lock,
   Unlock,
   Thermometer,
-  ShieldCheck,
   ChevronRight,
   Navigation,
-  Sparkles,
-  Gauge,
-  Wind,
-  Layers,
-  CircleDot,
   Minus,
   Plus,
 } from "lucide-react";
@@ -73,8 +67,6 @@ export function VehicleCockpit({
 }: VehicleCockpitProps) {
   // Cabin Temperature Control state
   const [targetCabinTemp, setTargetCabinTemp] = useState<number>(21.5);
-  // Suspension ride height state
-  const [suspensionMode, setSuspensionMode] = useState<"aero" | "standard" | "raised">("aero");
   // Telemetry drawer expansion
   const [showDiagnostics, setShowDiagnostics] = useState<boolean>(false);
 
