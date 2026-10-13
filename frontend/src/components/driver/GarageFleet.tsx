@@ -221,14 +221,14 @@ export function GarageFleet({
             <div className="flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-[#16A34A]" />
               <span className="text-[10px] font-mono uppercase tracking-widest text-[#767D78] font-medium">
-                Verified Automotive Fleet Registry
+                Garage
               </span>
             </div>
             <h2 className="text-lg font-bold text-[#111312] mt-0.5">
-              Driver Garage & EV Selector
+              My Electric Vehicles
             </h2>
             <p className="text-xs text-[#525854] mt-0.5">
-              Telemetry, DC charging curves, and corridor energy physics dynamically calibrate to your active vehicle.
+              Station compatibility and trip range estimates update automatically for your active car.
             </p>
           </div>
 
@@ -240,7 +240,7 @@ export function GarageFleet({
             className="min-h-[44px] px-3.5 py-2.5 bg-[#111312] text-white rounded-xl text-xs font-semibold flex items-center gap-1.5 shadow-xs hover:bg-[#252826] active:scale-95 shrink-0 cursor-pointer focus-visible:outline-2 focus-visible:outline-[#111312]"
           >
             <Plus size={14} className="text-[#C8F369]" aria-hidden="true" />
-            <span>Add EV</span>
+            <span>Add Vehicle</span>
           </button>
         </div>
 
@@ -252,10 +252,10 @@ export function GarageFleet({
             </div>
             <div>
               <div className="text-xs font-bold text-[#111312]">
-                Strict Vehicle Port Compatibility
+                Only show compatible chargers
               </div>
               <p className="text-[11px] text-[#525854] mt-0.5">
-                Automatically enforce strict physical port compatibility in Explore and Journeys. Never substitutes connector types.
+                Filters map and routes to only show chargers that fit your car.
               </p>
             </div>
           </div>
@@ -318,7 +318,7 @@ export function GarageFleet({
                 {isActive && (
                   <div className="absolute top-4 right-4 flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#111312] text-[#C8F369] text-[10.5px] font-semibold">
                     <span className="w-1.5 h-1.5 rounded-full bg-[#C8F369]" />
-                    Active Driver EV
+                    Active
                   </div>
                 )}
 
@@ -363,10 +363,10 @@ export function GarageFleet({
                   />
                 </div>
 
-                {/* Technical Specifications Grid (Verified Data) */}
+                {/* Technical Specifications Grid */}
                 <div className="grid grid-cols-4 gap-1.5 pt-3 border-t border-black/[0.06] text-center text-xs">
                   <div className="bg-[#FAF9F6] p-2 rounded-xl border border-black/[0.04]">
-                    <div className="text-[9px] font-mono text-[#767D78]">Usable Pack</div>
+                    <div className="text-[9px] font-mono text-[#767D78]">Battery</div>
                     <div className="font-bold text-[#111312] font-mono mt-0.5">
                       {v.usableKwh}
                     </div>
@@ -374,7 +374,7 @@ export function GarageFleet({
                   </div>
 
                   <div className="bg-[#FAF9F6] p-2 rounded-xl border border-black/[0.04]">
-                    <div className="text-[9px] font-mono text-[#767D78]">WLTP Range</div>
+                    <div className="text-[9px] font-mono text-[#767D78]">Range</div>
                     <div className="font-bold text-[#111312] font-mono mt-0.5">
                       {v.wltpRangeKm}
                     </div>
@@ -382,7 +382,7 @@ export function GarageFleet({
                   </div>
 
                   <div className="bg-[#FAF9F6] p-2 rounded-xl border border-black/[0.04]">
-                    <div className="text-[9px] font-mono text-[#767D78]">Max DC Rate</div>
+                    <div className="text-[9px] font-mono text-[#767D78]">Fast Charge</div>
                     <div className="font-bold text-[#16A34A] font-mono mt-0.5">
                       {v.maxDcSpeedKw}
                     </div>
@@ -390,21 +390,21 @@ export function GarageFleet({
                   </div>
 
                   <div className="bg-[#FAF9F6] p-2 rounded-xl border border-black/[0.04]">
-                    <div className="text-[9px] font-mono text-[#767D78]">Port Standard</div>
+                    <div className="text-[9px] font-mono text-[#767D78]">Plug</div>
                     <div className="font-bold text-[#111312] font-mono mt-0.5 truncate text-[10.5px]">
                       {v.plugType.split(" ")[0]}
                     </div>
-                    <div className="text-[8.5px] text-[#16A34A] font-semibold">Native</div>
+                    <div className="text-[8.5px] text-[#16A34A] font-semibold">Standard</div>
                   </div>
                 </div>
 
-                {/* Actions & Chassis Adjustments */}
+                {/* Actions & Adjustments */}
                 <div className="mt-3 pt-3 border-t border-black/[0.06] flex flex-wrap items-center justify-between gap-2">
                   {/* Air Suspension Controls (if active) */}
                   {isActive ? (
                     <div className="flex items-center gap-1.5 text-[10.5px] font-mono text-[#767D78]">
                       <Sliders size={13} aria-hidden="true" />
-                      <span>Ride Height:</span>
+                      <span>Suspension:</span>
                       <div
                         role="radiogroup"
                         aria-label="Chassis Air Suspension Height"
@@ -412,9 +412,9 @@ export function GarageFleet({
                       >
                         {(
                           [
-                            { id: "aero", label: "Aero" },
-                            { id: "normal", label: "Std" },
-                            { id: "high", label: "Lift" },
+                            { id: "aero", label: "Low" },
+                            { id: "normal", label: "Normal" },
+                            { id: "high", label: "High" },
                           ] as const
                         ).map((mode) => (
                           <button
@@ -439,7 +439,7 @@ export function GarageFleet({
                     </div>
                   ) : (
                     <div className="text-[11px] text-[#767D78] font-mono">
-                      State of Health: {v.sohPct}%
+                      Battery Health: {v.sohPct}%
                     </div>
                   )}
 
@@ -485,7 +485,7 @@ export function GarageFleet({
                     }}
                     className="w-full mt-3 py-3 min-h-[44px] bg-[#F4F3EE] hover:bg-[#EAE8E2] text-[#111312] text-xs font-semibold rounded-xl active:scale-98 transition-all border border-black/[0.05] cursor-pointer flex items-center justify-center focus-visible:outline-2 focus-visible:outline-[#111312]"
                   >
-                    Select as Active Driver EV
+                    Set as Active
                   </button>
                 )}
               </div>
@@ -506,10 +506,10 @@ export function GarageFleet({
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-base font-bold text-[#111312]">
-                  Add Vehicle to Garage
+                  Add Vehicle
                 </h3>
                 <p className="text-xs text-[#525854]">
-                  Choose certified OEM specs or enter custom homologation data.
+                  Choose a popular model or enter your car&apos;s details.
                 </p>
               </div>
               <button
@@ -533,7 +533,7 @@ export function GarageFleet({
                     : "text-[#525854] hover:text-[#111312]"
                 }`}
               >
-                Verified OEM Catalog
+                Popular Models
               </button>
               <button
                 type="button"
@@ -544,15 +544,15 @@ export function GarageFleet({
                     : "text-[#525854] hover:text-[#111312]"
                 }`}
               >
-                Custom Specification
+                Custom Details
               </button>
             </div>
 
-            {/* Mode 1: Verified OEM Catalogue Presets */}
+            {/* Mode 1: Verified Catalogue Presets */}
             {addMode === "catalog" ? (
               <div className="space-y-2.5">
                 <div className="text-[11px] text-[#767D78] font-mono">
-                  Certified OEM Production Models (Exact battery & DC charging limits):
+                  Select your car from the list:
                 </div>
                 <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
                   {VERIFIED_OEM_CATALOGUE.map((preset) => (
@@ -621,7 +621,7 @@ export function GarageFleet({
                 <div className="grid grid-cols-2 gap-2.5">
                   <div>
                     <label htmlFor={usableKwhId} className="block text-[11px] font-semibold text-[#111312] mb-1">
-                      Usable Capacity (kWh) *
+                      Battery Size (kWh) *
                     </label>
                     <input
                       id={usableKwhId}
@@ -641,7 +641,7 @@ export function GarageFleet({
 
                   <div>
                     <label htmlFor={maxDcId} className="block text-[11px] font-semibold text-[#111312] mb-1">
-                      Max DC Power (kW) *
+                      Max Charging Speed (kW) *
                     </label>
                     <input
                       id={maxDcId}
@@ -662,7 +662,7 @@ export function GarageFleet({
 
                 <div>
                   <label htmlFor={plugTypeId} className="block text-[11px] font-semibold text-[#111312] mb-1">
-                    Connector Standard *
+                    Plug Type *
                   </label>
                   <select
                     id={plugTypeId}
@@ -746,7 +746,7 @@ export function GarageFleet({
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-base font-bold text-[#111312]">
-                  Edit Vehicle Specifications
+                  Edit Vehicle
                 </h3>
                 <p className="text-xs text-[#525854]">
                   {editingVehicle.make} {editingVehicle.model}
@@ -766,7 +766,7 @@ export function GarageFleet({
               <div className="grid grid-cols-2 gap-2.5">
                 <div>
                   <label className="block text-[11px] font-semibold text-[#111312] mb-1">
-                    Usable Capacity (kWh)
+                    Battery Size (kWh)
                   </label>
                   <input
                     type="number"
@@ -785,7 +785,7 @@ export function GarageFleet({
 
                 <div>
                   <label className="block text-[11px] font-semibold text-[#111312] mb-1">
-                    Max DC Power (kW)
+                    Max Charging Speed (kW)
                   </label>
                   <input
                     type="number"
@@ -805,7 +805,7 @@ export function GarageFleet({
 
               <div>
                 <label className="block text-[11px] font-semibold text-[#111312] mb-1">
-                  Connector Standard
+                  Plug Type
                 </label>
                 <select
                   value={formPlugType}
@@ -823,7 +823,7 @@ export function GarageFleet({
               <div className="grid grid-cols-2 gap-2.5">
                 <div>
                   <label className="block text-[11px] font-semibold text-[#111312] mb-1">
-                    WLTP Range (km)
+                    Range (km)
                   </label>
                   <input
                     type="number"
@@ -882,7 +882,7 @@ export function GarageFleet({
               <h3 className="text-sm font-bold text-[#111312]">Remove Vehicle?</h3>
             </div>
             <p className="text-xs text-[#525854]">
-              Are you sure you want to remove this vehicle from your garage? Telemetry and saved curves will be unlinked.
+              Are you sure you want to remove this vehicle from your garage?
             </p>
             <div className="flex gap-2 pt-2">
               <button

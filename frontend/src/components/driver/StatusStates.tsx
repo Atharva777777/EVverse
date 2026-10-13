@@ -36,8 +36,8 @@ export function LoadingSkeleton({ count = 3 }: { count?: number }) {
  * Empty state when search or filters return zero stations
  */
 export function EmptyState({
-  title = "No charging hubs match your filters",
-  message = "Try clearing your connector type, speed threshold, or search keyword.",
+  title = "No charging stations found",
+  message = "Try clearing filters or changing your search.",
   onReset,
 }: {
   title?: string;
@@ -59,7 +59,7 @@ export function EmptyState({
           onClick={onReset}
           className="min-h-[44px] px-5 py-2.5 bg-[#111312] text-white text-xs font-semibold rounded-xl hover:bg-[#252826] transition-colors active:scale-98 cursor-pointer focus-visible:outline-2 focus-visible:outline-[#111312]"
         >
-          Reset All Filters
+          Clear Filters
         </button>
       )}
     </div>
@@ -119,7 +119,7 @@ export function OfflineNotice({
       <div className="flex items-center gap-2">
         <span className="w-2 h-2 rounded-full bg-[#EAB308] animate-pulse" aria-hidden="true" />
         <span className="font-medium">
-          Verified Regional Dataset (OCM Gateway Offline)
+          Saved station data (offline)
         </span>
       </div>
       {onSync && (

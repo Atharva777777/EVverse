@@ -59,7 +59,7 @@ const DriverMobileMap = dynamic(
     loading: () => (
       <div className="w-full h-full flex flex-col items-center justify-center bg-[#FAF9F6] text-[#8C938E]">
         <div className="w-6 h-6 border-2 border-[#111312] border-t-transparent rounded-full animate-spin mb-2" />
-        <span className="text-xs font-mono">Loading Navigation Viewport...</span>
+        <span className="text-xs font-mono">Loading map...</span>
       </div>
     ),
   }
@@ -489,7 +489,7 @@ export default function EVVerseDriverPage() {
               viewMode === "frame" ? "bg-[#C8F369] text-[#111312] shadow-xs" : "text-[#8C938E] hover:text-white"
             }`}
           >
-            <span>📱</span> iPhone 16 Pro Frame
+            Phone Frame
           </button>
           <button
             onClick={() => setViewMode("fluid")}
@@ -497,7 +497,7 @@ export default function EVVerseDriverPage() {
               viewMode === "fluid" ? "bg-white text-[#111312] shadow-xs" : "text-[#8C938E] hover:text-white"
             }`}
           >
-            <span>↔️</span> Mobile Column
+            Mobile Column
           </button>
           <button
             onClick={() => setViewMode("expanded")}
@@ -505,7 +505,7 @@ export default function EVVerseDriverPage() {
               viewMode === "expanded" ? "bg-white text-[#111312] shadow-xs" : "text-[#8C938E] hover:text-white"
             }`}
           >
-            <span>🖥️</span> Expanded View
+            Expanded View
           </button>
         </div>
 
@@ -836,10 +836,10 @@ export default function EVVerseDriverPage() {
                     />
                     <input
                       type="text"
-                      placeholder={`Search charging hubs in ${selectedCity}...`}
+                      placeholder={`Search charging stations in ${selectedCity}...`}
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      aria-label={`Search charging hubs in ${selectedCity}`}
+                      aria-label={`Search charging stations in ${selectedCity}`}
                       className="w-full pl-9 pr-9 py-2.5 bg-white/95 backdrop-blur-md rounded-2xl border border-[rgba(17,19,18,0.1)] text-[16px] sm:text-xs font-medium text-[#111312] placeholder-[#8C938E] shadow-sm focus:outline-hidden focus:ring-1 focus:ring-[#111312]"
                     />
                     {searchQuery && (
@@ -856,15 +856,15 @@ export default function EVVerseDriverPage() {
                   {/* Filter Pills */}
                   <div
                     role="group"
-                    aria-label="Filter Charging Hubs"
+                    aria-label="Filter Charging Stations"
                     className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5"
                   >
                     {(
                       [
                         { id: "all", label: "All Speeds" },
-                        { id: "ultra", label: "⚡ Ultra (150kW+)" },
+                        { id: "ultra", label: "Ultra (150kW+)" },
                         { id: "fast", label: "Fast (50kW+)" },
-                        { id: "ac", label: "AC Standard" },
+                        { id: "ac", label: "Standard AC" },
                       ] as const
                     ).map((f) => {
                       const isActive = speedFilter === f.id;
@@ -900,7 +900,7 @@ export default function EVVerseDriverPage() {
                           : "bg-white/95 backdrop-blur-md text-[#525854] border border-[rgba(17,19,18,0.08)] hover:bg-[#F3F2ED]"
                       }`}
                     >
-                      🔌 Match {activeVehicle.plugType.split(" ")[0]} ({activeVehicle.make})
+                      Compatible ({activeVehicle.plugType.split(" ")[0]})
                     </button>
 
                     {/* Saved Bookmarks Filter */}
@@ -914,7 +914,7 @@ export default function EVVerseDriverPage() {
                             : "bg-white/95 backdrop-blur-md text-[#EF4444] border border-[#FCA5A5]"
                         }`}
                       >
-                        ♥ Saved ({savedStationIds.size})
+                        Saved ({savedStationIds.size})
                       </button>
                     )}
                   </div>
@@ -935,7 +935,7 @@ export default function EVVerseDriverPage() {
                           {navStation.name}
                         </div>
                         <div className="text-[10px] text-[#9CA3AF]">
-                          Arrival SoC: ~{Math.max(10, currentBatteryPct - Math.round(((navStation.distanceKm || 4) / activeVehicle.wltpRangeKm) * 100))}%
+                          Arrival Battery: ~{Math.max(10, currentBatteryPct - Math.round(((navStation.distanceKm || 4) / activeVehicle.wltpRangeKm) * 100))}%
                         </div>
                       </div>
                     </div>
@@ -963,11 +963,11 @@ export default function EVVerseDriverPage() {
                   <div className="absolute bottom-16 left-3 right-3 z-30 bg-white/95 backdrop-blur-md rounded-2xl p-3.5 border border-[rgba(17,19,18,0.08)] shadow-lg">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-[10px] font-mono uppercase tracking-wider text-[#8C938E] font-semibold">
-                        {filteredStations.length} Verified Charging Hubs
+                        {filteredStations.length} Charging Stations
                       </span>
                       <span className="text-[10px] text-[#16A34A] font-semibold flex items-center gap-1">
                         <span className="w-1.5 h-1.5 rounded-full bg-[#16A34A]" aria-hidden="true" />
-                        Active Grid
+                        Live
                       </span>
                     </div>
 
@@ -1053,7 +1053,7 @@ export default function EVVerseDriverPage() {
                         latitude,
                         longitude,
                         address: `${name} Transit Corridor, ${selectedCity}`,
-                        operator: "QuantEV Superhub Network",
+                        operator: "QuantEV Fast Charging",
                         status: "Operational",
                         is_operational: true,
                         power_kw: 250,

@@ -27,6 +27,7 @@ import {
   Info,
   Car,
   ChevronRight,
+  Star,
 } from "lucide-react";
 
 interface StationDetailSheetProps {
@@ -131,8 +132,8 @@ export const StationDetailSheet: React.FC<StationDetailSheetProps> = ({
       badgeText: "text-[#475569]",
       dotBg: "bg-[#94A3B8]",
       border: "border-[#CBD5E1]",
-      title: "Status Unconfirmed (Baseline)",
-      desc: "Live bay telemetry not published by network. Verify physical status on arrival.",
+      title: "Status Unconfirmed",
+      desc: "Live status not reported. Please check on arrival.",
     },
   };
 
@@ -198,9 +199,15 @@ export const StationDetailSheet: React.FC<StationDetailSheetProps> = ({
 
                 {/* Rating & Reviews row */}
                 <div className="flex items-center gap-1.5 mt-1.5">
-                  <div className="flex items-center text-[#F59E0B]">
-                    {"★".repeat(4)}
-                    <span className="text-[#F59E0B]/50">★</span>
+                  <div className="flex items-center gap-0.5">
+                    {[1, 2, 3, 4, 5].map((i) => (
+                      <Star
+                        key={i}
+                        size={11}
+                        className={i <= 4 ? "fill-[#F59E0B] text-[#F59E0B]" : "fill-none text-[#F59E0B]/40"}
+                        aria-hidden="true"
+                      />
+                    ))}
                   </div>
                   <span className="text-xs font-bold text-[#111312] font-mono">
                     {details.rating}
@@ -352,12 +359,12 @@ export const StationDetailSheet: React.FC<StationDetailSheetProps> = ({
             </div>
 
             <div>
-              <div className="text-[10px] font-mono uppercase text-[#8C938E]">Arrival SoC</div>
+              <div className="text-[10px] font-mono uppercase text-[#8C938E]">Arrival Battery</div>
               <div className="text-sm font-bold text-[#111312] font-mono mt-0.5">
                 ~{estimatedArrivalSoc}%
               </div>
               <div className="text-[10px] text-[#16A34A] font-medium">
-                {estimatedArrivalSoc > 20 ? "Safe Arrival" : "Charge Urgently"}
+                {estimatedArrivalSoc > 20 ? "Good battery" : "Low battery"}
               </div>
             </div>
           </div>
@@ -476,15 +483,15 @@ export const StationDetailSheet: React.FC<StationDetailSheetProps> = ({
             )}
           </div>
 
-          {/* Primary Action Button Bar (Matching reference "Let's go ->") */}
+          {/* Primary Action Button Bar */}
           <div className="space-y-2 pt-2">
             <button
               type="button"
               onClick={() => onStartNavigation(station)}
               className="w-full min-h-[52px] py-3.5 px-6 bg-[#111312] text-white rounded-2xl text-sm font-bold flex items-center justify-center gap-2 hover:bg-[#252826] active:scale-[0.99] transition-all shadow-md cursor-pointer focus-visible:outline-2 focus-visible:outline-[#111312]"
             >
-              <span>Let&apos;s go</span>
-              <span className="text-[#C8F369] text-base" aria-hidden="true">→</span>
+              <Navigation size={15} className="text-[#C8F369]" aria-hidden="true" />
+              <span>Start Navigation</span>
             </button>
 
             <div className="grid grid-cols-2 gap-2">
@@ -494,7 +501,7 @@ export const StationDetailSheet: React.FC<StationDetailSheetProps> = ({
                 className="min-h-[44px] py-2.5 bg-[#C8F369] text-[#111312] border border-[#111312] rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-[#BCE95D] active:scale-98 transition-all shadow-2xs cursor-pointer focus-visible:outline-2 focus-visible:outline-[#111312]"
               >
                 <Zap size={14} aria-hidden="true" />
-                Start Session
+                Start Charging
               </button>
 
               <a

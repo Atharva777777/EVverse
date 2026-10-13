@@ -96,14 +96,14 @@ export function VehicleCockpit({
             <div className="flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-[#16A34A] animate-pulse" />
               <span className="text-[10px] font-mono uppercase tracking-widest text-[#767D78] font-medium">
-                Live Telemetry Synchronized
+                Connected
               </span>
             </div>
             <h2 className="text-xl font-bold tracking-tight text-[#111312] mt-0.5">
               {vehicle.make} {vehicle.model}
             </h2>
             <div className="text-[11px] text-[#525854] font-medium mt-0.5">
-              {vehicle.year} Architecture • {vehicle.plugType}
+              {vehicle.year} • {vehicle.plugType}
             </div>
           </div>
 
@@ -111,12 +111,12 @@ export function VehicleCockpit({
             onClick={onOpenGarage}
             className="flex items-center gap-1 text-[11px] font-semibold text-[#111312] bg-[#F4F3EE] hover:bg-[#EAE8E2] px-3 py-1.5 rounded-full transition-all active:scale-95 border border-black/[0.05]"
           >
-            Switch EV
+            Change Car
             <ChevronRight size={13} />
           </button>
         </div>
 
-        {/* Hyperrealistic High-Resolution Vehicle Rendering */}
+        {/* Vehicle Rendering */}
         <div className="relative w-full h-44 my-1 flex flex-col items-center justify-center">
           <div className="relative w-full h-40">
             <Image
@@ -128,9 +128,8 @@ export function VehicleCockpit({
             />
           </div>
 
-          {/* Hyperrealistic Multi-Layer Contact Shadow */}
+          {/* Contact Shadow */}
           <div className="w-full flex justify-center -mt-2 pointer-events-none">
-            {/* Deep Contact Core */}
             <div
               className="w-3/5 h-2.5 rounded-full opacity-60"
               style={{
@@ -140,7 +139,6 @@ export function VehicleCockpit({
               }}
             />
           </div>
-          {/* Diffuse Floor Ambient Shadow */}
           <div
             className="w-4/5 h-4 -mt-2 rounded-full pointer-events-none opacity-40"
             style={{
@@ -151,12 +149,11 @@ export function VehicleCockpit({
           />
         </div>
 
-        {/* Calibrated Range & Real Battery Telemetry */}
+        {/* Range & Battery */}
         <div className="pt-3 border-t border-black/[0.06] grid grid-cols-2 gap-4 items-end">
-          {/* Calibrated Real-World Range */}
           <div>
             <div className="text-[10px] font-mono uppercase tracking-wider text-[#767D78] font-medium">
-              Calibrated Range
+              Estimated Range
             </div>
             <div className="flex items-baseline gap-1 mt-0.5">
               <span className="text-3xl font-bold tracking-tight text-[#111312] font-mono">
@@ -166,14 +163,13 @@ export function VehicleCockpit({
             </div>
             <div className="text-[10px] text-[#525854] mt-0.5 flex items-center gap-1 font-medium">
               <span className="w-1.5 h-1.5 rounded-full bg-[#111312]" />
-              <span>Drive mode & HVAC factored</span>
+              <span>Based on driving & A/C</span>
             </div>
           </div>
 
-          {/* Usable Battery SoC */}
           <div className="text-right">
             <div className="text-[10px] font-mono uppercase tracking-wider text-[#767D78] font-medium">
-              Usable Battery Level
+              Battery Level
             </div>
             <div className="flex items-center justify-end gap-1.5 mt-0.5">
               <span className="text-3xl font-bold tracking-tight text-[#111312] font-mono">
@@ -182,7 +178,6 @@ export function VehicleCockpit({
               <div className="w-2.5 h-2.5 rounded-full bg-[#C8F369] border border-[#111312] shadow-xs" />
             </div>
 
-            {/* Precision Micro Battery Bar */}
             <div className="w-full bg-[#F3F2ED] h-2 rounded-full mt-2 p-0.5 border border-black/[0.05] flex items-center">
               <div
                 className="h-full bg-[#111312] transition-all duration-500 rounded-full"
@@ -193,27 +188,27 @@ export function VehicleCockpit({
         </div>
       </div>
 
-      {/* ── Drive Dynamics & Inverter Tuning ───────────────────────── */}
+      {/* ── Drive Mode ───────────────────────── */}
       <div className="bg-white rounded-[24px] p-4 border border-black/[0.06] shadow-[0_2px_12px_rgba(0,0,0,0.02)] space-y-2.5">
         <div className="flex items-center justify-between">
           <span className="text-xs font-semibold uppercase tracking-wider text-[#525854]">
-            Drive Dynamics & Inverter Tuning
+            Drive Mode
           </span>
           <span className="text-[10px] font-mono text-[#767D78]">
-            {driveMode === "eco" ? "+12% Range Gain" : driveMode === "sport" ? "-14% Peak Torque" : "Factory WLTP"}
+            {driveMode === "eco" ? "+12% range" : driveMode === "sport" ? "Uses more power" : "Standard"}
           </span>
         </div>
 
         <div
           role="radiogroup"
-          aria-label="Drive Dynamics & Inverter Tuning Modes"
+          aria-label="Drive Dynamics Modes"
           className="grid grid-cols-3 gap-1.5 p-1 bg-[#F5F4EF] rounded-2xl border border-black/[0.05]"
         >
           {(
             [
-              { id: "eco", label: "Eco Range", desc: "Max Conservation" },
-              { id: "normal", label: "Normal", desc: "Factory WLTP" },
-              { id: "sport", label: "Sport Dynamic", desc: "Peak Power" },
+              { id: "eco", label: "Eco", desc: "Save Battery" },
+              { id: "normal", label: "Normal", desc: "Balanced" },
+              { id: "sport", label: "Sport", desc: "Performance" },
             ] as const
           ).map((m) => {
             const isSelected = driveMode === m.id;
@@ -267,7 +262,7 @@ export function VehicleCockpit({
           </div>
 
           <div className="mt-1.5">
-            <div className="text-[10.5px] sm:text-[11px] font-semibold truncate">Climate A/C</div>
+            <div className="text-[10.5px] sm:text-[11px] font-semibold truncate">A/C & Climate</div>
             <div className="text-[9.5px] sm:text-[10px] text-[#525854] font-mono mt-0.5 truncate">
               {hvacActive ? `${targetCabinTemp.toFixed(1)}°C` : "Off (+18km)"}
             </div>
@@ -305,7 +300,7 @@ export function VehicleCockpit({
               ? "bg-white border-black/[0.12] text-[#111312] shadow-xs"
               : "bg-[#F7F6F1] border-black/[0.06] text-[#767D78]"
           }`}
-          aria-label={doorsLocked ? "Chassis locked. Tap to unlock doors." : "Doors unlocked. Tap to lock doors."}
+          aria-label={doorsLocked ? "Doors locked. Tap to unlock." : "Doors unlocked. Tap to lock."}
           aria-pressed={doorsLocked}
         >
           <div className="flex items-center justify-between w-full">
@@ -318,12 +313,12 @@ export function VehicleCockpit({
             />
           </div>
           <div className="mt-1.5">
-            <div className="text-[10.5px] sm:text-[11px] font-semibold truncate">Chassis Locks</div>
+            <div className="text-[10.5px] sm:text-[11px] font-semibold truncate">Doors</div>
             <div className="text-[9.5px] sm:text-[10px] text-[#525854] font-mono mt-0.5 truncate">
-              {doorsLocked ? "Arm Guard" : "Unlocked"}
+              {doorsLocked ? "Locked" : "Unlocked"}
             </div>
             <div className="text-[8.5px] sm:text-[9px] text-[#767D78] mt-1.5 pt-1.5 border-t border-black/[0.06] truncate">
-              {doorsLocked ? "Perimeter Active" : "Doors Ajar"}
+              {doorsLocked ? "All doors locked" : "Doors unlocked"}
             </div>
           </div>
         </button>
@@ -336,7 +331,7 @@ export function VehicleCockpit({
               ? "bg-[#111312] text-white border-[#111312] shadow-xs"
               : "bg-white border-black/[0.07] text-[#111312]"
           }`}
-          aria-label={isPreconditioning ? "Pre-conditioning active. Tap to cancel." : "Pre-conditioning standby. Tap to heat battery core."}
+          aria-label={isPreconditioning ? "Battery warm-up active. Tap to cancel." : "Battery warm-up standby."}
           aria-pressed={isPreconditioning}
         >
           <div className="flex items-center justify-between w-full">
@@ -349,12 +344,12 @@ export function VehicleCockpit({
             />
           </div>
           <div className="mt-1.5">
-            <div className="text-[10.5px] sm:text-[11px] font-semibold truncate">Pre-Condition</div>
+            <div className="text-[10.5px] sm:text-[11px] font-semibold truncate">Battery Prep</div>
             <div className={`text-[9.5px] sm:text-[10px] font-mono mt-0.5 truncate ${isPreconditioning ? "text-[#C8F369]" : "text-[#525854]"}`}>
-              {isPreconditioning ? "Heating Core" : "Standby"}
+              {isPreconditioning ? "Warming up" : "Off"}
             </div>
             <div className={`text-[8.5px] sm:text-[9px] mt-1.5 pt-1.5 border-t truncate ${isPreconditioning ? "border-white/10 text-white/70" : "border-black/[0.06] text-[#767D78]"}`}>
-              {isPreconditioning ? "Target 28°C" : "Ready for DC"}
+              {isPreconditioning ? "Prepares for DC" : "Ready for fast charge"}
             </div>
           </div>
         </button>
@@ -369,7 +364,7 @@ export function VehicleCockpit({
             </div>
             <div>
               <div className="text-[9.5px] font-mono uppercase tracking-wider text-[#767D78] font-semibold">
-                Nearest DC Superhub • {nearestUltraStation.powerKw} kW
+                Nearest Fast Charger • {nearestUltraStation.powerKw} kW
               </div>
               <div className="text-xs font-bold text-[#111312] leading-tight">
                 {nearestUltraStation.name}
@@ -394,7 +389,7 @@ export function VehicleCockpit({
       <div className="bg-[#FAF9F6] rounded-[24px] p-4 border border-black/[0.06] space-y-3">
         <div className="flex items-center justify-between">
           <span className="text-[10px] font-mono uppercase tracking-widest text-[#767D78] font-semibold">
-            Chassis Diagnostics & Telemetry
+            Vehicle Health
           </span>
           <button
             onClick={() => setShowDiagnostics(!showDiagnostics)}
@@ -402,22 +397,22 @@ export function VehicleCockpit({
             aria-controls="cockpit-chassis-diagnostics"
             className="text-[10.5px] font-semibold text-[#111312] hover:underline py-1.5 px-2 rounded-lg cursor-pointer focus-visible:outline-2 focus-visible:outline-[#111312]"
           >
-            {showDiagnostics ? "Hide Details" : "Inspect TPMS & Thermals"}
+            {showDiagnostics ? "Hide Details" : "View Tires & Battery"}
           </button>
         </div>
 
         {/* Core Specs Bar */}
         <div className="grid grid-cols-3 gap-2 text-center">
           <div>
-            <div className="text-[9.5px] font-mono uppercase text-[#767D78]">Factory SOH</div>
+            <div className="text-[9.5px] font-mono uppercase text-[#767D78]">Battery Health</div>
             <div className="text-sm font-bold text-[#111312] font-mono mt-0.5">{vehicle.sohPct}%</div>
-            <div className="text-[9.5px] text-[#16A34A] font-semibold">Healthy Cells</div>
+            <div className="text-[9.5px] text-[#16A34A] font-semibold">Good condition</div>
           </div>
 
           <div className="border-x border-black/[0.06]">
-            <div className="text-[9.5px] font-mono uppercase text-[#767D78]">Max DC Rate</div>
+            <div className="text-[9.5px] font-mono uppercase text-[#767D78]">Max Fast Charge</div>
             <div className="text-sm font-bold text-[#111312] font-mono mt-0.5">{vehicle.maxDcSpeedKw} kW</div>
-            <div className="text-[9.5px] text-[#525854]">800V Architecture</div>
+            <div className="text-[9.5px] text-[#525854]">Fast charging</div>
           </div>
 
           <div>
@@ -433,7 +428,7 @@ export function VehicleCockpit({
             {/* TPMS Tire Pressures */}
             <div>
               <div className="text-[10px] font-mono text-[#767D78] uppercase mb-1.5">
-                Tire Pressure Monitoring (TPMS)
+                Tire Pressures
               </div>
               <div className="grid grid-cols-2 gap-2 text-[11px] font-mono">
                 <div className="bg-white p-2 rounded-xl border border-black/[0.05] flex justify-between">
@@ -447,15 +442,15 @@ export function VehicleCockpit({
               </div>
             </div>
 
-            {/* High Voltage Battery Thermals */}
+            {/* Battery Thermals */}
             <div className="grid grid-cols-2 gap-2 text-[11px] font-mono">
               <div className="bg-white p-2 rounded-xl border border-black/[0.05] flex justify-between">
-                <span className="text-[#525854]">Pack Temp</span>
-                <span className="font-bold text-[#16A34A]">24°C Nominal</span>
+                <span className="text-[#525854]">Battery Temp</span>
+                <span className="font-bold text-[#16A34A]">24°C (Normal)</span>
               </div>
               <div className="bg-white p-2 rounded-xl border border-black/[0.05] flex justify-between">
-                <span className="text-[#525854]">12V Aux Battery</span>
-                <span className="font-bold text-[#111312]">13.8V OK</span>
+                <span className="text-[#525854]">12V Battery</span>
+                <span className="font-bold text-[#111312]">13.8V (Good)</span>
               </div>
             </div>
           </div>

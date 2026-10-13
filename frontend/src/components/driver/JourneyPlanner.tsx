@@ -174,14 +174,14 @@ export function JourneyPlanner({
                   <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#C8F369]" />
                 </span>
                 <span className="text-[10px] font-mono uppercase tracking-widest text-[#C8F369] font-bold">
-                  EVverse Quantum Neural Co-Pilot
+                  Smart Trip Assistant
                 </span>
               </div>
               <h2 className="text-lg sm:text-xl font-bold tracking-tight text-white mt-1">
-                Autonomous Corridor Routing
+                Route & Charging Plan
               </h2>
               <p className="text-xs text-[#A0AAA2] mt-0.5 max-w-md">
-                QAOA Hamiltonian energy optimization factoring topographical drag, active vehicle pack geometry, and live hub bay latency.
+                Calculates your battery usage and recommends reliable charging stops along the way.
               </p>
             </div>
 
@@ -189,42 +189,42 @@ export function JourneyPlanner({
             <div className="shrink-0 text-right">
               <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#1A221C] border border-[#2D3C2E] text-[10px] font-mono text-[#C8F369]">
                 <Cpu size={12} className="animate-pulse" />
-                <span>{isComputing ? "CALCULATING..." : "QUANTUM CONVERGED"}</span>
+                <span>{isComputing ? "Calculating..." : "Route Ready"}</span>
               </div>
               <div className="text-[9.5px] font-mono text-[#768278] mt-1">
-                Latency: {planResult?.aiTelemetry.pipelineRuntimeSec || 0.76}s
+                Updated in {planResult?.aiTelemetry.pipelineRuntimeSec || 0.8}s
               </div>
             </div>
           </div>
 
-          {/* AI Neural Telemetry Metrics HUD Bar */}
+          {/* Clean Metric HUD Bar */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1 text-center font-mono">
             <div className="p-2.5 rounded-2xl bg-white/[0.04] border border-white/[0.08] backdrop-blur-md">
-              <div className="text-[9.5px] text-[#8C9890] uppercase">Energy Cost Δ</div>
+              <div className="text-[9.5px] text-[#8C9890] uppercase">Trip Energy</div>
               <div className="text-sm font-bold text-[#C8F369] mt-0.5">
-                {planResult ? `${planResult.aiTelemetry.qaoaEnergyDelta} H` : "2.41 H"}
+                ~{planResult?.tripRequiredKwh || 18.5} kWh
               </div>
-              <div className="text-[9px] text-[#A0AAA2]">Hamiltonian Minimum</div>
+              <div className="text-[9px] text-[#A0AAA2]">Estimated use</div>
             </div>
 
             <div className="p-2.5 rounded-2xl bg-white/[0.04] border border-white/[0.08] backdrop-blur-md">
-              <div className="text-[9.5px] text-[#8C9890] uppercase">Model R² Score</div>
+              <div className="text-[9.5px] text-[#8C9890] uppercase">Drive Time</div>
               <div className="text-sm font-bold text-white mt-0.5">
-                0.884
+                ~{planResult?.routeDurationMins || 85} min
               </div>
-              <div className="text-[9px] text-[#A0AAA2]">Verified Demand AI</div>
+              <div className="text-[9px] text-[#A0AAA2]">Estimated drive</div>
             </div>
 
             <div className="p-2.5 rounded-2xl bg-white/[0.04] border border-white/[0.08] backdrop-blur-md">
-              <div className="text-[9.5px] text-[#8C9890] uppercase">Precondition</div>
+              <div className="text-[9.5px] text-[#8C9890] uppercase">Battery Prep</div>
               <div className="text-sm font-bold text-[#38BDF8] mt-0.5">
-                {planResult ? `${planResult.aiTelemetry.thermalPreconditioningMins}m Window` : "15m"}
+                {planResult ? `${planResult.aiTelemetry.thermalPreconditioningMins}m` : "15m"}
               </div>
-              <div className="text-[9px] text-[#A0AAA2]">Thermal Curve Ready</div>
+              <div className="text-[9px] text-[#A0AAA2]">Fast charge ready</div>
             </div>
 
             <div className="p-2.5 rounded-2xl bg-white/[0.04] border border-white/[0.08] backdrop-blur-md">
-              <div className="text-[9.5px] text-[#8C9890] uppercase">Projected Reserve</div>
+              <div className="text-[9.5px] text-[#8C9890] uppercase">Arrival Battery</div>
               <div
                 className={`text-sm font-bold mt-0.5 ${
                   (planResult?.arrivalBatteryPct ?? 50) < 15
@@ -232,12 +232,12 @@ export function JourneyPlanner({
                     : "text-[#4ADE80]"
                 }`}
               >
-                ~{planResult?.arrivalBatteryPct ?? 50}% SoC
+                ~{planResult?.arrivalBatteryPct ?? 50}%
               </div>
               <div className="text-[9px] text-[#A0AAA2]">
                 {(planResult?.arrivalBatteryPct ?? 50) < 15
-                  ? "Top-up Required"
-                  : "Safe Reserve Buffer"}
+                  ? "Charge needed"
+                  : "Safe buffer"}
               </div>
             </div>
           </div>
@@ -246,9 +246,9 @@ export function JourneyPlanner({
           <div className="p-3 bg-white/[0.03] border border-white/[0.08] rounded-2xl flex items-start gap-2.5">
             <Sparkles size={15} className="text-[#C8F369] shrink-0 mt-0.5" />
             <div className="text-xs text-[#D1D9D3] leading-relaxed">
-              <span className="font-bold text-[#C8F369]">Neural Insight: </span>
+              <span className="font-bold text-[#C8F369]">Trip Advice: </span>
               {planResult?.aiTelemetry.aiRecommendation ||
-                "Analyzing highway topology, traffic cadence, and battery degradation dynamics..."}
+                "Checking highway elevation, traffic flow, and vehicle battery consumption..."}
             </div>
           </div>
         </div>
@@ -260,18 +260,18 @@ export function JourneyPlanner({
           <div className="flex items-center gap-2">
             <Compass size={16} className="text-[#16A34A]" />
             <h3 className="text-sm font-bold text-[#111312]">
-              Corridor Target Selection
+              Destination
             </h3>
           </div>
           <span className="text-[10px] font-mono text-[#767D78]">
-            {selectedCity} Metropolitan
+            {selectedCity}
           </span>
         </div>
 
-        {/* Rapid Corridor Selection Pills */}
+        {/* Popular Destination Pills */}
         <div className="space-y-2">
           <div className="text-[11px] font-semibold text-[#525854]">
-            Curated Transit Corridors:
+            Popular destinations:
           </div>
           <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
             {cityCorridors.map((c) => {
@@ -298,7 +298,7 @@ export function JourneyPlanner({
                         isSelected ? "text-[#C8F369]" : "text-[#767D78]"
                       }`}
                     >
-                      {c.distanceKm} km • +{c.elevationGainM}m ascent
+                      {c.distanceKm} km • +{c.elevationGainM}m climb
                     </div>
                   </div>
                 </button>
@@ -312,7 +312,7 @@ export function JourneyPlanner({
           <div className="flex items-center justify-between text-xs">
             <label htmlFor={batterySliderId} className="font-semibold text-[#111312] flex items-center gap-1.5">
               <Zap size={13} className="text-[#16A34A]" />
-              <span>Starting Battery State of Charge:</span>
+              <span>Starting Battery:</span>
             </label>
             <span className="font-bold text-[#111312] font-mono bg-white px-2.5 py-1 rounded-lg border border-black/[0.06]">
               {startingBatteryPct}% ({(activeVehicle.usableKwh * (startingBatteryPct / 100)).toFixed(1)} kWh)
@@ -335,13 +335,13 @@ export function JourneyPlanner({
           </div>
 
           <div className="flex items-center justify-between text-[10.5px] text-[#525854] pt-0.5">
-            <span>Calibrated to {activeVehicle.make} {activeVehicle.model} ({activeVehicle.usableKwh} kWh pack)</span>
+            <span>Based on your {activeVehicle.make} {activeVehicle.model} ({activeVehicle.usableKwh} kWh)</span>
             <button
               type="button"
               onClick={() => setStartingBatteryPct(activeVehicle.currentBatteryPct)}
               className="text-[#16A34A] hover:underline font-semibold cursor-pointer"
             >
-              Reset to Vehicle Live ({activeVehicle.currentBatteryPct}%)
+              Use car level ({activeVehicle.currentBatteryPct}%)
             </button>
           </div>
         </div>
@@ -352,7 +352,7 @@ export function JourneyPlanner({
         <div className="flex items-center justify-between border-b border-black/[0.06] pb-3">
           <div>
             <div className="text-[10px] font-mono uppercase tracking-wider text-[#767D78]">
-              Planned Route Review
+              Route Summary
             </div>
             <div className="text-base font-bold text-[#111312]">
               {selectedDestination.name}
@@ -363,7 +363,7 @@ export function JourneyPlanner({
               ~{planResult?.routeDurationMins || Math.round(selectedDestination.distanceKm * 1.35)} mins drive
             </div>
             <div className="text-[10px] font-mono text-[#767D78] mt-0.5">
-              {planResult?.routeDistanceKm || selectedDestination.distanceKm} km highway
+              {planResult?.routeDistanceKm || selectedDestination.distanceKm} km
             </div>
           </div>
         </div>
@@ -373,7 +373,7 @@ export function JourneyPlanner({
           <div className="p-3 bg-[#FEF3C7] border border-[#FDE68A] rounded-2xl flex items-start gap-2.5">
             <Info size={15} className="text-[#B45309] shrink-0 mt-0.5" />
             <div className="text-[11px] text-[#92400E] leading-relaxed">
-              <span className="font-bold">Telemetry Advisory: </span>
+              <span className="font-bold">Note: </span>
               {planResult.limitationNotice}
             </div>
           </div>
@@ -384,9 +384,9 @@ export function JourneyPlanner({
           <div className="flex items-center justify-between text-[10px] font-mono text-[#767D78]">
             <span className="flex items-center gap-1">
               <Mountain size={12} />
-              Corridor Ascent Curve Profile
+              Elevation Profile
             </span>
-            <span>+{selectedDestination.elevationGainM}m Elevation Climb</span>
+            <span>+{selectedDestination.elevationGainM}m climb</span>
           </div>
 
           <div className="h-20 w-full bg-[#FAF9F6] rounded-2xl p-2 border border-black/[0.05] relative overflow-hidden flex items-end">
@@ -414,31 +414,31 @@ export function JourneyPlanner({
               />
             </svg>
             <div className="absolute top-2 right-3 text-[9px] font-mono text-[#111312] bg-white px-2 py-0.5 rounded-md border border-black/[0.06] shadow-2xs">
-              Ascent Peak
+              Peak
             </div>
           </div>
         </div>
 
-        {/* Physics Energy Balance Grid */}
+        {/* Energy Balance Grid */}
         <div className="grid grid-cols-3 gap-2 text-center text-xs">
           <div className="bg-[#FAF9F6] p-2.5 rounded-2xl border border-black/[0.04]">
             <div className="text-[9.5px] font-mono uppercase text-[#767D78]">
-              Required Energy
+              Estimated Energy
             </div>
             <div className="text-sm font-bold text-[#111312] font-mono mt-0.5">
-              {planResult?.tripRequiredKwh || 18.5}
+              ~{planResult?.tripRequiredKwh || 18.5}
             </div>
-            <div className="text-[9.5px] text-[#525854]">[ESTIMATE] kWh</div>
+            <div className="text-[9.5px] text-[#525854]">kWh total</div>
           </div>
 
           <div className="bg-[#FAF9F6] p-2.5 rounded-2xl border border-black/[0.04]">
             <div className="text-[9.5px] font-mono uppercase text-[#767D78]">
-              Climb Factor
+              Uphill Impact
             </div>
             <div className="text-sm font-bold text-[#111312] font-mono mt-0.5">
               +{((selectedDestination.elevationGainM / 1000) * 2.8).toFixed(1)}
             </div>
-            <div className="text-[9.5px] text-[#525854]">kWh Ascent Drag</div>
+            <div className="text-[9.5px] text-[#525854]">kWh extra</div>
           </div>
 
           <div
@@ -448,12 +448,12 @@ export function JourneyPlanner({
                 : "bg-[#F3FAF0] border-[#E2F2DC] text-[#15803D]"
             }`}
           >
-            <div className="text-[9.5px] font-mono uppercase">Arrival SoC</div>
+            <div className="text-[9.5px] font-mono uppercase">Arrival Battery</div>
             <div className="text-sm font-bold font-mono mt-0.5">
               ~{planResult?.arrivalBatteryPct ?? 50}%
             </div>
             <div className="text-[9.5px] font-semibold">
-              {planResult?.isLowBuffer ? "Critical Low (<15%)" : "Safe Reserve Buffer"}
+              {planResult?.isLowBuffer ? "Low battery alert (<15%)" : "Safe battery level"}
             </div>
           </div>
         </div>
@@ -466,10 +466,10 @@ export function JourneyPlanner({
             className="text-[11px] text-[#767D78] hover:text-[#111312] flex items-center gap-1 cursor-pointer font-medium"
           >
             <Info size={12} />
-            <span>View Physics & Traffic Assumptions</span>
+            <span>How this is estimated</span>
           </button>
           <span className="text-[10px] font-mono text-[#8C938E] bg-[#FAF9F6] px-2 py-0.5 rounded-md">
-            All Metrics Labeled as Estimates
+            All numbers are estimates
           </span>
         </div>
 
@@ -477,14 +477,14 @@ export function JourneyPlanner({
         {showAssumptionsModal && (
           <div className="p-3.5 bg-[#FAF9F6] rounded-2xl border border-black/[0.06] text-xs space-y-1.5 animate-in fade-in">
             <div className="font-bold text-[#111312] text-[11px] uppercase font-mono">
-              Explicit Model Assumptions:
+              Estimation details:
             </div>
             <div className="text-[11px] text-[#525854] space-y-1">
-              <div>• Base Consumption: {activeVehicle.efficiencyKwh100km} kWh/100km (OEM WLTP baseline at nominal 22°C ambient)</div>
-              <div>• Topographical Ascent: +2.8 kWh per 1,000 meters elevation ascent</div>
-              <div>• Auxiliary Climate Draw: 1.5 kW cabin HVAC reserve for journey duration</div>
-              <div>• Charging Curve: Non-linear CC-CV tapering above 80% SoC; maximum rate capped at min(car, charger)</div>
-              <div>• Traffic Cadence: Assumes standard nominal flow without major arterial road closures</div>
+              <div>• Typical car energy use: {activeVehicle.efficiencyKwh100km} kWh per 100 km</div>
+              <div>• Elevation: +2.8 kWh per 1,000 meters uphill climb</div>
+              <div>• Climate control: 1.5 kW estimated for A/C or heating</div>
+              <div>• Fast charging: naturally slows down past 80%</div>
+              <div>• Traffic: assumes normal highway speeds</div>
             </div>
           </div>
         )}
@@ -497,15 +497,15 @@ export function JourneyPlanner({
             <div className="flex items-center gap-1.5">
               <Zap size={15} className="text-[#16A34A]" />
               <h3 className="text-sm font-bold text-[#111312]">
-                Compatible En-Route Charging Hubs
+                Charging Stops on Your Route
               </h3>
             </div>
             <p className="text-xs text-[#525854] mt-0.5">
-              Strictly matched to your vehicle&apos;s {activeVehicle.plugType} connector. Compare detours and select failover backup.
+              Matched to your car&apos;s plug. Choose your main charging stop and an optional backup.
             </p>
           </div>
           <span className="text-[10px] font-mono bg-[#FAF9F6] px-2 py-0.5 rounded-md text-[#767D78] shrink-0">
-            {planResult?.candidateStops.length || 0} Corridor Hubs
+            {planResult?.candidateStops.length || 0} stops found
           </span>
         </div>
 
@@ -514,7 +514,7 @@ export function JourneyPlanner({
           <div className="p-3 rounded-2xl bg-[#F0FDF4] border border-[#BBF7D0] flex items-center justify-between">
             <div>
               <div className="text-[9.5px] font-mono uppercase font-bold text-[#15803D]">
-                Primary Charging Stop
+                Main Stop
               </div>
               <div className="font-bold text-[#111312] mt-0.5 truncate max-w-[170px]">
                 {primaryStop ? primaryStop.station.name : "None Selected"}
@@ -530,7 +530,7 @@ export function JourneyPlanner({
           <div className="p-3 rounded-2xl bg-[#EFF6FF] border border-[#BFDBFE] flex items-center justify-between">
             <div>
               <div className="text-[9.5px] font-mono uppercase font-bold text-[#1D4ED8]">
-                Failover Backup Station
+                Backup Stop
               </div>
               <div className="font-bold text-[#111312] mt-0.5 truncate max-w-[170px]">
                 {backupStop ? backupStop.station.name : "None Selected"}
@@ -574,23 +574,23 @@ export function JourneyPlanner({
                         >
                           {stop.isCompatible
                             ? `${activeVehicle.plugType.split(" ")[0]} Compatible`
-                            : "Incompatible Port"}
+                            : "Wrong Plug"}
                         </span>
 
                         {isPrimary && (
                           <span className="text-[9.5px] font-mono font-bold px-2 py-0.5 rounded-md bg-[#15803D] text-white">
-                            PRIMARY
+                            MAIN STOP
                           </span>
                         )}
 
                         {isBackup && (
                           <span className="text-[9.5px] font-mono font-bold px-2 py-0.5 rounded-md bg-[#3B82F6] text-white">
-                            BACKUP FAILOVER
+                            BACKUP STOP
                           </span>
                         )}
 
                         <span className="text-[10px] font-mono text-[#767D78]">
-                          km {stop.distanceAlongRouteKm} along corridor
+                          {stop.distanceAlongRouteKm} km along route
                         </span>
                       </div>
 
@@ -598,7 +598,7 @@ export function JourneyPlanner({
                         {stop.station.name}
                       </h4>
                       <p className="text-[11px] text-[#525854]">
-                        {stop.station.address || stop.station.operator || "Expressway Network Hub"}
+                        {stop.station.address || stop.station.operator || "Highway Charging"}
                       </p>
                     </div>
 
@@ -607,7 +607,7 @@ export function JourneyPlanner({
                         {stop.powerKw} kW DC
                       </div>
                       <div className="text-[9.5px] text-[#767D78] font-mono">
-                        Capped: {stop.effectiveChargingKw} kW
+                        Car max: {stop.effectiveChargingKw} kW
                       </div>
                     </div>
                   </div>
@@ -627,7 +627,7 @@ export function JourneyPlanner({
                       <div className="font-bold text-[#111312] font-mono mt-0.5">
                         ~{stop.arrivalBatteryPct}%
                       </div>
-                      <div className="text-[8.5px] text-[#16A34A]">Pull-in SoC</div>
+                      <div className="text-[8.5px] text-[#16A34A]">On arrival</div>
                     </div>
 
                     <div>
@@ -635,15 +635,15 @@ export function JourneyPlanner({
                       <div className="font-bold text-[#111312] font-mono mt-0.5">
                         ~{stop.estimatedChargeDurationMins}m
                       </div>
-                      <div className="text-[8.5px] text-[#525854]">To 80% SoC</div>
+                      <div className="text-[8.5px] text-[#525854]">To 80%</div>
                     </div>
 
                     <div>
-                      <div className="text-[9px] font-mono text-[#767D78]">Est. Wait</div>
+                      <div className="text-[9px] font-mono text-[#767D78]">Wait Time</div>
                       <div className="font-bold text-[#111312] font-mono mt-0.5">
-                        {stop.estimatedWaitTimeMins > 0 ? `~${stop.estimatedWaitTimeMins}m` : "0m Free"}
+                        {stop.estimatedWaitTimeMins > 0 ? `~${stop.estimatedWaitTimeMins}m` : "No wait"}
                       </div>
-                      <div className="text-[8.5px] text-[#525854]">Bay Queue</div>
+                      <div className="text-[8.5px] text-[#525854]">Estimated wait</div>
                     </div>
                   </div>
 
@@ -660,7 +660,7 @@ export function JourneyPlanner({
                       }`}
                     >
                       {isPrimary ? <CheckCircle2 size={13} /> : null}
-                      <span>{isPrimary ? "Selected as Primary" : "Set as Primary"}</span>
+                      <span>{isPrimary ? "Selected as Main" : "Set as Main"}</span>
                     </button>
 
                     <button
@@ -682,7 +682,7 @@ export function JourneyPlanner({
             })
           ) : (
             <div className="p-5 text-center text-xs text-[#525854] bg-[#FAF9F6] rounded-2xl border border-black/[0.05]">
-              No intermediate charging stops detected within 18 km corridor catchment.
+              No charging stops found within 18 km of this route.
             </div>
           )}
         </div>
@@ -702,7 +702,7 @@ export function JourneyPlanner({
             className="w-full min-h-[52px] py-4 bg-[#111312] text-white text-sm font-bold rounded-2xl flex items-center justify-center gap-2 hover:bg-[#252826] active:scale-[0.99] transition-all shadow-md cursor-pointer focus-visible:outline-2 focus-visible:outline-[#111312]"
           >
             <Navigation size={16} className="text-[#C8F369]" />
-            <span>Engage Neural Guided Navigation</span>
+            <span>Start Navigation</span>
             <ArrowRight size={16} className="text-[#C8F369]" />
           </button>
         </div>

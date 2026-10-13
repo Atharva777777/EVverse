@@ -215,9 +215,9 @@ export default function DriverMobileMap({
         const currentLng = start[1] + (end[1] - start[1]) * navProgress;
 
         const carHtml = `
-          <div style="position:relative;width:32px;height:32px;transform:translate(-16px,-16px);">
-            <div style="width:32px;height:32px;border-radius:50%;background:#151817;border:2.5px solid #C9F36A;box-shadow:0 4px 14px rgba(21,24,23,0.4);display:flex;align-items:center;justify-content:center;">
-              <span style="font-size:14px;line-height:1;">⚡</span>
+          <div style="position:relative;width:28px;height:28px;transform:translate(-14px,-14px);">
+            <div style="width:28px;height:28px;border-radius:50%;background:#151817;border:2.5px solid #C9F36A;box-shadow:0 4px 14px rgba(21,24,23,0.4);display:flex;align-items:center;justify-content:center;">
+              <div style="width:8px;height:8px;border-radius:50%;background:#C9F36A;"></div>
             </div>
           </div>
         `;

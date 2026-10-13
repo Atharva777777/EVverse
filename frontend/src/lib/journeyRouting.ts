@@ -68,7 +68,7 @@ export const REGIONAL_CORRIDOR_DESTINATIONS: Record<string, JourneyDestination[]
   Mumbai: [
     {
       id: "pune-exp",
-      name: "Pune Expressway Superhub",
+      name: "Pune Expressway",
       city: "Mumbai",
       lat: 18.7512,
       lng: 73.4011,
@@ -77,7 +77,7 @@ export const REGIONAL_CORRIDOR_DESTINATIONS: Record<string, JourneyDestination[]
     },
     {
       id: "lonavala-pass",
-      name: "Lonavala Ghat Transit Corridor",
+      name: "Lonavala",
       city: "Mumbai",
       lat: 18.7557,
       lng: 73.4091,
@@ -86,7 +86,7 @@ export const REGIONAL_CORRIDOR_DESTINATIONS: Record<string, JourneyDestination[]
     },
     {
       id: "navi-mumbai-hub",
-      name: "Navi Mumbai Aerocity Corridor",
+      name: "Navi Mumbai",
       city: "Mumbai",
       lat: 19.033,
       lng: 73.0297,
@@ -95,7 +95,7 @@ export const REGIONAL_CORRIDOR_DESTINATIONS: Record<string, JourneyDestination[]
     },
     {
       id: "thane-ghodbunder",
-      name: "Thane - Ghodbunder Bypass",
+      name: "Thane Bypass",
       city: "Mumbai",
       lat: 19.2612,
       lng: 72.9644,
@@ -106,7 +106,7 @@ export const REGIONAL_CORRIDOR_DESTINATIONS: Record<string, JourneyDestination[]
   "San Francisco": [
     {
       id: "silicon-valley",
-      name: "Silicon Valley Tech Corridor (Palo Alto)",
+      name: "Palo Alto",
       city: "San Francisco",
       lat: 37.4419,
       lng: -122.143,
@@ -115,7 +115,7 @@ export const REGIONAL_CORRIDOR_DESTINATIONS: Record<string, JourneyDestination[]
     },
     {
       id: "napa-valley",
-      name: "Napa Valley Destination Corridor",
+      name: "Napa Valley",
       city: "San Francisco",
       lat: 38.2975,
       lng: -122.2869,
@@ -124,7 +124,7 @@ export const REGIONAL_CORRIDOR_DESTINATIONS: Record<string, JourneyDestination[]
     },
     {
       id: "san-jose-hub",
-      name: "San Jose Diridon Supercharger Node",
+      name: "San Jose",
       city: "San Francisco",
       lat: 37.3308,
       lng: -121.9022,
@@ -133,7 +133,7 @@ export const REGIONAL_CORRIDOR_DESTINATIONS: Record<string, JourneyDestination[]
     },
     {
       id: "oakland-loop",
-      name: "Oakland - Berkeley Transit Corridor",
+      name: "Oakland - Berkeley",
       city: "San Francisco",
       lat: 37.8044,
       lng: -122.2712,
@@ -144,7 +144,7 @@ export const REGIONAL_CORRIDOR_DESTINATIONS: Record<string, JourneyDestination[]
   London: [
     {
       id: "m4-tech",
-      name: "M4 Tech Corridor (Reading Superhub)",
+      name: "Reading (M4)",
       city: "London",
       lat: 51.4543,
       lng: -0.9781,
@@ -153,7 +153,7 @@ export const REGIONAL_CORRIDOR_DESTINATIONS: Record<string, JourneyDestination[]
     },
     {
       id: "oxford-express",
-      name: "Oxford Fast Gateway Corridor",
+      name: "Oxford",
       city: "London",
       lat: 51.752,
       lng: -1.2577,
@@ -162,7 +162,7 @@ export const REGIONAL_CORRIDOR_DESTINATIONS: Record<string, JourneyDestination[]
     },
     {
       id: "heathrow-ring",
-      name: "Heathrow Intermodal EV Terminal",
+      name: "Heathrow",
       city: "London",
       lat: 51.47,
       lng: -0.4543,
@@ -173,7 +173,7 @@ export const REGIONAL_CORRIDOR_DESTINATIONS: Record<string, JourneyDestination[]
   Oslo: [
     {
       id: "drammen-corridor",
-      name: "Drammen Fjord Highway Supercharger",
+      name: "Drammen",
       city: "Oslo",
       lat: 59.7441,
       lng: 10.2045,
@@ -182,7 +182,7 @@ export const REGIONAL_CORRIDOR_DESTINATIONS: Record<string, JourneyDestination[]
     },
     {
       id: "lillehammer-north",
-      name: "Lillehammer E6 Nordic Corridor",
+      name: "Lillehammer",
       city: "Oslo",
       lat: 61.1153,
       lng: 10.4662,
@@ -250,7 +250,7 @@ export async function fetchRouteGeometry(
     coordinates: [start, [midLat, midLng], end],
     isFallback: true,
     limitationNotice:
-      "Public OSRM routing gateway timed out. Displaying calibrated geodesic path based on actual highway distance.",
+      "Live map routing was slow. Showing direct estimated distance.",
   };
 }
 
@@ -426,9 +426,9 @@ export async function computeEVJourneyPlan({
   );
   const thermalMins = isLowBuffer ? 18 : 12;
 
-  let aiRecommendation = `Neural Co-Pilot confirms safe transit via ${destination.name}. Projected arrival buffer: ${arrivalBatteryPct}%.`;
+  let aiRecommendation = `You have plenty of battery for your trip to ${destination.name}. Estimated battery on arrival: ~${arrivalBatteryPct}%.`;
   if (isLowBuffer) {
-    aiRecommendation = `Corridor Advisory: Projected arrival reserve is below safe threshold (<15%). AI Optimizer recommends scheduling a pre-conditioned top-up at intermediate stop to maintain thermal health.`;
+    aiRecommendation = `Your battery will be low on arrival (under 15%). We recommend charging at one of the suggested stops along the way.`;
   }
 
   return {
