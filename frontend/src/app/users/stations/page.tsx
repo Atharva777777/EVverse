@@ -8,6 +8,10 @@ import { BrandLogo } from "@/components/BrandLogo";
 import { useLiveData } from "@/hooks/useLiveData";
 import { CITY_CONFIGS } from "@/components/CountryCitySelector";
 import type { LiveStation } from "@/types/api";
+
+export interface DriverStation extends LiveStation {
+  distanceKm?: number;
+}
 import {
   Search,
   Navigation,
@@ -18,7 +22,6 @@ import {
   ArrowRight,
   X,
   Heart,
-  Share2,
   ChevronRight,
   Maximize2,
   Minimize2,
@@ -27,19 +30,13 @@ import {
   SlidersHorizontal,
   Compass,
   RotateCw,
-  Sparkles,
   ShieldCheck,
-  Calendar,
-  Layers,
-  ArrowUpRight,
-  Activity,
+  Thermometer,
+  ExternalLink,
   Lock,
   Unlock,
-  TrendingUp,
-  Gauge,
-  Thermometer,
-  SunMedium,
-  Cpu,
+  AlertCircle,
+  Filter,
 } from "lucide-react";
 
 const DriverMobileMap = dynamic(
@@ -65,7 +62,7 @@ const DriverMobileMap = dynamic(
   }
 );
 
-// Distance helper
+// Distance helper (Haversine formula in km)
 function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number) {
   const R = 6371;
   const dLat = ((lat2 - lat1) * Math.PI) / 180;
@@ -78,8 +75,27 @@ function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number) {
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 
-// Pre-defined vehicle garage models
-const GARAGE_VEHICLES = [
+export interface EVVehicle {
+  id: string;
+  make: string;
+  model: string;
+  year: number;
+  image: string;
+  batteryKwh: number;
+  usableKwh: number;
+  currentBatteryPct: number;
+  wltpRangeKm: number;
+  efficiencyKwh100km: number;
+  maxDcSpeedKw: number;
+  maxAcSpeedKw: number;
+  plugType: string;
+  plugImage: string;
+  vin: string;
+  sohPct: number;
+}
+
+// Real-world production electric vehicles with verified specifications
+const GARAGE_VEHICLES: EVVehicle[] = [
   {
     id: "porsche",
     make: "Porsche",
@@ -87,13 +103,16 @@ const GARAGE_VEHICLES = [
     year: 2025,
     image: "/images/car-porsche.png",
     batteryKwh: 93.4,
+    usableKwh: 83.7,
     currentBatteryPct: 78,
     wltpRangeKm: 504,
-    currentRangeKm: 392,
+    efficiencyKwh100km: 18.6,
     maxDcSpeedKw: 270,
+    maxAcSpeedKw: 22,
     plugType: "CCS2 Combo",
     plugImage: "/images/plug-ccs2.png",
-    accentColor: "#151817",
+    vin: "WP0AB2Y15PSA92811",
+    sohPct: 98.6,
   },
   {
     id: "bmw",
@@ -102,13 +121,16 @@ const GARAGE_VEHICLES = [
     year: 2025,
     image: "/images/car-bmw.png",
     batteryKwh: 101.7,
-    currentBatteryPct: 62,
+    usableKwh: 101.7,
+    currentBatteryPct: 64,
     wltpRangeKm: 625,
-    currentRangeKm: 388,
+    efficiencyKwh100km: 19.6,
     maxDcSpeedKw: 195,
+    maxAcSpeedKw: 22,
     plugType: "CCS2 Combo",
     plugImage: "/images/plug-ccs2.png",
-    accentColor: "#4072b8",
+    vin: "WBA53EJ01PFP88124",
+    sohPct: 99.1,
   },
   {
     id: "mercedes",
@@ -117,13 +139,16 @@ const GARAGE_VEHICLES = [
     year: 2025,
     image: "/images/car-sclass.png",
     batteryKwh: 107.8,
-    currentBatteryPct: 85,
+    usableKwh: 107.8,
+    currentBatteryPct: 82,
     wltpRangeKm: 770,
-    currentRangeKm: 654,
+    efficiencyKwh100km: 17.5,
     maxDcSpeedKw: 200,
+    maxAcSpeedKw: 22,
     plugType: "CCS2 Combo",
     plugImage: "/images/plug-ccs2.png",
-    accentColor: "#151817",
+    vin: "W1K2971231A049921",
+    sohPct: 98.4,
   },
   {
     id: "rangerover",
@@ -132,19 +157,40 @@ const GARAGE_VEHICLES = [
     year: 2026,
     image: "/images/car-rangerover.png",
     batteryKwh: 110.0,
-    currentBatteryPct: 54,
+    usableKwh: 102.0,
+    currentBatteryPct: 52,
     wltpRangeKm: 520,
-    currentRangeKm: 280,
+    efficiencyKwh100km: 23.5,
     maxDcSpeedKw: 220,
+    maxAcSpeedKw: 22,
     plugType: "CCS2 Combo",
     plugImage: "/images/plug-ccs2.png",
-    accentColor: "#151817",
+    vin: "SALWR2V45RA812034",
+    sohPct: 99.4,
+  },
+  {
+    id: "model",
+    make: "Lucid",
+    model: "Air Grand Touring",
+    year: 2025,
+    image: "/images/car-model.png",
+    batteryKwh: 118.0,
+    usableKwh: 112.0,
+    currentBatteryPct: 70,
+    wltpRangeKm: 825,
+    efficiencyKwh100km: 14.8,
+    maxDcSpeedKw: 300,
+    maxAcSpeedKw: 22,
+    plugType: "CCS2 Combo",
+    plugImage: "/images/plug-ccs2.png",
+    vin: "7P1EA1E83PA004128",
+    sohPct: 99.2,
   },
 ];
 
 export default function EVVerseDriverPage() {
-  // Five persistent navigation destinations
-  const [activeTab, setActiveTab] = useState<"home" | "explore" | "journeys" | "charging" | "garage">("explore");
+  // Navigation tabs: Explore (Map), Dashboard (Status), Trips (Planner), Charging (Session), Garage (Fleet)
+  const [activeTab, setActiveTab] = useState<"explore" | "dashboard" | "trips" | "charging" | "garage">("explore");
 
   // Mobile device frame view toggle for desktop users
   const [isPhoneFrame, setIsPhoneFrame] = useState(true);
@@ -153,66 +199,83 @@ export default function EVVerseDriverPage() {
   const [selectedCity, setSelectedCity] = useState("Mumbai");
   const cityConfig = CITY_CONFIGS[selectedCity] || CITY_CONFIGS["Mumbai"];
 
-  // Active Vehicle
+  // Active Vehicle & Driving Modes
   const [activeVehicleId, setActiveVehicleId] = useState("porsche");
   const activeVehicle = GARAGE_VEHICLES.find((v) => v.id === activeVehicleId) || GARAGE_VEHICLES[0];
+  const [currentBatteryPct, setCurrentBatteryPct] = useState(activeVehicle.currentBatteryPct);
+  const [driveMode, setDriveMode] = useState<"normal" | "eco" | "sport">("normal");
+  const [hvacActive, setHvacActive] = useState(true);
+  const [doorsLocked, setDoorsLocked] = useState(true);
+  const [isPreconditioning, setIsPreconditioning] = useState(false);
 
-  // User Location (slightly offset from city centroid)
+  // User Location (centered relative to city)
   const [userLocation, setUserLocation] = useState<[number, number]>([
     cityConfig.lat + 0.008,
     cityConfig.lng - 0.006,
   ]);
 
   // Live stations from backend API
-  const { data: liveData, loading, isLive, stationCount } = useLiveData(selectedCity);
+  const { data: liveData, loading, isLive, stationCount, source } = useLiveData(selectedCity);
 
   // Explore Map State
   const [mapCenter, setMapCenter] = useState<[number, number]>([cityConfig.lat, cityConfig.lng]);
   const [mapZoom, setMapZoom] = useState(13);
-  const [selectedStation, setSelectedStation] = useState<LiveStation | null>(null);
+  const [selectedStation, setSelectedStation] = useState<DriverStation | null>(null);
   const [isStationDetailOpen, setIsStationDetailOpen] = useState(false);
 
-  // Filters
+  // Filters State
   const [searchQuery, setSearchQuery] = useState("");
-  const [filterType, setFilterType] = useState<"all" | "ultra" | "fast" | "available" | "ccs">("all");
-  const [savedStations, setSavedStations] = useState<Set<string>>(new Set());
+  const [speedFilter, setSpeedFilter] = useState<"all" | "ultra" | "fast" | "ac">("all");
+  const [connectorFilter, setConnectorFilter] = useState<string>("all");
+  const [onlyAvailable, setOnlyAvailable] = useState(false);
+  const [onlyCompatible, setOnlyCompatible] = useState(false);
+  const [onlySaved, setOnlySaved] = useState(false);
+  const [savedStationIds, setSavedStationIds] = useState<Set<string>>(new Set());
 
-  // Navigation mode state
-  const [navStation, setNavStation] = useState<LiveStation | null>(null);
-  const [navProgress, setNavProgress] = useState(0.2);
+  // In-app Navigation State
+  const [navStation, setNavStation] = useState<DriverStation | null>(null);
+  const [navProgress, setNavProgress] = useState(0);
   const [isNavigating, setIsNavigating] = useState(false);
   const navIntervalRef = useRef<any>(null);
 
-  // Charging session state
+  // Charging Session State
   const [isCharging, setIsCharging] = useState(false);
-  const [chargeBattery, setChargeBattery] = useState(64);
-  const [energyDelivered, setEnergyDelivered] = useState(18.4);
-  const [chargeCost, setChargeCost] = useState(331.2);
+  const [chargeStation, setChargeStation] = useState<DriverStation | null>(null);
+  const [chargeTargetLimit, setChargeTargetLimit] = useState(80);
+  const [chargeElapsedSeconds, setChargeElapsedSeconds] = useState(0);
+  const [chargeKwhDelivered, setChargeKwhDelivered] = useState(0);
+  const [chargeCurrentKw, setChargeCurrentKw] = useState(0);
+  const [chargeCost, setChargeCost] = useState(0);
+  const [showReceiptModal, setShowReceiptModal] = useState(false);
   const chargeIntervalRef = useRef<any>(null);
 
-  // Neural Co-Pilot state (Range Reality & Stall Reservation)
-  const [rangeMode, setRangeMode] = useState<"reality" | "nominal">("reality");
-  const [isStallReserved, setIsStallReserved] = useState(false);
-  const [reservedStallNumber, setReservedStallNumber] = useState(3);
-  const [reserveTimeLeft, setReserveTimeLeft] = useState(882); // 14 mins 42s
-  const [smart80Cutoff, setSmart80Cutoff] = useState(true);
+  // Trip Energy Planner State
+  const [tripDestIndex, setTripDestIndex] = useState(0);
 
-  // V2G Energy Arbitrage state (Bidirectional Flow)
-  const [chargeMode, setChargeMode] = useState<"charge" | "v2g">("charge");
-  const [v2gDepartureFloor, setV2gDepartureFloor] = useState(75);
-  const [v2gDischargedKwh, setV2gDischargedKwh] = useState(8.2);
-  const [v2gEarnedUsd, setV2gEarnedUsd] = useState(38.4);
-
-  // Neural Energy Synapse & Cell Telemetry state
-  const [synapseFluxMode, setSynapseFluxMode] = useState<"v2g" | "ultra" | "solar">("v2g");
-  const [cellTelemetryOpen, setCellTelemetryOpen] = useState(false);
-  const [preconditionActive, setPreconditionActive] = useState(false);
-  const [smartBarrierState, setSmartBarrierState] = useState<"locked" | "lowering" | "lowered">("locked");
-  const [waypointKm, setWaypointKm] = useState(54);
-
-  // Journey planner state
-  const [journeyDest, setJourneyDest] = useState("Pune Expressway Hub");
-  const [journeyRouteReady, setJourneyRouteReady] = useState(true);
+  // Pre-configured real corridor destinations per city
+  const cityTripDestinations = useMemo(() => {
+    if (selectedCity === "Mumbai") {
+      return [
+        { name: "Pune Expressway Superhub", distanceKm: 118, elevationGainM: 540 },
+        { name: "Lonavala Transit Station", distanceKm: 84, elevationGainM: 620 },
+        { name: "Navi Mumbai Tech Park", distanceKm: 32, elevationGainM: 40 },
+        { name: "Thane Viviana Mall Charger", distanceKm: 28, elevationGainM: 30 },
+      ];
+    }
+    if (selectedCity === "San Francisco") {
+      return [
+        { name: "Silicon Valley Tech Corridor (Palo Alto)", distanceKm: 52, elevationGainM: 80 },
+        { name: "Napa Valley Destination Charger", distanceKm: 88, elevationGainM: 140 },
+        { name: "San Jose Diridon Supercharger", distanceKm: 76, elevationGainM: 60 },
+        { name: "Oakland City Center", distanceKm: 19, elevationGainM: 20 },
+      ];
+    }
+    return [
+      { name: "Metropolitan Airport Hub", distanceKm: 38, elevationGainM: 40 },
+      { name: "Intercity Expressway Node", distanceKm: 92, elevationGainM: 320 },
+      { name: "Downtown Business District", distanceKm: 14, elevationGainM: 20 },
+    ];
+  }, [selectedCity]);
 
   // Synchronize city change
   useEffect(() => {
@@ -224,10 +287,16 @@ export default function EVVerseDriverPage() {
       setIsStationDetailOpen(false);
       setNavStation(null);
       setIsNavigating(false);
+      setTripDestIndex(0);
     }
   }, [selectedCity]);
 
-  // Compute stations with real distance
+  // Update battery percentage when vehicle changes
+  useEffect(() => {
+    setCurrentBatteryPct(activeVehicle.currentBatteryPct);
+  }, [activeVehicleId, activeVehicle.currentBatteryPct]);
+
+  // Compute stations with real Haversine distance from driver
   const stationsWithDistance = useMemo(() => {
     if (!liveData?.stations) return [];
     return liveData.stations.map((st) => ({
@@ -236,33 +305,83 @@ export default function EVVerseDriverPage() {
     }));
   }, [liveData, userLocation]);
 
-  // Filtered stations
+  // Filter stations based on driver inputs
   const filteredStations = useMemo(() => {
     return stationsWithDistance.filter((st) => {
-      if (searchQuery) {
+      // 1. Text Search Filter
+      if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase();
-        const matchName = st.name.toLowerCase().includes(q);
-        const matchOp = st.operator?.toLowerCase().includes(q);
-        if (!matchName && !matchOp) return false;
+        const nameMatch = st.name.toLowerCase().includes(q);
+        const opMatch = (st.operator || "").toLowerCase().includes(q);
+        const addrMatch = (st.address || "").toLowerCase().includes(q);
+        if (!nameMatch && !opMatch && !addrMatch) return false;
       }
-      if (filterType === "ultra") {
+
+      // 2. Power Speed Filter
+      if (speedFilter === "ultra") {
         if (!st.power_kw || st.power_kw < 150) return false;
-      } else if (filterType === "fast") {
-        if (!st.power_kw || st.power_kw < 50) return false;
-      } else if (filterType === "available") {
-        if (!st.is_operational) return false;
-      } else if (filterType === "ccs") {
-        if (!st.connector_types || !st.connector_types.some((c) => c.toLowerCase().includes("ccs"))) return false;
+      } else if (speedFilter === "fast") {
+        if (!st.power_kw || st.power_kw < 50 || st.power_kw >= 150) return false;
+      } else if (speedFilter === "ac") {
+        if (st.power_kw && st.power_kw >= 50) return false;
       }
+
+      // 3. Connector Filter
+      if (connectorFilter !== "all") {
+        if (!st.connector_types || !st.connector_types.some((c) => c.toLowerCase().includes(connectorFilter.toLowerCase()))) {
+          return false;
+        }
+      }
+
+      // 4. Availability Filter
+      if (onlyAvailable && !st.is_operational) {
+        return false;
+      }
+
+      // 5. Vehicle Compatibility Filter
+      if (onlyCompatible) {
+        const carPlug = activeVehicle.plugType.toLowerCase();
+        const hasMatchingPlug = st.connector_types?.some((c) => {
+          const type = c.toLowerCase();
+          if (carPlug.includes("ccs") && type.includes("ccs")) return true;
+          if (carPlug.includes("type 2") && type.includes("type 2")) return true;
+          return false;
+        });
+        if (!hasMatchingPlug) return false;
+      }
+
+      // 6. Only Bookmarked Filter
+      if (onlySaved && !savedStationIds.has(st.station_id)) {
+        return false;
+      }
+
       return true;
     });
-  }, [stationsWithDistance, searchQuery, filterType]);
+  }, [stationsWithDistance, searchQuery, speedFilter, connectorFilter, onlyAvailable, onlyCompatible, onlySaved, savedStationIds, activeVehicle.plugType]);
 
-  // Smooth simulated drive along route
-  const startNavigation = (station: LiveStation) => {
+  // Real-world range calculation based on driving mode and HVAC impact
+  const calculatedRangeKm = useMemo(() => {
+    const modeMultiplier = driveMode === "eco" ? 1.12 : driveMode === "sport" ? 0.86 : 1.0;
+    const hvacMultiplier = hvacActive ? 0.94 : 1.0;
+    const baseRange = (activeVehicle.wltpRangeKm * (currentBatteryPct / 100));
+    return Math.round(baseRange * modeMultiplier * hvacMultiplier);
+  }, [activeVehicle.wltpRangeKm, currentBatteryPct, driveMode, hvacActive]);
+
+  // Toggle favorite saved station
+  const toggleSaveStation = (stationId: string) => {
+    setSavedStationIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(stationId)) next.delete(stationId);
+      else next.add(stationId);
+      return next;
+    });
+  };
+
+  // Launch in-app navigation
+  const startNavigation = (station: DriverStation) => {
     setNavStation(station);
     setIsNavigating(true);
-    setNavProgress(0.05);
+    setNavProgress(0);
     setActiveTab("explore");
     setIsStationDetailOpen(false);
 
@@ -273,63 +392,90 @@ export default function EVVerseDriverPage() {
           clearInterval(navIntervalRef.current);
           return 1;
         }
-        return prev + 0.02;
+        return prev + 0.03;
       });
-    }, 400);
+    }, 500);
   };
 
+  // Cancel in-app navigation
   const cancelNavigation = () => {
     if (navIntervalRef.current) clearInterval(navIntervalRef.current);
     setIsNavigating(false);
-    setNavStation(null);
+    setNavProgress(0);
   };
 
-  // Simulated live charging and V2G tick
+  // Start Charging Session
+  const startChargingSession = (station?: DriverStation) => {
+    const target = station || selectedStation || filteredStations[0];
+    if (!target) return;
+
+    setChargeStation(target);
+    setIsCharging(true);
+    setChargeElapsedSeconds(0);
+    setChargeKwhDelivered(0);
+
+    // Power delivered is min of station max and car max DC rate
+    const maxKw = Math.min(activeVehicle.maxDcSpeedKw, target.power_kw || 150);
+    setChargeCurrentKw(maxKw);
+    setActiveTab("charging");
+  };
+
+  // Stop Charging Session
+  const stopChargingSession = () => {
+    if (chargeIntervalRef.current) clearInterval(chargeIntervalRef.current);
+    setIsCharging(false);
+    setShowReceiptModal(true);
+  };
+
+  // Live Charging Simulation Timer
   useEffect(() => {
     if (isCharging) {
       chargeIntervalRef.current = setInterval(() => {
-        if (chargeMode === "charge") {
-          setChargeBattery((b) => (b < 100 ? b + 1 : 100));
-          setEnergyDelivered((e) => +(e + 0.35).toFixed(1));
-          setChargeCost((c) => +(c + 6.3).toFixed(1));
-        } else {
-          // V2G Bidirectional Arbitrage: Car -> Grid
-          setChargeBattery((b) => (b > v2gDepartureFloor ? b - 1 : b));
-          setV2gDischargedKwh((k) => +(k + 0.3).toFixed(1));
-          setV2gEarnedUsd((u) => +(u + 0.45).toFixed(2));
-        }
-      }, 2500);
+        setChargeElapsedSeconds((sec) => sec + 1);
+
+        // Calculate energy increment per second (kW / 3600)
+        const kw = chargeCurrentKw;
+        const kwhIncrement = kw / 3600 * 1.5; // Slightly accelerated simulation
+
+        setChargeKwhDelivered((prev) => {
+          const nextKwh = +(prev + kwhIncrement).toFixed(2);
+          // Update vehicle battery percentage
+          const pctGain = (kwhIncrement / activeVehicle.usableKwh) * 100;
+          setCurrentBatteryPct((prevPct) => {
+            const nextPct = Math.min(100, Math.round(prevPct + pctGain));
+            if (nextPct >= chargeTargetLimit) {
+              // Target limit reached: gracefully stop session
+              setTimeout(() => stopChargingSession(), 200);
+            }
+            return nextPct;
+          });
+          return nextKwh;
+        });
+
+        // Tariff cost calculation ($0.32 / kWh standard)
+        setChargeCost((prev) => +(prev + kwhIncrement * 0.32).toFixed(2));
+      }, 1000);
     } else {
       if (chargeIntervalRef.current) clearInterval(chargeIntervalRef.current);
     }
+
     return () => {
       if (chargeIntervalRef.current) clearInterval(chargeIntervalRef.current);
     };
-  }, [isCharging, chargeMode, v2gDepartureFloor]);
+  }, [isCharging, chargeCurrentKw, activeVehicle.usableKwh, chargeTargetLimit]);
 
-  // Stall reservation active countdown
-  useEffect(() => {
-    if (!isStallReserved) return;
-    const timer = setInterval(() => {
-      setReserveTimeLeft((prev) => (prev > 0 ? prev - 1 : 0));
-    }, 1000);
-    return () => clearInterval(timer);
-  }, [isStallReserved]);
-
-  const toggleFavorite = (id: string) => {
-    setSavedStations((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
-  };
+  // Trip planner calculations for selected corridor destination
+  const currentTripDest = cityTripDestinations[tripDestIndex] || cityTripDestinations[0];
+  const tripRequiredKwh = +(currentTripDest.distanceKm * (activeVehicle.efficiencyKwh100km / 100) * 1.05).toFixed(1);
+  const tripAvailableKwh = +(activeVehicle.usableKwh * (currentBatteryPct / 100)).toFixed(1);
+  const tripArrivalPct = Math.max(0, Math.round(((tripAvailableKwh - tripRequiredKwh) / activeVehicle.usableKwh) * 100));
+  const tripNeedsChargeStop = tripArrivalPct < 15;
 
   return (
     <div
       style={{
         minHeight: "100vh",
-        background: "#EBECE8",
+        background: "#F1F3EE",
         display: "flex",
         flexDirection: "column",
         alignItems: "center",
@@ -337,19 +483,19 @@ export default function EVVerseDriverPage() {
         fontFamily:
           '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", sans-serif',
         color: "#151817",
-        padding: isPhoneFrame ? "24px 16px" : "0",
+        padding: isPhoneFrame ? "20px 16px" : "0",
       }}
     >
       {/* ── TOP CONTROL BAR (DESKTOP CONTROLS) ────────────────────── */}
       <div
         style={{
-          width: isPhoneFrame ? "420px" : "100%",
+          width: isPhoneFrame ? "414px" : "100%",
           maxWidth: "100%",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
-          marginBottom: "12px",
-          padding: "0 8px",
+          marginBottom: "10px",
+          padding: "0 6px",
         }}
       >
         <Link
@@ -364,35 +510,11 @@ export default function EVVerseDriverPage() {
             fontWeight: 600,
           }}
         >
-          <BrandLogo />
+          <span style={{ fontSize: "16px" }}>←</span>
+          <span>EV Verse Overview</span>
         </Link>
 
-        <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-          {/* Knowledge Hub button */}
-          <Link href="/users/knowledge" style={{ textDecoration: "none" }}>
-            <button
-              type="button"
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "5px",
-                padding: "5px 12px",
-                borderRadius: "999px",
-                border: "1px solid rgba(0, 0, 0, 0.08)",
-                background: "#ffffff",
-                color: "#151817",
-                fontSize: "12px",
-                fontWeight: 600,
-                cursor: "pointer",
-                boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
-              }}
-            >
-              <span>📖</span>
-              <span>EV Knowledge Hub</span>
-            </button>
-          </Link>
-
-          {/* Toggle Device Frame Button */}
+        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
           <button
             onClick={() => setIsPhoneFrame(!isPhoneFrame)}
             style={{
@@ -409,7 +531,7 @@ export default function EVVerseDriverPage() {
               cursor: "pointer",
               boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
             }}
-            title={isPhoneFrame ? "Expand to Full Window" : "View in Phone Frame"}
+            title={isPhoneFrame ? "Expand to Full Window" : "View in Mobile Phone Frame"}
           >
             {isPhoneFrame ? <Maximize2 size={13} /> : <Minimize2 size={13} />}
             <span>{isPhoneFrame ? "Full Width" : "Phone Frame"}</span>
@@ -417,7 +539,7 @@ export default function EVVerseDriverPage() {
         </div>
       </div>
 
-      {/* ── PHONE SHELL CONTAINER ─────────────────────────────────── */}
+      {/* ── MOBILE PHONE SHELL CONTAINER ──────────────────────────── */}
       <div
         style={{
           width: isPhoneFrame ? "414px" : "100%",
@@ -435,7 +557,7 @@ export default function EVVerseDriverPage() {
           border: isPhoneFrame ? "1px solid rgba(255,255,255,0.4)" : "none",
         }}
       >
-        {/* Dynamic Island (Decorative on phone frame) */}
+        {/* Dynamic Island on Phone Frame */}
         {isPhoneFrame && (
           <div
             style={{
@@ -443,11 +565,11 @@ export default function EVVerseDriverPage() {
               top: "11px",
               left: "50%",
               transform: "translateX(-50%)",
-              width: "124px",
+              width: "126px",
               height: "30px",
               background: "#151817",
               borderRadius: "20px",
-              zIndex: 100,
+              zIndex: 1000,
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
@@ -455,15 +577,15 @@ export default function EVVerseDriverPage() {
               color: "#ffffff",
             }}
           >
-            <div style={{ width: "9px", height: "9px", borderRadius: "50%", background: "#C9F36A" }} />
-            <div style={{ fontSize: "10px", fontWeight: 700, color: "#C9F36A", letterSpacing: "0.02em" }}>
-              {isCharging ? `${chargeBattery}% ⚡` : "EV VERSE"}
+            <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: isCharging ? "#10b981" : "#C9F36A" }} />
+            <div style={{ fontSize: "10px", fontWeight: 700, color: "#ffffff", letterSpacing: "0.02em" }}>
+              {isCharging ? `${currentBatteryPct}% ⚡` : isNavigating ? "NAVIGATING" : "EV VERSE"}
             </div>
             <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#33383B" }} />
           </div>
         )}
 
-        {/* ── STATUS BAR ────────────────────────────────────────────── */}
+        {/* ── SYSTEM STATUS BAR ─────────────────────────────────────── */}
         <div
           style={{
             height: "44px",
@@ -474,533 +596,27 @@ export default function EVVerseDriverPage() {
             fontSize: "12px",
             fontWeight: 600,
             color: "#151817",
-            zIndex: 1200,
+            zIndex: 900,
             background: activeTab === "explore" ? "transparent" : "#F7F8F6",
           }}
         >
           <span>9:41</span>
           <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-            <span style={{ fontSize: "11px", fontWeight: 700, color: "#047857" }}>5G</span>
-            <span>100%</span>
+            <span style={{ fontSize: "11px", fontWeight: 700, color: isLive ? "#047857" : "#64748b" }}>
+              {isLive ? "5G LIVE" : "BASELINE"}
+            </span>
+            <span style={{ fontWeight: 700 }}>{currentBatteryPct}%</span>
           </div>
         </div>
 
-        {/* ── MAIN TAB VIEWPORT ─────────────────────────────────────── */}
+        {/* ── TAB VIEWPORT ─────────────────────────────────────────── */}
         <div style={{ flex: 1, position: "relative", overflow: "hidden", display: "flex", flexDirection: "column" }}>
-          
           {/* ══════════════════════════════════════════════════════════
-              TAB 1: NEURAL ENERGY SYNAPSE (CYBERNETIC ENERGY CORE)
-          ══════════════════════════════════════════════════════════ */}
-          {activeTab === "home" && (
-            <div style={{ flex: 1, overflowY: "auto", padding: "14px 18px 88px", display: "flex", flexDirection: "column", gap: "16px" }}>
-              {/* Header with City Selector */}
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <div>
-                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                    <span style={{ fontSize: "10px", fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", color: "#64748b" }}>
-                      EV·OS SYNAPSE
-                    </span>
-                    <span style={{ fontSize: "9.5px", fontWeight: 700, padding: "1px 6px", borderRadius: "999px", background: "#f1f5f9", color: "#334155" }}>
-                      v2026.1
-                    </span>
-                  </div>
-                  <h1 style={{ fontSize: "21px", fontWeight: 700, color: "#0f172a", margin: "2px 0 0", letterSpacing: "-0.02em" }}>
-                    {activeVehicle.make} {activeVehicle.model}
-                  </h1>
-                </div>
-
-                {/* City Picker */}
-                <select
-                  value={selectedCity}
-                  onChange={(e) => setSelectedCity(e.target.value)}
-                  style={{
-                    padding: "5px 11px",
-                    borderRadius: "999px",
-                    border: "1px solid #e2e8f0",
-                    background: "#ffffff",
-                    fontSize: "11.5px",
-                    fontWeight: 600,
-                    color: "#0f172a",
-                    cursor: "pointer",
-                    outline: "none",
-                  }}
-                >
-                  {Object.keys(CITY_CONFIGS).map((city) => (
-                    <option key={city} value={city}>
-                      📍 {city}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* ── LIVING ENERGY SYNAPSE HERO CARD ─────────────────────── */}
-              <div
-                style={{
-                  background: "radial-gradient(120% 120% at 50% 0%, #172033 0%, #0c1017 100%)",
-                  borderRadius: "26px",
-                  border: "1px solid rgba(255, 255, 255, 0.08)",
-                  padding: "20px 18px",
-                  display: "flex",
-                  flexDirection: "column",
-                  alignItems: "center",
-                  gap: "14px",
-                  boxShadow: "0 18px 48px rgba(10, 16, 26, 0.28)",
-                  position: "relative",
-                  overflow: "hidden",
-                }}
-              >
-                {/* Mode Badges Bar */}
-                <div style={{ width: "100%", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                    <div
-                      style={{
-                        width: "8px",
-                        height: "8px",
-                        borderRadius: "50%",
-                        background: synapseFluxMode === "v2g" ? "#38bdf8" : synapseFluxMode === "ultra" ? "#10b981" : "#fbbf24",
-                        boxShadow: `0 0 10px ${synapseFluxMode === "v2g" ? "#38bdf8" : synapseFluxMode === "ultra" ? "#10b981" : "#fbbf24"}`,
-                      }}
-                    />
-                    <span style={{ fontSize: "10.5px", fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase", color: "#94a3b8" }}>
-                      {synapseFluxMode === "v2g" ? "V2G Bidirectional Grid Link" : synapseFluxMode === "ultra" ? "Hyper-DC Flash Ingestion" : "Helios Clean Solar Sync"}
-                    </span>
-                  </div>
-
-                  <span
-                    style={{
-                      fontSize: "10px",
-                      fontWeight: 700,
-                      padding: "2px 8px",
-                      borderRadius: "999px",
-                      background: "rgba(255, 255, 255, 0.1)",
-                      color: "#f8fafc",
-                    }}
-                  >
-                    98.4% SOH
-                  </span>
-                </div>
-
-                {/* Animated Cybernetic Energy Ring */}
-                <div style={{ position: "relative", width: "164px", height: "164px", margin: "4px 0" }}>
-                  <svg width="164" height="164" viewBox="0 0 164 164" style={{ transform: "rotate(-90deg)" }}>
-                    {/* Background Track */}
-                    <circle cx="82" cy="82" r="68" fill="none" stroke="rgba(255, 255, 255, 0.08)" strokeWidth="9" />
-                    {/* Active Glowing Energy Arch */}
-                    <circle
-                      cx="82"
-                      cy="82"
-                      r="68"
-                      fill="none"
-                      stroke={synapseFluxMode === "v2g" ? "#38bdf8" : synapseFluxMode === "ultra" ? "#10b981" : "#fbbf24"}
-                      strokeWidth="9"
-                      strokeDasharray={2 * Math.PI * 68}
-                      strokeDashoffset={2 * Math.PI * 68 * (1 - (isCharging ? chargeBattery : activeVehicle.currentBatteryPct) / 100)}
-                      strokeLinecap="round"
-                      style={{
-                        transition: "all 0.8s ease",
-                        filter: `drop-shadow(0 0 8px ${synapseFluxMode === "v2g" ? "rgba(56,189,248,0.6)" : synapseFluxMode === "ultra" ? "rgba(16,185,129,0.6)" : "rgba(251,191,36,0.6)"})`,
-                      }}
-                    />
-                  </svg>
-
-                  {/* Inner Holographic Readout */}
-                  <div
-                    style={{
-                      position: "absolute",
-                      inset: 0,
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      justifyContent: "center",
-                    }}
-                  >
-                    <span
-                      style={{
-                        fontFamily: "Times New Roman, Georgia, serif",
-                        fontSize: "36px",
-                        fontWeight: 700,
-                        color: "#ffffff",
-                        letterSpacing: "-0.03em",
-                        lineHeight: 1,
-                      }}
-                    >
-                      {isCharging ? chargeBattery : activeVehicle.currentBatteryPct}%
-                    </span>
-                    <span
-                      style={{
-                        fontSize: "11px",
-                        fontWeight: 600,
-                        color: "#94a3b8",
-                        marginTop: "4px",
-                      }}
-                    >
-                      364 km Reality
-                    </span>
-                  </div>
-                </div>
-
-                {/* Live Energy Flux Telemetry Bar */}
-                <div
-                  style={{
-                    width: "100%",
-                    background: "rgba(255, 255, 255, 0.05)",
-                    backdropFilter: "blur(8px)",
-                    borderRadius: "14px",
-                    padding: "8px 12px",
-                    border: "1px solid rgba(255, 255, 255, 0.07)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                  }}
-                >
-                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                    <Zap size={14} color={synapseFluxMode === "v2g" ? "#38bdf8" : synapseFluxMode === "ultra" ? "#10b981" : "#fbbf24"} />
-                    <span style={{ fontSize: "11px", fontWeight: 600, color: "#f8fafc" }}>
-                      {synapseFluxMode === "v2g"
-                        ? "+18.4 kW Export · $0.48/kWh Peak"
-                        : synapseFluxMode === "ultra"
-                        ? "210 kW Ingestion · 28.5°C Optimal"
-                        : "4.8 kW Solar Flow · 100% Clean"}
-                    </span>
-                  </div>
-
-                  <span
-                    style={{
-                      fontSize: "10.5px",
-                      fontWeight: 700,
-                      color: synapseFluxMode === "v2g" ? "#38bdf8" : synapseFluxMode === "ultra" ? "#10b981" : "#fbbf24",
-                    }}
-                  >
-                    {synapseFluxMode === "v2g" ? "+$38.40 USD" : synapseFluxMode === "ultra" ? "+180 km / 10m" : "Zero Cost"}
-                  </span>
-                </div>
-
-                {/* Flux Mode Selector (Quiet Luxury 3-Way Switch) */}
-                <div style={{ width: "100%", display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "6px" }}>
-                  <button
-                    onClick={() => {
-                      setSynapseFluxMode("v2g");
-                      setChargeMode("v2g");
-                    }}
-                    style={{
-                      padding: "7px 4px",
-                      borderRadius: "10px",
-                      border: "none",
-                      background: synapseFluxMode === "v2g" ? "rgba(56, 189, 248, 0.18)" : "rgba(255, 255, 255, 0.06)",
-                      color: synapseFluxMode === "v2g" ? "#38bdf8" : "#94a3b8",
-                      borderWidth: "1px",
-                      borderStyle: "solid",
-                      borderColor: synapseFluxMode === "v2g" ? "#38bdf8" : "transparent",
-                      fontSize: "10.5px",
-                      fontWeight: 600,
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: "4px",
-                      transition: "all 0.15s ease",
-                    }}
-                  >
-                    <span>🔄</span>
-                    <span>V2G Arbitrage</span>
-                  </button>
-
-                  <button
-                    onClick={() => {
-                      setSynapseFluxMode("ultra");
-                      setChargeMode("charge");
-                    }}
-                    style={{
-                      padding: "7px 4px",
-                      borderRadius: "10px",
-                      border: "none",
-                      background: synapseFluxMode === "ultra" ? "rgba(16, 185, 129, 0.18)" : "rgba(255, 255, 255, 0.06)",
-                      color: synapseFluxMode === "ultra" ? "#10b981" : "#94a3b8",
-                      borderWidth: "1px",
-                      borderStyle: "solid",
-                      borderColor: synapseFluxMode === "ultra" ? "#10b981" : "transparent",
-                      fontSize: "10.5px",
-                      fontWeight: 600,
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: "4px",
-                      transition: "all 0.15s ease",
-                    }}
-                  >
-                    <span>⚡</span>
-                    <span>270kW Flash</span>
-                  </button>
-
-                  <button
-                    onClick={() => setSynapseFluxMode("solar")}
-                    style={{
-                      padding: "7px 4px",
-                      borderRadius: "10px",
-                      border: "none",
-                      background: synapseFluxMode === "solar" ? "rgba(251, 191, 36, 0.18)" : "rgba(255, 255, 255, 0.06)",
-                      color: synapseFluxMode === "solar" ? "#fbbf24" : "#94a3b8",
-                      borderWidth: "1px",
-                      borderStyle: "solid",
-                      borderColor: synapseFluxMode === "solar" ? "#fbbf24" : "transparent",
-                      fontSize: "10.5px",
-                      fontWeight: 600,
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: "4px",
-                      transition: "all 0.15s ease",
-                    }}
-                  >
-                    <span>☀️</span>
-                    <span>Helios Solar</span>
-                  </button>
-                </div>
-
-                {/* Passive Yield Financial Ticker */}
-                <div
-                  style={{
-                    width: "100%",
-                    display: "grid",
-                    gridTemplateColumns: "1fr 1fr 1fr",
-                    gap: "8px",
-                    borderTop: "1px solid rgba(255, 255, 255, 0.08)",
-                    paddingTop: "12px",
-                  }}
-                >
-                  <div>
-                    <div style={{ fontSize: "10px", color: "#64748b" }}>Weekly Arbitrage</div>
-                    <div style={{ fontSize: "13px", fontWeight: 700, color: "#38bdf8", marginTop: "1px" }}>
-                      +$42.80 USD
-                    </div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: "10px", color: "#64748b" }}>Departure Floor</div>
-                    <div style={{ fontSize: "13px", fontWeight: 700, color: "#f8fafc", marginTop: "1px" }}>
-                      75% Min Guard
-                    </div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: "10px", color: "#64748b" }}>CO₂ Offset</div>
-                    <div style={{ fontSize: "13px", fontWeight: 700, color: "#10b981", marginTop: "1px" }}>
-                      114 kg Averted
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* ── CELL-LEVEL THERMAL FORENSICS (PILLAR 3 UPGRADE) ─────── */}
-              <div
-                style={{
-                  background: "#ffffff",
-                  borderRadius: "20px",
-                  border: "1px solid #e2e8f0",
-                  padding: "16px",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "12px",
-                  boxShadow: "0 2px 10px rgba(0, 0, 0, 0.02)",
-                }}
-              >
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <div>
-                    <span style={{ fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#64748b" }}>
-                      Battery Chemistry Forensics
-                    </span>
-                    <h3 style={{ fontSize: "15px", fontWeight: 700, color: "#0f172a", margin: "1px 0 0" }}>
-                      Cell Thermal Matrix (396 Cells)
-                    </h3>
-                  </div>
-
-                  <button
-                    onClick={() => setCellTelemetryOpen(!cellTelemetryOpen)}
-                    style={{
-                      background: "#f1f5f9",
-                      border: "none",
-                      padding: "4px 8px",
-                      borderRadius: "6px",
-                      fontSize: "11px",
-                      fontWeight: 600,
-                      color: "#334155",
-                      cursor: "pointer",
-                    }}
-                  >
-                    {cellTelemetryOpen ? "Hide" : "Inspect"}
-                  </button>
-                </div>
-
-                {/* 4 Quick Cell Metric Tiles */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px" }}>
-                  <div style={{ background: "#f8fafc", padding: "10px", borderRadius: "10px", border: "1px solid #f1f5f9" }}>
-                    <div style={{ fontSize: "10.5px", color: "#64748b" }}>Pack Temp</div>
-                    <div style={{ fontSize: "14px", fontWeight: 700, color: "#059669", marginTop: "2px" }}>
-                      24.2°C <span style={{ fontSize: "10px", fontWeight: 500, color: "#64748b" }}>(Optimal)</span>
-                    </div>
-                  </div>
-
-                  <div style={{ background: "#f8fafc", padding: "10px", borderRadius: "10px", border: "1px solid #f1f5f9" }}>
-                    <div style={{ fontSize: "10.5px", color: "#64748b" }}>Dendrite Risk</div>
-                    <div style={{ fontSize: "14px", fontWeight: 700, color: "#059669", marginTop: "2px" }}>
-                      0.00% <span style={{ fontSize: "10px", fontWeight: 500, color: "#64748b" }}>(Zero Stress)</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Expandable Diagnostic Drawer */}
-                {cellTelemetryOpen && (
-                  <div
-                    className="anim-fade-up"
-                    style={{
-                      background: "#f8fafc",
-                      borderRadius: "12px",
-                      padding: "12px",
-                      border: "1px solid #e2e8f0",
-                      fontSize: "11.5px",
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: "6px",
-                    }}
-                  >
-                    <div style={{ display: "flex", justifyContent: "space-between", color: "#475569" }}>
-                      <span>Internal Impedance:</span>
-                      <span style={{ fontWeight: 600, color: "#0f172a" }}>18.4 mΩ (Factory Grade)</span>
-                    </div>
-                    <div style={{ display: "flex", justifyContent: "space-between", color: "#475569" }}>
-                      <span>Equivalent Full Cycles:</span>
-                      <span style={{ fontWeight: 600, color: "#0f172a" }}>242 / 3,000 (8.1% used)</span>
-                    </div>
-                    <div style={{ display: "flex", justifyContent: "space-between", color: "#475569" }}>
-                      <span>State of Health (SOH):</span>
-                      <span style={{ fontWeight: 700, color: "#059669" }}>98.4% (Grade A+)</span>
-                    </div>
-                  </div>
-                )}
-
-                {/* Pre-Conditioning Actuator Button */}
-                <button
-                  onClick={() => setPreconditionActive(!preconditionActive)}
-                  style={{
-                    width: "100%",
-                    padding: "9px 12px",
-                    borderRadius: "10px",
-                    border: "none",
-                    background: preconditionActive ? "rgba(16, 185, 129, 0.12)" : "#0f172a",
-                    color: preconditionActive ? "#047857" : "#ffffff",
-                    fontSize: "12px",
-                    fontWeight: 600,
-                    cursor: "pointer",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    gap: "6px",
-                    transition: "all 0.15s ease",
-                  }}
-                >
-                  {preconditionActive ? (
-                    <>
-                      <CheckCircle2 size={14} />
-                      <span>Thermal Conditioning Active · 28°C Target in 12m</span>
-                    </>
-                  ) : (
-                    <>
-                      <Zap size={14} />
-                      <span>Pre-Condition Pack for 350kW DC Flash</span>
-                    </>
-                  )}
-                </button>
-              </div>
-
-              {/* ── ULTRASONIC STATION DISPATCH RADAR ────────────────────── */}
-              <div>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-                  <h3 style={{ fontSize: "14px", fontWeight: 700, color: "#0f172a", margin: 0 }}>
-                    Ultrasonic Smart Bay Locks · {selectedCity}
-                  </h3>
-                  <button
-                    onClick={() => setActiveTab("explore")}
-                    style={{ background: "none", border: "none", color: "#059669", fontSize: "11.5px", fontWeight: 700, cursor: "pointer" }}
-                  >
-                    View Map ({stationCount}) →
-                  </button>
-                </div>
-
-                <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
-                  {filteredStations.slice(0, 3).map((st, idx) => (
-                    <div
-                      key={st.station_id}
-                      onClick={() => {
-                        setSelectedStation(st);
-                        setMapCenter([st.latitude, st.longitude]);
-                        setIsStationDetailOpen(true);
-                        setActiveTab("explore");
-                      }}
-                      style={{
-                        background: "#ffffff",
-                        borderRadius: "14px",
-                        border: "1px solid #e2e8f0",
-                        padding: "12px 14px",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "space-between",
-                        cursor: "pointer",
-                        transition: "all 0.15s ease",
-                      }}
-                    >
-                      <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                        <div
-                          style={{
-                            width: "34px",
-                            height: "34px",
-                            borderRadius: "10px",
-                            background: idx === 0 ? "rgba(16, 185, 129, 0.12)" : "#f1f5f9",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            color: idx === 0 ? "#059669" : "#0f172a",
-                            fontWeight: 700,
-                            fontSize: "12px",
-                          }}
-                        >
-                          ⚡
-                        </div>
-                        <div>
-                          <div style={{ fontSize: "13.5px", fontWeight: 600, color: "#0f172a" }}>{st.name}</div>
-                          <div style={{ fontSize: "11.5px", color: "#64748b" }}>
-                            {st.distanceKm ? `${st.distanceKm.toFixed(1)} km away` : st.operator || "Public"} · {st.power_kw ? `${st.power_kw} kW` : "Standard"}
-                          </div>
-                        </div>
-                      </div>
-
-                      <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: "2px" }}>
-                        <span
-                          style={{
-                            fontSize: "10px",
-                            fontWeight: 700,
-                            padding: "2px 7px",
-                            borderRadius: "999px",
-                            background: idx === 0 ? "rgba(16, 185, 129, 0.1)" : "rgba(2, 132, 199, 0.1)",
-                            color: idx === 0 ? "#059669" : "#0284c7",
-                          }}
-                        >
-                          {idx === 0 ? "🔒 Stall #03 Locked" : "🟢 4/6 Stalls Free"}
-                        </span>
-                        <span style={{ fontSize: "10.5px", color: "#94a3b8" }}>Proximity Ready</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ══════════════════════════════════════════════════════════
-              TAB 2: EXPLORE (SIGNATURE MAP SCREEN)
+              TAB 1: EXPLORE MAP & CHARGING DIRECTORY
           ══════════════════════════════════════════════════════════ */}
           {activeTab === "explore" && (
             <div style={{ flex: 1, position: "relative", width: "100%", height: "100%" }}>
-              {/* The Full Map Viewport */}
+              {/* Interactive Leaflet Map Viewport */}
               <DriverMobileMap
                 center={mapCenter}
                 zoom={mapZoom}
@@ -1016,14 +632,14 @@ export default function EVVerseDriverPage() {
                 navProgress={navProgress}
               />
 
-              {/* Floating Top Search Bar & Filters */}
+              {/* Floating Top Search & Filters Bar */}
               <div
                 style={{
                   position: "absolute",
                   top: "12px",
                   left: "14px",
                   right: "14px",
-                  zIndex: 1100,
+                  zIndex: 800,
                   display: "flex",
                   flexDirection: "column",
                   gap: "8px",
@@ -1032,116 +648,218 @@ export default function EVVerseDriverPage() {
                 {/* Search Input Box */}
                 <div
                   style={{
-                    background: "rgba(255, 255, 255, 0.95)",
+                    background: "rgba(255, 255, 255, 0.96)",
                     backdropFilter: "blur(20px)",
                     WebkitBackdropFilter: "blur(20px)",
                     borderRadius: "18px",
                     border: "1px solid rgba(0, 0, 0, 0.08)",
-                    padding: "10px 14px",
+                    padding: "9px 14px",
                     display: "flex",
                     alignItems: "center",
                     gap: "10px",
                     boxShadow: "0 6px 20px rgba(0, 0, 0, 0.08)",
                   }}
                 >
-                  <Search size={16} color="#86868b" />
+                  <Search size={16} color="#64748b" />
                   <input
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder={`Search ${selectedCity} chargers…`}
+                    placeholder={`Search ${selectedCity} chargers, operator, street…`}
                     style={{
                       border: "none",
                       outline: "none",
                       background: "transparent",
-                      fontSize: "13px",
+                      fontSize: "12.5px",
                       color: "#151817",
                       flex: 1,
                       fontWeight: 500,
                     }}
                   />
-                  {searchQuery && (
+                  {searchQuery ? (
                     <button
                       onClick={() => setSearchQuery("")}
                       style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}
                     >
-                      <X size={15} color="#86868b" />
+                      <X size={15} color="#64748b" />
                     </button>
+                  ) : (
+                    <select
+                      value={selectedCity}
+                      onChange={(e) => setSelectedCity(e.target.value)}
+                      style={{
+                        border: "none",
+                        background: "#F1F3EE",
+                        borderRadius: "8px",
+                        padding: "3px 6px",
+                        fontSize: "11px",
+                        fontWeight: 600,
+                        color: "#151817",
+                        cursor: "pointer",
+                        outline: "none",
+                      }}
+                    >
+                      {Object.keys(CITY_CONFIGS).map((c) => (
+                        <option key={c} value={c}>{c}</option>
+                      ))}
+                    </select>
                   )}
                 </div>
 
                 {/* Filter Pills */}
-                <div style={{ display: "flex", gap: "6px", overflowX: "auto", paddingBottom: "2px" }}>
-                  {[
-                    { key: "all", label: "All" },
-                    { key: "ultra", label: "⚡ 150kW+ Ultra" },
-                    { key: "fast", label: "⚡ 50kW+ Fast" },
-                    { key: "ccs", label: "🔌 CCS2" },
-                    { key: "available", label: "🟢 Available" },
-                  ].map((f) => (
+                <div style={{ display: "flex", gap: "6px", overflowX: "auto", paddingBottom: "2px", scrollbarWidth: "none" }}>
+                  <button
+                    onClick={() => setSpeedFilter("all")}
+                    style={{
+                      padding: "5px 10px",
+                      borderRadius: "999px",
+                      border: speedFilter === "all" ? "1.5px solid #151817" : "1px solid rgba(0,0,0,0.08)",
+                      background: speedFilter === "all" ? "#151817" : "rgba(255,255,255,0.92)",
+                      color: speedFilter === "all" ? "#C9F36A" : "#151817",
+                      fontSize: "11px",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    All ({stationsWithDistance.length})
+                  </button>
+
+                  <button
+                    onClick={() => setSpeedFilter(speedFilter === "ultra" ? "all" : "ultra")}
+                    style={{
+                      padding: "5px 10px",
+                      borderRadius: "999px",
+                      border: speedFilter === "ultra" ? "1.5px solid #151817" : "1px solid rgba(0,0,0,0.08)",
+                      background: speedFilter === "ultra" ? "#151817" : "rgba(255,255,255,0.92)",
+                      color: speedFilter === "ultra" ? "#C9F36A" : "#151817",
+                      fontSize: "11px",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    ⚡ 150kW+ Ultra
+                  </button>
+
+                  <button
+                    onClick={() => setSpeedFilter(speedFilter === "fast" ? "all" : "fast")}
+                    style={{
+                      padding: "5px 10px",
+                      borderRadius: "999px",
+                      border: speedFilter === "fast" ? "1.5px solid #151817" : "1px solid rgba(0,0,0,0.08)",
+                      background: speedFilter === "fast" ? "#151817" : "rgba(255,255,255,0.92)",
+                      color: speedFilter === "fast" ? "#C9F36A" : "#151817",
+                      fontSize: "11px",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    ⚡ 50kW+ Fast
+                  </button>
+
+                  <button
+                    onClick={() => setOnlyAvailable(!onlyAvailable)}
+                    style={{
+                      padding: "5px 10px",
+                      borderRadius: "999px",
+                      border: onlyAvailable ? "1.5px solid #059669" : "1px solid rgba(0,0,0,0.08)",
+                      background: onlyAvailable ? "#059669" : "rgba(255,255,255,0.92)",
+                      color: onlyAvailable ? "#ffffff" : "#151817",
+                      fontSize: "11px",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    🟢 Available Only
+                  </button>
+
+                  <button
+                    onClick={() => setOnlyCompatible(!onlyCompatible)}
+                    style={{
+                      padding: "5px 10px",
+                      borderRadius: "999px",
+                      border: onlyCompatible ? "1.5px solid #151817" : "1px solid rgba(0,0,0,0.08)",
+                      background: onlyCompatible ? "#151817" : "rgba(255,255,255,0.92)",
+                      color: onlyCompatible ? "#C9F36A" : "#151817",
+                      fontSize: "11px",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      whiteSpace: "nowrap",
+                    }}
+                  >
+                    🔌 Match {activeVehicle.make}
+                  </button>
+
+                  {savedStationIds.size > 0 && (
                     <button
-                      key={f.key}
-                      onClick={() => setFilterType(f.key as any)}
+                      onClick={() => setOnlySaved(!onlySaved)}
                       style={{
-                        padding: "5px 11px",
+                        padding: "5px 10px",
                         borderRadius: "999px",
-                        border: filterType === f.key ? "1.5px solid #151817" : "1px solid rgba(0, 0, 0, 0.08)",
-                        background: filterType === f.key ? "#151817" : "rgba(255, 255, 255, 0.9)",
-                        color: filterType === f.key ? "#C9F36A" : "#151817",
+                        border: onlySaved ? "1.5px solid #ef4444" : "1px solid rgba(0,0,0,0.08)",
+                        background: onlySaved ? "#ef4444" : "rgba(255,255,255,0.92)",
+                        color: onlySaved ? "#ffffff" : "#151817",
                         fontSize: "11px",
                         fontWeight: 700,
                         cursor: "pointer",
                         whiteSpace: "nowrap",
-                        boxShadow: "0 2px 6px rgba(0,0,0,0.04)",
                       }}
                     >
-                      {f.label}
+                      ♥ Saved ({savedStationIds.size})
                     </button>
-                  ))}
+                  )}
                 </div>
               </div>
 
-              {/* Navigation Active Bar Banner */}
+              {/* In-app Navigation HUD Banner */}
               {isNavigating && navStation && (
                 <div
                   style={{
                     position: "absolute",
-                    top: "112px",
+                    top: "108px",
                     left: "14px",
                     right: "14px",
-                    zIndex: 1100,
+                    zIndex: 850,
                     background: "#151817",
-                    color: "#ffffff",
                     borderRadius: "18px",
-                    padding: "12px 16px",
+                    color: "#ffffff",
+                    padding: "14px 16px",
+                    boxShadow: "0 10px 30px rgba(0,0,0,0.3)",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "space-between",
-                    boxShadow: "0 8px 24px rgba(21, 24, 23, 0.3)",
-                    border: "1px solid #C9F36A",
                   }}
                 >
-                  <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                    <Navigation size={18} style={{ color: "#C9F36A" }} />
+                  <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+                    <div style={{ width: "36px", height: "36px", borderRadius: "10px", background: "rgba(201, 243, 106, 0.2)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                      <Navigation size={18} color="#C9F36A" />
+                    </div>
                     <div>
-                      <div style={{ fontSize: "13px", fontWeight: 700, color: "#ffffff" }}>
-                        Navigating to {navStation.name}
+                      <div style={{ fontSize: "11px", color: "#C9F36A", fontWeight: 700 }}>
+                        NAVIGATING TO CHARGER ({Math.round((1 - navProgress) * (navStation.distanceKm || 4.2) * 10) / 10} km)
                       </div>
-                      <div style={{ fontSize: "11px", color: "#C9F36A" }}>
-                        {((1 - navProgress) * 4.2).toFixed(1)} km remaining · Arriving in ~{Math.max(1, Math.round((1 - navProgress) * 9))} min
+                      <div style={{ fontSize: "14px", fontWeight: 700, color: "#ffffff" }}>
+                        {navStation.name}
+                      </div>
+                      <div style={{ fontSize: "11px", color: "#94a3b8" }}>
+                        Arrival SoC: ~{Math.max(10, currentBatteryPct - Math.round(((navStation.distanceKm || 4) / activeVehicle.wltpRangeKm) * 100))}%
                       </div>
                     </div>
                   </div>
+
                   <button
                     onClick={cancelNavigation}
                     style={{
-                      background: "rgba(255,255,255,0.15)",
-                      border: "none",
+                      padding: "6px 12px",
                       borderRadius: "8px",
+                      border: "none",
+                      background: "#ef4444",
                       color: "#ffffff",
-                      fontSize: "11px",
-                      fontWeight: 600,
-                      padding: "4px 8px",
+                      fontSize: "11.5px",
+                      fontWeight: 700,
                       cursor: "pointer",
                     }}
                   >
@@ -1150,29 +868,30 @@ export default function EVVerseDriverPage() {
                 </div>
               )}
 
-              {/* Bottom Station Details Sheet / Preview */}
-              {selectedStation && (
+              {/* Station Detail Bottom Sheet Drawer */}
+              {isStationDetailOpen && selectedStation && (
                 <div
+                  className="anim-fade-up"
                   style={{
                     position: "absolute",
-                    bottom: "76px",
+                    bottom: "12px",
                     left: "12px",
                     right: "12px",
-                    zIndex: 1150,
+                    zIndex: 850,
                     background: "#ffffff",
                     borderRadius: "24px",
                     border: "1px solid #E2E5DF",
                     boxShadow: "0 16px 40px rgba(0, 0, 0, 0.14)",
-                    padding: "18px 20px",
+                    padding: "16px 18px",
                     display: "flex",
                     flexDirection: "column",
-                    gap: "14px",
+                    gap: "12px",
                   }}
                 >
-                  {/* Station Header */}
+                  {/* Header Row */}
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
                     <div>
-                      <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "4px" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "3px" }}>
                         <span
                           style={{
                             fontSize: "10px",
@@ -1183,164 +902,125 @@ export default function EVVerseDriverPage() {
                             color: selectedStation.is_operational ? "#3F6212" : "#991B1B",
                           }}
                         >
-                          {selectedStation.is_operational ? "VERIFIED ONLINE" : "OFFLINE"}
+                          {selectedStation.is_operational ? "VERIFIED OPERATIONAL" : "REPORTED OFFLINE"}
                         </span>
-                        <span style={{ fontSize: "11px", color: "#86868b", fontWeight: 600 }}>
+                        <span style={{ fontSize: "11px", color: "#64748b", fontWeight: 600 }}>
                           {selectedStation.operator || "Public Station"}
                         </span>
                       </div>
-                      <h3 style={{ fontSize: "17px", fontWeight: 700, color: "#151817", margin: 0 }}>
+                      <h3 style={{ fontSize: "16px", fontWeight: 700, color: "#151817", margin: 0 }}>
                         {selectedStation.name}
                       </h3>
-                      <div style={{ fontSize: "12px", color: "#86868b", marginTop: "2px" }}>
+                      <div style={{ fontSize: "11.5px", color: "#64748b", marginTop: "2px" }}>
                         {selectedStation.address || `${selectedCity} Central Hub`}
                       </div>
                     </div>
 
-                    <button
-                      onClick={() => toggleFavorite(selectedStation.station_id)}
-                      style={{
-                        background: "#F7F8F6",
-                        border: "none",
-                        borderRadius: "50%",
-                        width: "34px",
-                        height: "34px",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        cursor: "pointer",
-                      }}
-                    >
-                      <Heart
-                        size={17}
-                        fill={savedStations.has(selectedStation.station_id) ? "#ef4444" : "none"}
-                        color={savedStations.has(selectedStation.station_id) ? "#ef4444" : "#151817"}
-                      />
-                    </button>
-                  </div>
-
-                  {/* Specs Ribbon */}
-                  <div
-                    style={{
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "space-between",
-                      background: "#F7F8F6",
-                      borderRadius: "14px",
-                      padding: "10px 14px",
-                      border: "1px solid #EBECE8",
-                    }}
-                  >
-                    <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                      <div style={{ position: "relative", width: "32px", height: "32px" }}>
-                        <Image src="/images/plug-ccs2.png" alt="CCS2" fill style={{ objectFit: "contain" }} />
-                      </div>
-                      <div>
-                        <div style={{ fontSize: "11px", color: "#86868b", fontWeight: 500 }}>Connector</div>
-                        <div style={{ fontSize: "13px", fontWeight: 700, color: "#151817" }}>
-                          {selectedStation.connector_types?.[0] || "CCS2 Combo"}
-                        </div>
-                      </div>
-                    </div>
-
-                    <div style={{ textAlign: "right" }}>
-                      <div style={{ fontSize: "11px", color: "#86868b", fontWeight: 500 }}>Power Rating</div>
-                      <div style={{ fontSize: "13px", fontWeight: 700, color: "#10b981" }}>
-                        {selectedStation.power_kw ? `${selectedStation.power_kw} kW Ultra` : "Standard DC"}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Ultrasonic Smart Bay Barrier Status */}
-                  <div
-                    style={{
-                      background: "#f8fafc",
-                      borderRadius: "14px",
-                      padding: "10px 12px",
-                      border: "1px solid #e2e8f0",
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: "6px",
-                    }}
-                  >
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                        <Lock size={13} color={smartBarrierState === "lowered" ? "#059669" : "#dc2626"} />
-                        <span style={{ fontSize: "11px", fontWeight: 700, color: "#0f172a" }}>
-                          Stall #03 Ground Barrier Lock
-                        </span>
-                      </div>
-                      <span
+                    <div style={{ display: "flex", gap: "6px" }}>
+                      <button
+                        onClick={() => toggleSaveStation(selectedStation.station_id)}
                         style={{
-                          fontSize: "10px",
-                          fontWeight: 700,
-                          padding: "2px 6px",
-                          borderRadius: "4px",
-                          background: smartBarrierState === "lowered" ? "#edf8de" : "#fee2e2",
-                          color: smartBarrierState === "lowered" ? "#3f6212" : "#991b1b",
+                          background: "#F7F8F6",
+                          border: "none",
+                          borderRadius: "50%",
+                          width: "32px",
+                          height: "32px",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          cursor: "pointer",
                         }}
                       >
-                        {smartBarrierState === "lowered" ? "BARRIER LOWERED" : "BARRIER RAISED"}
-                      </span>
+                        <Heart
+                          size={16}
+                          fill={savedStationIds.has(selectedStation.station_id) ? "#ef4444" : "none"}
+                          color={savedStationIds.has(selectedStation.station_id) ? "#ef4444" : "#151817"}
+                        />
+                      </button>
+
+                      <button
+                        onClick={() => setIsStationDetailOpen(false)}
+                        style={{
+                          background: "#F7F8F6",
+                          border: "none",
+                          borderRadius: "50%",
+                          width: "32px",
+                          height: "32px",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          cursor: "pointer",
+                          color: "#64748b",
+                        }}
+                      >
+                        <X size={16} />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Telemetry Metrics Row */}
+                  <div
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1fr 1fr",
+                      gap: "8px",
+                      background: "#F7F8F6",
+                      borderRadius: "14px",
+                      padding: "10px 12px",
+                      border: "1px solid #EBECE8",
+                      fontSize: "11.5px",
+                    }}
+                  >
+                    <div>
+                      <div style={{ color: "#64748b", fontSize: "10.5px" }}>Distance</div>
+                      <div style={{ fontWeight: 700, color: "#151817" }}>
+                        {selectedStation.distanceKm ? `${selectedStation.distanceKm.toFixed(1)} km` : "Nearby"}
+                      </div>
+                      <div style={{ color: "#64748b", fontSize: "10px" }}>
+                        ~{Math.round((selectedStation.distanceKm || 3) * 2.2)} mins
+                      </div>
                     </div>
 
-                    <div style={{ fontSize: "10.5px", color: "#64748b" }}>
-                      Ultrasonic Radar: Zero ICE vehicle obstruction detected. Physical barrier active.
+                    <div>
+                      <div style={{ color: "#64748b", fontSize: "10.5px" }}>Speed Rating</div>
+                      <div style={{ fontWeight: 700, color: "#059669" }}>
+                        {selectedStation.power_kw ? `${selectedStation.power_kw} kW DC` : "Standard AC"}
+                      </div>
+                      <div style={{ color: "#64748b", fontSize: "10px" }}>
+                        {selectedStation.bays} Bay{selectedStation.bays > 1 ? "s" : ""}
+                      </div>
                     </div>
 
-                    <button
-                      onClick={() => {
-                        if (smartBarrierState === "locked") {
-                          setSmartBarrierState("lowering");
-                          setTimeout(() => setSmartBarrierState("lowered"), 1000);
-                        } else {
-                          setSmartBarrierState("locked");
-                        }
-                      }}
-                      style={{
-                        padding: "6px 10px",
-                        borderRadius: "8px",
-                        border: "1px solid #cbd5e1",
-                        background: "#ffffff",
-                        color: "#0f172a",
-                        fontSize: "11px",
-                        fontWeight: 600,
-                        cursor: "pointer",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        gap: "6px",
-                        transition: "all 0.15s ease",
-                      }}
-                    >
-                      {smartBarrierState === "lowering" ? (
-                        <span>Actuating Hydraulic Barrier…</span>
-                      ) : smartBarrierState === "lowered" ? (
-                        <>
-                          <Lock size={12} />
-                          <span>Raise Physical Ground Barrier</span>
-                        </>
-                      ) : (
-                        <>
-                          <Unlock size={12} />
-                          <span>Drop Ground Barrier on Proximity Arrival</span>
-                        </>
-                      )}
-                    </button>
+                    <div>
+                      <div style={{ color: "#64748b", fontSize: "10.5px" }}>Arrival SoC</div>
+                      <div style={{ fontWeight: 700, color: "#151817" }}>
+                        ~{Math.max(5, currentBatteryPct - Math.round(((selectedStation.distanceKm || 3) / activeVehicle.wltpRangeKm) * 100))}%
+                      </div>
+                      <div style={{ color: "#059669", fontSize: "10px", fontWeight: 600 }}>Safe Range</div>
+                    </div>
+                  </div>
+
+                  {/* Connectors Row */}
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px", fontSize: "11px", color: "#475569" }}>
+                    <span style={{ fontWeight: 600, color: "#151817" }}>Available Connectors:</span>
+                    <span style={{ background: "#F1F5F9", padding: "2px 8px", borderRadius: "6px", fontWeight: 600 }}>
+                      {selectedStation.connector_types && selectedStation.connector_types.length > 0
+                        ? selectedStation.connector_types.join(", ")
+                        : "CCS2 Combo (Standard Fast)"}
+                    </span>
                   </div>
 
                   {/* Action Buttons */}
-                  <div style={{ display: "flex", gap: "10px" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: "8px" }}>
                     <button
                       onClick={() => startNavigation(selectedStation)}
                       style={{
-                        flex: 1,
                         background: "#151817",
                         color: "#C9F36A",
                         border: "none",
-                        borderRadius: "14px",
-                        padding: "12px",
-                        fontSize: "13px",
+                        borderRadius: "12px",
+                        padding: "11px",
+                        fontSize: "12.5px",
                         fontWeight: 700,
                         cursor: "pointer",
                         display: "flex",
@@ -1350,22 +1030,18 @@ export default function EVVerseDriverPage() {
                       }}
                     >
                       <Navigation size={14} />
-                      Start Navigation
+                      <span>Start Navigation</span>
                     </button>
 
                     <button
-                      onClick={() => {
-                        setIsCharging(true);
-                        setActiveTab("charging");
-                      }}
+                      onClick={() => startChargingSession(selectedStation)}
                       style={{
-                        flex: 1,
                         background: "#C9F36A",
                         color: "#151817",
                         border: "none",
-                        borderRadius: "14px",
-                        padding: "12px",
-                        fontSize: "13px",
+                        borderRadius: "12px",
+                        padding: "11px",
+                        fontSize: "12.5px",
                         fontWeight: 700,
                         cursor: "pointer",
                         display: "flex",
@@ -1375,439 +1051,478 @@ export default function EVVerseDriverPage() {
                       }}
                     >
                       <Zap size={14} />
-                      Start Charge
+                      <span>Charge Here</span>
                     </button>
                   </div>
+
+                  {/* External Google Maps Navigation Link */}
+                  <a
+                    href={`https://www.google.com/maps/dir/?api=1&destination=${selectedStation.latitude},${selectedStation.longitude}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    style={{
+                      textAlign: "center",
+                      fontSize: "11px",
+                      color: "#64748b",
+                      textDecoration: "none",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "4px",
+                      paddingTop: "2px",
+                    }}
+                  >
+                    <span>Open in Google Maps</span>
+                    <ExternalLink size={11} />
+                  </a>
                 </div>
               )}
             </div>
           )}
 
           {/* ══════════════════════════════════════════════════════════
-              TAB 3: NEURAL CO-PILOT (RANGE REALITY & STALL RESERVATION)
+              TAB 2: DASHBOARD (VEHICLE TELEMETRY & DRIVING MODES)
           ══════════════════════════════════════════════════════════ */}
-          {activeTab === "journeys" && (
-            <div style={{ flex: 1, overflowY: "auto", padding: "16px 20px 88px", display: "flex", flexDirection: "column", gap: "18px" }}>
-              <div>
-                <span style={{ fontSize: "11px", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#64748b" }}>
-                  NEURAL CO-PILOT · PILLAR 3
-                </span>
-                <h1 style={{ fontSize: "24px", fontWeight: 700, color: "#151817", margin: "2px 0 0" }}>
-                  Energy & Range Forensics
-                </h1>
-              </div>
-
-              {/* Range Reality vs Nominal Switch */}
-              <div
-                style={{
-                  background: "#ffffff",
-                  borderRadius: "20px",
-                  border: "1px solid #E2E5DF",
-                  padding: "16px",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "12px",
-                  boxShadow: "0 2px 8px rgba(0,0,0,0.02)",
-                }}
-              >
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <div style={{ fontSize: "11px", fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>
-                    Battery Range Forensics
-                  </div>
-                  <div style={{ display: "flex", background: "#F1F5F9", borderRadius: "8px", padding: "2px" }}>
-                    <button
-                      onClick={() => setRangeMode("reality")}
-                      style={{
-                        padding: "3px 8px",
-                        borderRadius: "6px",
-                        border: "none",
-                        fontSize: "11px",
-                        fontWeight: 600,
-                        cursor: "pointer",
-                        background: rangeMode === "reality" ? "#0f172a" : "transparent",
-                        color: rangeMode === "reality" ? "#ffffff" : "#64748b",
-                      }}
-                    >
-                      Range Reality
-                    </button>
-                    <button
-                      onClick={() => setRangeMode("nominal")}
-                      style={{
-                        padding: "3px 8px",
-                        borderRadius: "6px",
-                        border: "none",
-                        fontSize: "11px",
-                        fontWeight: 600,
-                        cursor: "pointer",
-                        background: rangeMode === "nominal" ? "#0f172a" : "transparent",
-                        color: rangeMode === "nominal" ? "#ffffff" : "#64748b",
-                      }}
-                    >
-                      WLTP Nominal
-                    </button>
-                  </div>
-                </div>
-
-                {/* Range Numbers */}
-                <div style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
-                  <span style={{ fontSize: "38px", fontWeight: 800, color: "#151817", letterSpacing: "-0.03em" }}>
-                    {rangeMode === "reality" ? "364" : activeVehicle.currentRangeKm}
-                  </span>
-                  <span style={{ fontSize: "16px", fontWeight: 600, color: "#64748b" }}>km</span>
-                  {rangeMode === "reality" && (
-                    <span style={{ fontSize: "11.5px", fontWeight: 600, color: "#059669", marginLeft: "auto" }}>
-                      ● 99.2% Arrival Guarantee
-                    </span>
-                  )}
-                </div>
-
-                {/* Reality Range Deductions Breakdown */}
-                {rangeMode === "reality" && (
-                  <div
-                    style={{
-                      background: "#F8FAFC",
-                      borderRadius: "12px",
-                      padding: "10px 12px",
-                      fontSize: "11.5px",
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: "4px",
-                      border: "1px solid #E2E8F0",
-                    }}
-                  >
-                    <div style={{ display: "flex", justifyContent: "space-between", color: "#64748b" }}>
-                      <span>Terrain Incline (+420m elevation climb):</span>
-                      <span style={{ fontWeight: 600, color: "#dc2626" }}>-18 km</span>
-                    </div>
-                    <div style={{ display: "flex", justifyContent: "space-between", color: "#64748b" }}>
-                      <span>Thermal AC Load (28°C ambient weather):</span>
-                      <span style={{ fontWeight: 600, color: "#dc2626" }}>-10 km</span>
-                    </div>
-                    <div style={{ display: "flex", justifyContent: "space-between", color: "#059669", fontWeight: 600, borderTop: "1px solid #E2E8F0", paddingTop: "4px" }}>
-                      <span>Forensic True Range Buffer:</span>
-                      <span>364 km Confirmed</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Waypoint Gravitational & Kinetic Energy Profile Scrubber */}
-              <div
-                style={{
-                  background: "#ffffff",
-                  borderRadius: "20px",
-                  border: "1px solid #e2e8f0",
-                  padding: "16px",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "10px",
-                  boxShadow: "0 2px 8px rgba(0,0,0,0.02)",
-                }}
-              >
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <div>
-                    <span style={{ fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#64748b" }}>
-                      Gravitational Energy Forensics
-                    </span>
-                    <h3 style={{ fontSize: "14.5px", fontWeight: 700, color: "#0f172a", margin: "1px 0 0" }}>
-                      Mumbai ➔ Pune Expressway Corridor
-                    </h3>
-                  </div>
-                  <span style={{ fontSize: "11px", fontWeight: 700, color: "#059669" }}>
-                    120 km Total
-                  </span>
-                </div>
-
-                {/* Scrubber Slider */}
+          {activeTab === "dashboard" && (
+            <div style={{ flex: 1, overflowY: "auto", padding: "16px 18px 88px", display: "flex", flexDirection: "column", gap: "16px" }}>
+              {/* Header */}
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                 <div>
-                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "#64748b", marginBottom: "4px" }}>
-                    <span>Route Waypoint: <strong style={{ color: "#0f172a" }}>{waypointKm} km</strong></span>
-                    <span>
-                      {waypointKm < 40
-                        ? "Sea Level Coastal Highway"
-                        : waypointKm < 75
-                        ? "▲ Khandala Ghats Peak (+520m)"
-                        : waypointKm < 95
-                        ? "▼ Gravitational Regen Descent"
-                        : "✓ Deccan Plateau Ingress"}
-                    </span>
+                  <div style={{ fontSize: "10.5px", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#64748b" }}>
+                    VEHICLE TELEMETRY
                   </div>
-                  <input
-                    type="range"
-                    min="0"
-                    max="120"
-                    value={waypointKm}
-                    onChange={(e) => setWaypointKm(Number(e.target.value))}
-                    style={{ width: "100%", accentColor: "#0f172a", cursor: "pointer" }}
-                  />
-                </div>
-
-                {/* Waypoint Forensics Result Tile */}
-                {(() => {
-                  let waypointSoc = 78;
-                  let waypointAlt = 14;
-                  let regenHarvest = 0;
-                  if (waypointKm <= 40) {
-                    waypointSoc = Math.round(78 - waypointKm * 0.35);
-                    waypointAlt = Math.round(14 + waypointKm * 2);
-                  } else if (waypointKm <= 75) {
-                    waypointSoc = Math.round(64 - (waypointKm - 40) * 0.45);
-                    waypointAlt = Math.round(94 + (waypointKm - 40) * 12);
-                  } else if (waypointKm <= 95) {
-                    regenHarvest = Math.round((waypointKm - 75) * 0.2);
-                    waypointSoc = Math.round(48 + regenHarvest);
-                    waypointAlt = Math.round(514 - (waypointKm - 75) * 16);
-                  } else {
-                    waypointSoc = Math.round(52 - (waypointKm - 95) * 0.32);
-                    waypointAlt = 560;
-                  }
-
-                  return (
-                    <div style={{ background: "#f8fafc", borderRadius: "12px", padding: "10px 12px", border: "1px solid #e2e8f0", fontSize: "11.5px" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "3px" }}>
-                        <span style={{ color: "#64748b" }}>Projected SOC at {waypointKm} km:</span>
-                        <span style={{ fontWeight: 700, color: "#0f172a" }}>{waypointSoc}% Battery</span>
-                      </div>
-                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "3px" }}>
-                        <span style={{ color: "#64748b" }}>Terrain Altitude:</span>
-                        <span style={{ fontWeight: 600, color: "#475569" }}>{waypointAlt}m Above Sea Level</span>
-                      </div>
-                      <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px solid #e2e8f0", paddingTop: "4px" }}>
-                        <span style={{ color: "#059669", fontWeight: 600 }}>Kinetic Energy Balance:</span>
-                        <span style={{ fontWeight: 700, color: "#059669" }}>
-                          {waypointKm > 75 && waypointKm <= 95 ? `+${regenHarvest} kWh Gravitational Harvest!` : "Nominal Aerodynamic Load"}
-                        </span>
-                      </div>
-                    </div>
-                  );
-                })()}
-              </div>
-
-              {/* Guaranteed Stall Reservation Card */}
-              <div
-                style={{
-                  background: isStallReserved ? "rgba(16, 185, 129, 0.06)" : "#ffffff",
-                  borderRadius: "20px",
-                  border: isStallReserved ? "1.5px solid #059669" : "1px solid #E2E5DF",
-                  padding: "16px",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "12px",
-                  boxShadow: "0 2px 8px rgba(0,0,0,0.02)",
-                }}
-              >
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <div style={{ fontSize: "11px", fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>
-                    Autonomous Stall Reservation
-                  </div>
-                  <span
-                    style={{
-                      fontSize: "10.5px",
-                      fontWeight: 700,
-                      padding: "2px 8px",
-                      borderRadius: "999px",
-                      background: isStallReserved ? "#059669" : "#EDF8DE",
-                      color: isStallReserved ? "#ffffff" : "#3F6212",
-                    }}
-                  >
-                    {isStallReserved ? "RESERVED & LOCKED" : "STALL AVAILABLE"}
-                  </span>
-                </div>
-
-                <div>
-                  <h3 style={{ fontSize: "16px", fontWeight: 700, color: "#151817", margin: 0 }}>
-                    Expressway Superhub · Stall #{reservedStallNumber}
-                  </h3>
-                  <div style={{ fontSize: "12px", color: "#64748b", marginTop: "2px" }}>
-                    350 kW Ultra-Fast CCS2 · Bandra-Worli Transit Corridor
-                  </div>
-                </div>
-
-                {isStallReserved ? (
-                  <div
-                    style={{
-                      background: "#ffffff",
-                      borderRadius: "12px",
-                      padding: "12px",
-                      border: "1px solid #CBD5E1",
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: "8px",
-                    }}
-                  >
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <span style={{ fontSize: "12px", fontWeight: 600, color: "#065f46" }}>
-                        🔒 Physical Barrier Locked for {activeVehicle.model}
-                      </span>
-                      <span style={{ fontSize: "13px", fontWeight: 800, color: "#0f172a" }}>
-                        {Math.floor(reserveTimeLeft / 60)}:{String(reserveTimeLeft % 60).padStart(2, "0")}
-                      </span>
-                    </div>
-                    <div style={{ fontSize: "11px", color: "#64748b" }}>
-                      Stall is reserved exclusively for your vehicle. Unlocks automatically on arrival handshake.
-                    </div>
-                    <button
-                      onClick={() => setIsStallReserved(false)}
-                      style={{
-                        padding: "6px",
-                        borderRadius: "8px",
-                        border: "1px solid #E2E8F0",
-                        background: "#F8FAFC",
-                        color: "#64748b",
-                        fontSize: "11px",
-                        fontWeight: 600,
-                        cursor: "pointer",
-                      }}
-                    >
-                      Release Reservation
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => {
-                      setIsStallReserved(true);
-                      setReserveTimeLeft(900);
-                    }}
-                    style={{
-                      background: "#0f172a",
-                      color: "#ffffff",
-                      border: "none",
-                      borderRadius: "12px",
-                      padding: "12px",
-                      fontSize: "13px",
-                      fontWeight: 700,
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: "6px",
-                      boxShadow: "0 2px 8px rgba(15, 23, 42, 0.15)",
-                    }}
-                  >
-                    <span>🔒 Lock & Hold Stall #{reservedStallNumber} (15 Min Guarantee)</span>
-                  </button>
-                )}
-              </div>
-
-              {/* Battery Longevity & Health Forensics Card */}
-              <div
-                style={{
-                  background: "#ffffff",
-                  borderRadius: "20px",
-                  border: "1px solid #E2E5DF",
-                  padding: "16px",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "10px",
-                }}
-              >
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <div style={{ fontSize: "11px", fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>
-                    Battery Pack Forensics
-                  </div>
-                  <span style={{ fontSize: "11px", fontWeight: 700, color: "#059669" }}>
-                    98.4% SOH (Grade A+)
-                  </span>
-                </div>
-
-                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: "4px" }}>
-                  <div>
-                    <div style={{ fontSize: "13px", fontWeight: 700, color: "#151817" }}>Smart 80% Fast-Charge Cap</div>
-                    <div style={{ fontSize: "11px", color: "#64748b" }}>Preserves cathode life and saves 35m dwell</div>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={smart80Cutoff}
-                    onChange={(e) => setSmart80Cutoff(e.target.checked)}
-                    style={{ width: "18px", height: "18px", accentColor: "#059669", cursor: "pointer" }}
-                  />
-                </div>
-              </div>
-
-              {/* Start Guided Navigation CTA */}
-              <button
-                onClick={() => {
-                  if (filteredStations[0]) startNavigation(filteredStations[0]);
-                }}
-                style={{
-                  background: "#0f172a",
-                  color: "#C9F36A",
-                  border: "none",
-                  borderRadius: "16px",
-                  padding: "15px",
-                  fontSize: "14px",
-                  fontWeight: 700,
-                  cursor: "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: "8px",
-                  boxShadow: "0 4px 16px rgba(0, 0, 0, 0.15)",
-                }}
-              >
-                <Navigation size={16} />
-                <span>Launch Neural Route Navigation</span>
-              </button>
-            </div>
-          )}
-
-          {/* ══════════════════════════════════════════════════════════
-              TAB 4: CHARGING & V2G ENERGY EQUILIBRIUM COCKPIT
-          ══════════════════════════════════════════════════════════ */}
-          {activeTab === "charging" && (
-            <div style={{ flex: 1, overflowY: "auto", padding: "16px 20px 88px", display: "flex", flexDirection: "column", gap: "18px" }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div>
-                  <span style={{ fontSize: "11px", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#64748b" }}>
-                    BIDIRECTIONAL ENERGY COCKPIT · PILLAR 1
-                  </span>
-                  <h1 style={{ fontSize: "24px", fontWeight: 700, color: "#151817", margin: "2px 0 0" }}>
-                    Energy Session
+                  <h1 style={{ fontSize: "22px", fontWeight: 700, color: "#151817", margin: "1px 0 0" }}>
+                    {activeVehicle.make} {activeVehicle.model}
                   </h1>
                 </div>
 
-                {/* Mode Switch: Ultra Charge vs V2G Arbitrage */}
-                <div style={{ display: "flex", background: "#F1F5F9", borderRadius: "8px", padding: "2px" }}>
-                  <button
-                    onClick={() => setChargeMode("charge")}
-                    style={{
-                      padding: "4px 9px",
-                      borderRadius: "6px",
-                      border: "none",
-                      fontSize: "11px",
-                      fontWeight: 600,
-                      cursor: "pointer",
-                      background: chargeMode === "charge" ? "#0f172a" : "transparent",
-                      color: chargeMode === "charge" ? "#ffffff" : "#64748b",
-                    }}
-                  >
-                    ⚡ Fast Charge
-                  </button>
-                  <button
-                    onClick={() => setChargeMode("v2g")}
-                    style={{
-                      padding: "4px 9px",
-                      borderRadius: "6px",
-                      border: "none",
-                      fontSize: "11px",
-                      fontWeight: 600,
-                      cursor: "pointer",
-                      background: chargeMode === "v2g" ? "#059669" : "transparent",
-                      color: chargeMode === "v2g" ? "#ffffff" : "#64748b",
-                    }}
-                  >
-                    🔄 V2G Arbitrage
-                  </button>
-                </div>
+                <button
+                  onClick={() => setActiveTab("garage")}
+                  style={{
+                    background: "#ffffff",
+                    border: "1px solid #E2E5DF",
+                    borderRadius: "999px",
+                    padding: "5px 10px",
+                    fontSize: "11px",
+                    fontWeight: 600,
+                    cursor: "pointer",
+                  }}
+                >
+                  Switch Car →
+                </button>
               </div>
 
-              {/* Progress Wheel Graphic */}
+              {/* Connected Vehicle Visual Card */}
               <div
                 style={{
                   background: "#ffffff",
                   borderRadius: "24px",
                   border: "1px solid #E2E5DF",
-                  padding: "26px 20px",
+                  padding: "18px 20px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "12px",
+                  boxShadow: "0 2px 10px rgba(0, 0, 0, 0.02)",
+                  position: "relative",
+                  overflow: "hidden",
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#10b981" }} />
+                    <span style={{ fontSize: "11px", fontWeight: 700, color: "#065f46" }}>
+                      CONNECTED & ONLINE
+                    </span>
+                  </div>
+
+                  <button
+                    onClick={() => setDoorsLocked(!doorsLocked)}
+                    style={{
+                      background: doorsLocked ? "#F1F5F9" : "#FEE2E2",
+                      color: doorsLocked ? "#334155" : "#991B1B",
+                      border: "none",
+                      padding: "4px 8px",
+                      borderRadius: "6px",
+                      fontSize: "11px",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: "4px",
+                    }}
+                  >
+                    {doorsLocked ? <Lock size={12} /> : <Unlock size={12} />}
+                    <span>{doorsLocked ? "Doors Locked" : "Unlocked"}</span>
+                  </button>
+                </div>
+
+                {/* Car Silhouette */}
+                <div style={{ position: "relative", width: "100%", height: "115px", margin: "-2px 0" }}>
+                  <Image
+                    src={activeVehicle.image}
+                    alt={activeVehicle.model}
+                    fill
+                    sizes="360px"
+                    style={{ objectFit: "contain" }}
+                  />
+                </div>
+
+                {/* Real-time SoC & Range Banner */}
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1.1fr 1fr 1fr",
+                    gap: "8px",
+                    background: "#F7F8F6",
+                    borderRadius: "16px",
+                    padding: "12px 14px",
+                    border: "1px solid #EBECE8",
+                  }}
+                >
+                  <div>
+                    <div style={{ fontSize: "11px", color: "#64748b" }}>Battery Level</div>
+                    <div style={{ fontSize: "20px", fontWeight: 800, color: "#151817", marginTop: "1px" }}>
+                      {currentBatteryPct}%
+                    </div>
+                    <div style={{ fontSize: "10.5px", color: "#059669", fontWeight: 600 }}>
+                      {activeVehicle.sohPct}% Health
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style={{ fontSize: "11px", color: "#64748b" }}>Estimated Range</div>
+                    <div style={{ fontSize: "20px", fontWeight: 800, color: "#151817", marginTop: "1px" }}>
+                      {calculatedRangeKm} km
+                    </div>
+                    <div style={{ fontSize: "10.5px", color: "#64748b" }}>
+                      {driveMode.toUpperCase()} Mode
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style={{ fontSize: "11px", color: "#64748b" }}>Max DC Speed</div>
+                    <div style={{ fontSize: "20px", fontWeight: 800, color: "#151817", marginTop: "1px" }}>
+                      {activeVehicle.maxDcSpeedKw} kW
+                    </div>
+                    <div style={{ fontSize: "10.5px", color: "#64748b" }}>
+                      {activeVehicle.plugType}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Driving Mode Selector (Real-Time Range Adjustment) */}
+              <div
+                style={{
+                  background: "#ffffff",
+                  borderRadius: "20px",
+                  border: "1px solid #E2E5DF",
+                  padding: "16px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "10px",
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <span style={{ fontSize: "11px", fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>
+                    Drive Profile Calibration
+                  </span>
+                  <span style={{ fontSize: "11px", fontWeight: 600, color: "#059669" }}>
+                    Impacts Estimated Range
+                  </span>
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "6px" }}>
+                  {[
+                    { key: "eco", label: "🌱 Eco Range", factor: "+12% Range" },
+                    { key: "normal", label: "⚡ Normal", factor: "Baseline" },
+                    { key: "sport", label: "🏁 Sport", factor: "-14% Range" },
+                  ].map((m) => (
+                    <button
+                      key={m.key}
+                      onClick={() => setDriveMode(m.key as any)}
+                      style={{
+                        padding: "8px 4px",
+                        borderRadius: "10px",
+                        border: driveMode === m.key ? "1.5px solid #151817" : "1px solid #E2E8F0",
+                        background: driveMode === m.key ? "#151817" : "#F8FAFC",
+                        color: driveMode === m.key ? "#C9F36A" : "#334155",
+                        fontSize: "11px",
+                        fontWeight: 700,
+                        cursor: "pointer",
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        gap: "2px",
+                      }}
+                    >
+                      <span>{m.label}</span>
+                      <span style={{ fontSize: "9.5px", opacity: 0.8 }}>{m.factor}</span>
+                    </button>
+                  ))}
+                </div>
+
+                {/* HVAC AC Toggle */}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: "6px", borderTop: "1px solid #F1F5F9" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                    <Thermometer size={14} color="#64748b" />
+                    <span style={{ fontSize: "12px", color: "#334155" }}>Cabin Climate Control (22°C A/C):</span>
+                  </div>
+                  <button
+                    onClick={() => setHvacActive(!hvacActive)}
+                    style={{
+                      padding: "4px 9px",
+                      borderRadius: "6px",
+                      border: "none",
+                      background: hvacActive ? "#EDF8DE" : "#F1F5F9",
+                      color: hvacActive ? "#3F6212" : "#64748b",
+                      fontSize: "11px",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                    }}
+                  >
+                    {hvacActive ? "A/C ACTIVE (-6%)" : "A/C OFF"}
+                  </button>
+                </div>
+              </div>
+
+              {/* Quick Actions Bar */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
+                <button
+                  onClick={() => {
+                    setSpeedFilter("ultra");
+                    setActiveTab("explore");
+                  }}
+                  style={{
+                    background: "#151817",
+                    color: "#ffffff",
+                    borderRadius: "16px",
+                    border: "none",
+                    padding: "14px 12px",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "6px",
+                    cursor: "pointer",
+                    boxShadow: "0 4px 12px rgba(21, 24, 23, 0.15)",
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", width: "100%" }}>
+                    <Zap size={18} color="#C9F36A" />
+                    <span style={{ fontSize: "10px", color: "#C9F36A", fontWeight: 700 }}>FIND FAST</span>
+                  </div>
+                  <div style={{ fontSize: "13px", fontWeight: 700 }}>Locate 150kW+ Hub</div>
+                  <div style={{ fontSize: "11px", color: "#94a3b8" }}>In {selectedCity} area</div>
+                </button>
+
+                <button
+                  onClick={() => setIsPreconditioning(!isPreconditioning)}
+                  style={{
+                    background: "#ffffff",
+                    color: "#151817",
+                    borderRadius: "16px",
+                    border: "1px solid #E2E5DF",
+                    padding: "14px 12px",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: "6px",
+                    cursor: "pointer",
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", width: "100%" }}>
+                    <Thermometer size={18} color={isPreconditioning ? "#059669" : "#64748b"} />
+                    <span style={{ fontSize: "10px", color: isPreconditioning ? "#059669" : "#64748b", fontWeight: 700 }}>
+                      {isPreconditioning ? "ACTIVE" : "STANDBY"}
+                    </span>
+                  </div>
+                  <div style={{ fontSize: "13px", fontWeight: 700 }}>Battery Conditioning</div>
+                  <div style={{ fontSize: "11px", color: "#64748b" }}>
+                    {isPreconditioning ? "Target 28°C in progress" : "Pre-heat for DC Fast"}
+                  </div>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* ══════════════════════════════════════════════════════════
+              TAB 3: TRIP PLANNER & ROUTE ENERGY FORENSICS
+          ══════════════════════════════════════════════════════════ */}
+          {activeTab === "trips" && (
+            <div style={{ flex: 1, overflowY: "auto", padding: "16px 18px 88px", display: "flex", flexDirection: "column", gap: "16px" }}>
+              <div>
+                <div style={{ fontSize: "10.5px", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#64748b" }}>
+                  ENERGY FORENSICS
+                </div>
+                <h1 style={{ fontSize: "22px", fontWeight: 700, color: "#151817", margin: "1px 0 0" }}>
+                  Route Energy Planner
+                </h1>
+              </div>
+
+              {/* Destination Selector */}
+              <div
+                style={{
+                  background: "#ffffff",
+                  borderRadius: "20px",
+                  border: "1px solid #E2E5DF",
+                  padding: "16px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "10px",
+                }}
+              >
+                <div style={{ fontSize: "11px", fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>
+                  Select Corridor Destination ({selectedCity})
+                </div>
+
+                <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                  {cityTripDestinations.map((d, idx) => (
+                    <div
+                      key={d.name}
+                      onClick={() => setTripDestIndex(idx)}
+                      style={{
+                        padding: "10px 12px",
+                        borderRadius: "12px",
+                        border: tripDestIndex === idx ? "1.5px solid #151817" : "1px solid #E2E8F0",
+                        background: tripDestIndex === idx ? "#F8FAFC" : "#ffffff",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "space-between",
+                      }}
+                    >
+                      <div>
+                        <div style={{ fontSize: "13px", fontWeight: 700, color: "#151817" }}>{d.name}</div>
+                        <div style={{ fontSize: "11px", color: "#64748b" }}>
+                          +{d.elevationGainM}m elevation climb
+                        </div>
+                      </div>
+                      <span style={{ fontSize: "12.5px", fontWeight: 700, color: "#059669" }}>
+                        {d.distanceKm} km
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Energy Feasibility Outcome Box */}
+              <div
+                style={{
+                  background: tripNeedsChargeStop ? "#FFFBEB" : "#F0FDF4",
+                  borderRadius: "20px",
+                  border: tripNeedsChargeStop ? "1px solid #FDE68A" : "1px solid #BBF7D0",
+                  padding: "16px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "10px",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                  {tripNeedsChargeStop ? (
+                    <AlertCircle size={18} color="#D97706" />
+                  ) : (
+                    <CheckCircle2 size={18} color="#059669" />
+                  )}
+                  <h3 style={{ fontSize: "14px", fontWeight: 700, color: tripNeedsChargeStop ? "#92400E" : "#166534", margin: 0 }}>
+                    {tripNeedsChargeStop
+                      ? "Charging Stop Required along Route"
+                      : "Route Feasible without Intermediate Stop"}
+                  </h3>
+                </div>
+
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr 1fr",
+                    gap: "8px",
+                    background: "#ffffff",
+                    borderRadius: "12px",
+                    padding: "10px 12px",
+                    border: "1px solid rgba(0,0,0,0.06)",
+                    fontSize: "11.5px",
+                  }}
+                >
+                  <div>
+                    <div style={{ color: "#64748b", fontSize: "10.5px" }}>Energy Required</div>
+                    <div style={{ fontSize: "15px", fontWeight: 700, color: "#151817" }}>
+                      {tripRequiredKwh} kWh
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style={{ color: "#64748b", fontSize: "10.5px" }}>Available in Pack</div>
+                    <div style={{ fontSize: "15px", fontWeight: 700, color: "#151817" }}>
+                      {tripAvailableKwh} kWh
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style={{ color: "#64748b", fontSize: "10.5px" }}>Arrival SoC</div>
+                    <div
+                      style={{
+                        fontSize: "15px",
+                        fontWeight: 700,
+                        color: tripNeedsChargeStop ? "#D97706" : "#059669",
+                      }}
+                    >
+                      ~{tripArrivalPct}%
+                    </div>
+                  </div>
+                </div>
+
+                <div style={{ fontSize: "11.5px", color: tripNeedsChargeStop ? "#92400E" : "#166534" }}>
+                  {tripNeedsChargeStop
+                    ? `Projected arrival buffer is under 15%. Recommend a 15-minute quick charge at ${filteredStations[0]?.name || "Corridor Superhub"}.`
+                    : `Calculated with 5% weather/elevation margin. You will arrive with approximately ${tripArrivalPct}% battery remaining.`}
+                </div>
+              </div>
+
+              {/* Action Button */}
+              <button
+                onClick={() => {
+                  if (filteredStations[0]) startNavigation(filteredStations[0]);
+                }}
+                style={{
+                  background: "#151817",
+                  color: "#C9F36A",
+                  border: "none",
+                  borderRadius: "14px",
+                  padding: "13px",
+                  fontSize: "13px",
+                  fontWeight: 700,
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: "6px",
+                  boxShadow: "0 4px 14px rgba(21, 24, 23, 0.15)",
+                }}
+              >
+                <Navigation size={15} />
+                <span>Navigate Corridor Route</span>
+              </button>
+            </div>
+          )}
+
+          {/* ══════════════════════════════════════════════════════════
+              TAB 4: CHARGING SESSION CONTROLLER
+          ══════════════════════════════════════════════════════════ */}
+          {activeTab === "charging" && (
+            <div style={{ flex: 1, overflowY: "auto", padding: "16px 18px 88px", display: "flex", flexDirection: "column", gap: "16px" }}>
+              <div>
+                <div style={{ fontSize: "10.5px", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#64748b" }}>
+                  SESSION MANAGER
+                </div>
+                <h1 style={{ fontSize: "22px", fontWeight: 700, color: "#151817", margin: "1px 0 0" }}>
+                  {isCharging ? "Charging Session Active" : "Charging Standby"}
+                </h1>
+              </div>
+
+              {/* Progress Wheel Display */}
+              <div
+                style={{
+                  background: "#ffffff",
+                  borderRadius: "24px",
+                  border: "1px solid #E2E5DF",
+                  padding: "24px 20px",
                   display: "flex",
                   flexDirection: "column",
                   alignItems: "center",
@@ -1818,18 +1533,18 @@ export default function EVVerseDriverPage() {
               >
                 <div style={{ position: "relative", width: "160px", height: "160px" }}>
                   <svg width="160" height="160" viewBox="0 0 160 160">
-                    <circle cx="85" cy="85" r="66" fill="none" stroke="#EBECE8" strokeWidth="11" />
+                    <circle cx="80" cy="80" r="66" fill="none" stroke="#EBECE8" strokeWidth="11" />
                     <circle
-                      cx="85"
-                      cy="85"
+                      cx="80"
+                      cy="80"
                       r="66"
                       fill="none"
-                      stroke={chargeMode === "v2g" ? "#059669" : "#C9F36A"}
+                      stroke={isCharging ? "#10b981" : "#151817"}
                       strokeWidth="11"
                       strokeDasharray={2 * Math.PI * 66}
-                      strokeDashoffset={2 * Math.PI * 66 * (1 - chargeBattery / 100)}
+                      strokeDashoffset={2 * Math.PI * 66 * (1 - currentBatteryPct / 100)}
                       strokeLinecap="round"
-                      transform="rotate(-90 85 85)"
+                      transform="rotate(-90 80 80)"
                       style={{ transition: "stroke-dashoffset 0.8s ease" }}
                     />
                   </svg>
@@ -1844,111 +1559,87 @@ export default function EVVerseDriverPage() {
                       justifyContent: "center",
                     }}
                   >
-                    <span style={{ fontSize: "34px", fontWeight: 800, color: "#151817", letterSpacing: "-0.03em" }}>
-                      {chargeBattery}%
+                    <span style={{ fontSize: "36px", fontWeight: 800, color: "#151817", letterSpacing: "-0.03em" }}>
+                      {currentBatteryPct}%
                     </span>
-                    <span style={{ fontSize: "11px", fontWeight: 700, color: chargeMode === "v2g" ? "#059669" : "#047857" }}>
-                      {chargeMode === "v2g" ? "🔄 Feeding Grid" : isCharging ? "+120 km / 10 min" : "Connected"}
+                    <span style={{ fontSize: "11px", fontWeight: 700, color: isCharging ? "#059669" : "#64748b" }}>
+                      {isCharging ? `${chargeCurrentKw} kW Active` : "Standby / Ready"}
                     </span>
                   </div>
                 </div>
 
-                {/* Telemetry Grid */}
+                {/* Live Session Telemetry Grid */}
                 <div
                   style={{
                     width: "100%",
                     display: "grid",
                     gridTemplateColumns: "1fr 1fr",
-                    gap: "12px",
+                    gap: "10px",
                     borderTop: "1px solid #EBECE8",
-                    paddingTop: "14px",
+                    paddingTop: "12px",
                   }}
                 >
-                  {chargeMode === "v2g" ? (
-                    <>
-                      <div>
-                        <div style={{ fontSize: "11px", color: "#64748b", fontWeight: 500 }}>Discharged to Grid</div>
-                        <div style={{ fontSize: "17px", fontWeight: 700, color: "#0f172a" }}>
-                          {v2gDischargedKwh} kWh
-                        </div>
-                      </div>
-                      <div>
-                        <div style={{ fontSize: "11px", color: "#64748b", fontWeight: 500 }}>Grid Spot Rate</div>
-                        <div style={{ fontSize: "17px", fontWeight: 700, color: "#059669" }}>
-                          $0.48 / kWh
-                        </div>
-                      </div>
-                      <div>
-                        <div style={{ fontSize: "11px", color: "#64748b", fontWeight: 500 }}>Arbitrage Earned</div>
-                        <div style={{ fontSize: "17px", fontWeight: 700, color: "#059669" }}>
-                          +${v2gEarnedUsd.toFixed(2)}
-                        </div>
-                      </div>
-                      <div>
-                        <div style={{ fontSize: "11px", color: "#64748b", fontWeight: 500 }}>Departure Reserve</div>
-                        <div style={{ fontSize: "17px", fontWeight: 700, color: "#0f172a" }}>
-                          {v2gDepartureFloor}% Floor
-                        </div>
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      <div>
-                        <div style={{ fontSize: "11px", color: "#64748b", fontWeight: 500 }}>Delivered Energy</div>
-                        <div style={{ fontSize: "17px", fontWeight: 700, color: "#151817" }}>
-                          {energyDelivered} kWh
-                        </div>
-                      </div>
-                      <div>
-                        <div style={{ fontSize: "11px", color: "#64748b", fontWeight: 500 }}>Charging Rate</div>
-                        <div style={{ fontSize: "17px", fontWeight: 700, color: "#10b981" }}>
-                          {isCharging ? "150 kW DC" : "0 kW"}
-                        </div>
-                      </div>
-                      <div>
-                        <div style={{ fontSize: "11px", color: "#64748b", fontWeight: 500 }}>Session Cost</div>
-                        <div style={{ fontSize: "17px", fontWeight: 700, color: "#151817" }}>
-                          ${(chargeCost * 0.012).toFixed(2)}
-                        </div>
-                      </div>
-                      <div>
-                        <div style={{ fontSize: "11px", color: "#64748b", fontWeight: 500 }}>Time to 80%</div>
-                        <div style={{ fontSize: "17px", fontWeight: 700, color: "#151817" }}>
-                          {isCharging ? "12 mins" : "—"}
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </div>
-
-                {/* V2G Minimum Departure Buffer Slider */}
-                {chargeMode === "v2g" && (
-                  <div style={{ width: "100%", background: "#F8FAFC", borderRadius: "12px", padding: "10px 12px", border: "1px solid #E2E8F0" }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11.5px", marginBottom: "4px" }}>
-                      <span style={{ color: "#64748b" }}>Minimum Departure Reserve Floor:</span>
-                      <span style={{ fontWeight: 700, color: "#0f172a" }}>{v2gDepartureFloor}%</span>
-                    </div>
-                    <input
-                      type="range"
-                      min="50"
-                      max="90"
-                      value={v2gDepartureFloor}
-                      onChange={(e) => setV2gDepartureFloor(Number(e.target.value))}
-                      style={{ width: "100%", accentColor: "#059669", cursor: "pointer" }}
-                    />
-                    <div style={{ fontSize: "10.5px", color: "#64748b", marginTop: "2px" }}>
-                      System halts discharge automatically if battery reaches {v2gDepartureFloor}%.
+                  <div>
+                    <div style={{ fontSize: "11px", color: "#64748b" }}>Energy Delivered</div>
+                    <div style={{ fontSize: "17px", fontWeight: 700, color: "#151817" }}>
+                      {chargeKwhDelivered} kWh
                     </div>
                   </div>
-                )}
 
-                {/* Toggle Charging / Arbitrage Button */}
+                  <div>
+                    <div style={{ fontSize: "11px", color: "#64748b" }}>Charging Rate</div>
+                    <div style={{ fontSize: "17px", fontWeight: 700, color: isCharging ? "#059669" : "#151817" }}>
+                      {isCharging ? `${chargeCurrentKw} kW` : "0 kW"}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style={{ fontSize: "11px", color: "#64748b" }}>Session Cost</div>
+                    <div style={{ fontSize: "17px", fontWeight: 700, color: "#151817" }}>
+                      ${chargeCost.toFixed(2)}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div style={{ fontSize: "11px", color: "#64748b" }}>Time to Limit ({chargeTargetLimit}%)</div>
+                    <div style={{ fontSize: "17px", fontWeight: 700, color: "#151817" }}>
+                      {isCharging
+                        ? `${Math.max(1, Math.round(((chargeTargetLimit - currentBatteryPct) * activeVehicle.usableKwh / 100) / (chargeCurrentKw / 60)))} mins`
+                        : "—"}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Target Charge Limit Slider */}
+                <div style={{ width: "100%", background: "#F8FAFC", borderRadius: "12px", padding: "10px 12px", border: "1px solid #E2E8F0" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11.5px", marginBottom: "4px" }}>
+                    <span style={{ color: "#64748b" }}>Target Charge Limit:</span>
+                    <span style={{ fontWeight: 700, color: "#151817" }}>{chargeTargetLimit}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="50"
+                    max="100"
+                    step="5"
+                    value={chargeTargetLimit}
+                    onChange={(e) => setChargeTargetLimit(Number(e.target.value))}
+                    style={{ width: "100%", accentColor: "#059669", cursor: "pointer" }}
+                  />
+                  <div style={{ fontSize: "10.5px", color: "#059669", marginTop: "2px", fontWeight: 600 }}>
+                    80% limit recommended for daily battery cathode preservation.
+                  </div>
+                </div>
+
+                {/* Session Start / Stop Button */}
                 <button
-                  onClick={() => setIsCharging(!isCharging)}
+                  onClick={() => {
+                    if (isCharging) stopChargingSession();
+                    else startChargingSession();
+                  }}
                   style={{
                     width: "100%",
-                    background: isCharging ? "#FEE2E2" : chargeMode === "v2g" ? "#059669" : "#0f172a",
-                    color: isCharging ? "#991B1B" : "#ffffff",
+                    background: isCharging ? "#FEE2E2" : "#151817",
+                    color: isCharging ? "#991B1B" : "#C9F36A",
                     border: "none",
                     borderRadius: "14px",
                     padding: "13px",
@@ -1962,79 +1653,11 @@ export default function EVVerseDriverPage() {
                   }}
                 >
                   <Zap size={15} />
-                  {isCharging
-                    ? "Halt Active Session"
-                    : chargeMode === "v2g"
-                    ? "Activate V2G Grid Dispatch"
-                    : "Start 350kW Fast Charge"}
+                  <span>{isCharging ? "Stop Charging Session" : `Start ${activeVehicle.maxDcSpeedKw}kW Fast Charge`}</span>
                 </button>
               </div>
 
-              {/* Wholesale Electricity Spot Price Curve & Arbitrage Scheduler */}
-              <div
-                style={{
-                  background: "#ffffff",
-                  borderRadius: "20px",
-                  border: "1px solid #e2e8f0",
-                  padding: "16px",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "10px",
-                  boxShadow: "0 2px 8px rgba(0,0,0,0.02)",
-                }}
-              >
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <div>
-                    <span style={{ fontSize: "10px", fontWeight: 700, textTransform: "uppercase", letterSpacing: "0.06em", color: "#64748b" }}>
-                      Grid Spot Price Arbitrage
-                    </span>
-                    <h3 style={{ fontSize: "14.5px", fontWeight: 700, color: "#0f172a", margin: "1px 0 0" }}>
-                      24-Hour Municipal Power Tariff
-                    </h3>
-                  </div>
-                  <span style={{ fontSize: "11px", fontWeight: 700, color: "#059669" }}>
-                    +$0.40/kWh Spread
-                  </span>
-                </div>
-
-                {/* Micro Price Bar Visualizer */}
-                <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr)", gap: "4px", alignItems: "flex-end", height: "48px", paddingTop: "8px" }}>
-                  {[
-                    { time: "02:00", price: "$0.08", h: "20%", isLow: true },
-                    { time: "06:00", price: "$0.14", h: "35%", isLow: true },
-                    { time: "11:00", price: "$0.22", h: "50%", isLow: false },
-                    { time: "15:00", price: "$0.31", h: "70%", isLow: false },
-                    { time: "19:00", price: "$0.48", h: "100%", isPeak: true },
-                    { time: "23:00", price: "$0.16", h: "40%", isLow: false },
-                  ].map((p) => (
-                    <div key={p.time} style={{ display: "flex", flexDirection: "column", alignItems: "center", height: "100%", justifyContent: "flex-end" }}>
-                      <div
-                        style={{
-                          width: "100%",
-                          height: p.h,
-                          borderRadius: "4px",
-                          background: p.isPeak ? "#059669" : p.isLow ? "#38bdf8" : "#cbd5e1",
-                          transition: "height 0.3s ease",
-                        }}
-                      />
-                      <span style={{ fontSize: "9px", color: "#64748b", marginTop: "3px" }}>{p.time}</span>
-                    </div>
-                  ))}
-                </div>
-
-                <div style={{ background: "#f8fafc", borderRadius: "10px", padding: "8px 10px", fontSize: "11px", color: "#475569", border: "1px solid #f1f5f9" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
-                    <span>⚡ Autonomous Buy Cycle:</span>
-                    <span style={{ fontWeight: 600, color: "#0284c7" }}>02:00–05:00 ($0.08/kWh off-peak wind)</span>
-                  </div>
-                  <div style={{ display: "flex", justifyContent: "space-between", marginTop: "2px" }}>
-                    <span>🔄 Autonomous Sell Back:</span>
-                    <span style={{ fontWeight: 600, color: "#059669" }}>18:30–20:30 ($0.48/kWh peak grid export)</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Verified Hardware Handshake Card */}
+              {/* Station Connected Status */}
               <div
                 style={{
                   background: "#ffffff",
@@ -2047,218 +1670,153 @@ export default function EVVerseDriverPage() {
                 }}
               >
                 <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                  <div style={{ position: "relative", width: "36px", height: "36px" }}>
+                  <div style={{ position: "relative", width: "32px", height: "32px" }}>
                     <Image src="/images/plug-ccs2.png" alt="CCS2" fill style={{ objectFit: "contain" }} />
                   </div>
                   <div>
-                    <div style={{ fontSize: "13px", fontWeight: 700, color: "#151817" }}>CCS2 Bidirectional Handshake</div>
-                    <div style={{ fontSize: "11px", color: "#64748b" }}>ISO 15118-20 Verified · 800V Architecture</div>
+                    <div style={{ fontSize: "13px", fontWeight: 700, color: "#151817" }}>
+                      {chargeStation ? chargeStation.name : `${selectedCity} Supercharger`}
+                    </div>
+                    <div style={{ fontSize: "11px", color: "#64748b" }}>
+                      {activeVehicle.plugType} · 800V Architecture Handshake
+                    </div>
                   </div>
                 </div>
+
                 <span style={{ fontSize: "10.5px", fontWeight: 700, color: "#059669", background: "rgba(5, 150, 105, 0.1)", padding: "3px 8px", borderRadius: "99px" }}>
-                  SYNCED
+                  READY
                 </span>
               </div>
             </div>
           )}
 
           {/* ══════════════════════════════════════════════════════════
-              TAB 5: GARAGE (VEHICLE PROFILES)
+              TAB 5: GARAGE & VEHICLE FLEET MANAGEMENT
           ══════════════════════════════════════════════════════════ */}
           {activeTab === "garage" && (
-            <div style={{ flex: 1, overflowY: "auto", padding: "16px 20px 88px", display: "flex", flexDirection: "column", gap: "20px" }}>
+            <div style={{ flex: 1, overflowY: "auto", padding: "16px 18px 88px", display: "flex", flexDirection: "column", gap: "16px" }}>
               <div>
-                <span style={{ fontSize: "11px", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#86868b" }}>
-                  DIGITAL VEHICLE HUB
-                </span>
-                <h1 style={{ fontSize: "24px", fontWeight: 700, color: "#151817", margin: "2px 0 0" }}>
-                  Vehicle Garage
+                <div style={{ fontSize: "10.5px", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#64748b" }}>
+                  VEHICLE FLEET
+                </div>
+                <h1 style={{ fontSize: "22px", fontWeight: 700, color: "#151817", margin: "1px 0 0" }}>
+                  Driver Garage
                 </h1>
               </div>
 
-              {/* Select Active Car */}
-              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-                {GARAGE_VEHICLES.map((veh) => {
-                  const isActive = veh.id === activeVehicleId;
+              {/* Car Selection Cards */}
+              <div style={{ display: "flex", flexDirection: "column", gap: "10px" }}>
+                {GARAGE_VEHICLES.map((v) => {
+                  const isCurrent = v.id === activeVehicleId;
                   return (
                     <div
-                      key={veh.id}
-                      onClick={() => setActiveVehicleId(veh.id)}
+                      key={v.id}
+                      onClick={() => setActiveVehicleId(v.id)}
                       style={{
                         background: "#ffffff",
-                        borderRadius: "22px",
-                        border: isActive ? "2px solid #151817" : "1px solid #E2E5DF",
-                        padding: "18px 20px",
+                        borderRadius: "20px",
+                        border: isCurrent ? "2px solid #151817" : "1px solid #E2E5DF",
+                        padding: "16px",
                         display: "flex",
                         flexDirection: "column",
-                        gap: "10px",
+                        gap: "8px",
                         cursor: "pointer",
-                        boxShadow: isActive ? "0 8px 24px rgba(0,0,0,0.06)" : "none",
-                        transition: "all 0.2s ease",
+                        boxShadow: isCurrent ? "0 4px 16px rgba(0,0,0,0.06)" : "none",
+                        transition: "all 0.15s ease",
                       }}
                     >
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                         <div>
-                          <div style={{ fontSize: "16px", fontWeight: 700, color: "#151817" }}>
-                            {veh.make} {veh.model}
+                          <div style={{ fontSize: "15px", fontWeight: 700, color: "#151817" }}>
+                            {v.make} {v.model}
                           </div>
-                          <div style={{ fontSize: "12px", color: "#86868b" }}>
-                            {veh.year} · {veh.batteryKwh} kWh Pack · {veh.maxDcSpeedKw} kW Max DC
+                          <div style={{ fontSize: "11px", color: "#64748b" }}>
+                            {v.year} · {v.batteryKwh} kWh Pack · {v.maxDcSpeedKw} kW Max DC
                           </div>
                         </div>
 
-                        {isActive && (
-                          <span
-                            style={{
-                              background: "#C9F36A",
-                              color: "#151817",
-                              fontSize: "11px",
-                              fontWeight: 700,
-                              padding: "3px 9px",
-                              borderRadius: "999px",
-                            }}
-                          >
-                            ACTIVE
+                        {isCurrent && (
+                          <span style={{ fontSize: "10.5px", fontWeight: 700, background: "#151817", color: "#C9F36A", padding: "3px 8px", borderRadius: "999px" }}>
+                            ACTIVE CAR
                           </span>
                         )}
                       </div>
 
-                      {/* Transparent Vehicle Silhouette */}
-                      <div style={{ position: "relative", width: "100%", height: "100px", margin: "-4px 0" }}>
-                        <Image src={veh.image} alt={veh.model} fill sizes="340px" style={{ objectFit: "contain" }} />
+                      <div style={{ position: "relative", width: "100%", height: "90px", margin: "-2px 0" }}>
+                        <Image src={v.image} alt={v.model} fill sizes="340px" style={{ objectFit: "contain" }} />
                       </div>
 
-                      {/* Vehicle Key Metrics */}
-                      <div
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          fontSize: "12px",
-                          borderTop: "1px solid #EBECE8",
-                          paddingTop: "10px",
-                          color: "#6e6e73",
-                        }}
-                      >
-                        <span>WLTP Range: {veh.wltpRangeKm} km</span>
-                        <span>Connector: {veh.plugType}</span>
+                      <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11px", color: "#64748b", borderTop: "1px solid #F1F5F9", paddingTop: "8px" }}>
+                        <span>WLTP Range: <strong>{v.wltpRangeKm} km</strong></span>
+                        <span>Plug: <strong>{v.plugType}</strong></span>
+                        <span>SOH: <strong style={{ color: "#059669" }}>{v.sohPct}%</strong></span>
                       </div>
                     </div>
                   );
                 })}
               </div>
 
-              {/* Connector Compatibility Reference */}
+              {/* Active Vehicle Hardware Forensics Card */}
               <div
                 style={{
                   background: "#ffffff",
                   borderRadius: "20px",
                   border: "1px solid #E2E5DF",
-                  padding: "18px",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "12px",
-                }}
-              >
-                <h3 style={{ fontSize: "14px", fontWeight: 700, color: "#151817", margin: 0 }}>
-                  Supported Standards
-                </h3>
-
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "#F7F8F6", padding: "10px", borderRadius: "12px" }}>
-                    <div style={{ position: "relative", width: "28px", height: "28px" }}>
-                      <Image src="/images/plug-ccs2.png" alt="CCS2" fill style={{ objectFit: "contain" }} />
-                    </div>
-                    <div>
-                      <div style={{ fontSize: "12px", fontWeight: 700 }}>CCS2 DC</div>
-                      <div style={{ fontSize: "10px", color: "#86868b" }}>Up to 350 kW</div>
-                    </div>
-                  </div>
-
-                  <div style={{ display: "flex", alignItems: "center", gap: "8px", background: "#F7F8F6", padding: "10px", borderRadius: "12px" }}>
-                    <div style={{ position: "relative", width: "28px", height: "28px" }}>
-                      <Image src="/images/plug-type2.png" alt="Type 2" fill style={{ objectFit: "contain" }} />
-                    </div>
-                    <div>
-                      <div style={{ fontSize: "12px", fontWeight: 700 }}>Type 2 AC</div>
-                      <div style={{ fontSize: "10px", color: "#86868b" }}>Up to 22 kW</div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* ISO 15118 Cryptographic Plug & Charge Card */}
-              <div
-                style={{
-                  background: "#ffffff",
-                  borderRadius: "20px",
-                  border: "1px solid #e2e8f0",
                   padding: "16px",
                   display: "flex",
                   flexDirection: "column",
-                  gap: "6px",
-                  fontSize: "11.5px",
+                  gap: "10px",
                 }}
               >
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                    <ShieldCheck size={14} color="#059669" />
-                    <span style={{ fontWeight: 700, color: "#0f172a" }}>ISO 15118 Cryptographic Identity</span>
-                  </div>
-                  <span style={{ fontSize: "10px", fontWeight: 700, color: "#059669", background: "rgba(16, 185, 129, 0.1)", padding: "2px 6px", borderRadius: "4px" }}>
-                    AUTHENTICATED
-                  </span>
+                <div style={{ fontSize: "11px", fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>
+                  Active Vehicle Specifications
                 </div>
 
-                <div style={{ color: "#64748b" }}>
-                  Public Key: <span style={{ fontFamily: "monospace", color: "#0f172a" }}>0x892a…4f1b</span> · Automated Plug & Charge handshake active across all EV Verse superhubs. Zero apps or cards required.
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", fontSize: "11.5px" }}>
+                  <div style={{ background: "#F8FAFC", padding: "8px 10px", borderRadius: "10px" }}>
+                    <div style={{ color: "#64748b", fontSize: "10.5px" }}>VIN Number</div>
+                    <div style={{ fontWeight: 600, color: "#151817", fontFamily: "monospace", fontSize: "11px" }}>{activeVehicle.vin}</div>
+                  </div>
+                  <div style={{ background: "#F8FAFC", padding: "8px 10px", borderRadius: "10px" }}>
+                    <div style={{ color: "#64748b", fontSize: "10.5px" }}>Battery Health</div>
+                    <div style={{ fontWeight: 700, color: "#059669" }}>{activeVehicle.sohPct}% (Grade A+)</div>
+                  </div>
+                  <div style={{ background: "#F8FAFC", padding: "8px 10px", borderRadius: "10px" }}>
+                    <div style={{ color: "#64748b", fontSize: "10.5px" }}>Usable Capacity</div>
+                    <div style={{ fontWeight: 600, color: "#151817" }}>{activeVehicle.usableKwh} kWh</div>
+                  </div>
+                  <div style={{ background: "#F8FAFC", padding: "8px 10px", borderRadius: "10px" }}>
+                    <div style={{ color: "#64748b", fontSize: "10.5px" }}>Avg Efficiency</div>
+                    <div style={{ fontWeight: 600, color: "#151817" }}>{activeVehicle.efficiencyKwh100km} kWh/100km</div>
+                  </div>
                 </div>
               </div>
             </div>
           )}
         </div>
 
-        {/* ── PERSISTENT BOTTOM NAVIGATION (5 TABS) ────────────────── */}
+        {/* ── PERSISTENT BOTTOM NAVIGATION BAR (5 TABS) ─────────────── */}
         <nav
           style={{
-            height: "72px",
-            background: "rgba(255, 255, 255, 0.95)",
-            backdropFilter: "blur(24px) saturate(180%)",
-            WebkitBackdropFilter: "blur(24px) saturate(180%)",
+            height: "68px",
+            background: "rgba(255, 255, 255, 0.96)",
+            backdropFilter: "blur(20px)",
+            WebkitBackdropFilter: "blur(20px)",
             borderTop: "1px solid rgba(0, 0, 0, 0.08)",
             display: "grid",
             gridTemplateColumns: "repeat(5, 1fr)",
             alignItems: "center",
-            padding: "0 8px 6px",
-            zIndex: 1200,
+            padding: "0 6px 4px",
+            zIndex: 950,
           }}
         >
-          {/* Tab 1: Synapse */}
-          <button
-            onClick={() => setActiveTab("home")}
-            style={{
-              background: "none",
-              border: "none",
-              color: activeTab === "home" ? "#0f172a" : "#64748b",
-              cursor: "pointer",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              gap: "3px",
-              padding: "6px",
-              transition: "all 0.15s ease",
-            }}
-          >
-            <Activity size={19} strokeWidth={activeTab === "home" ? 2.5 : 1.8} color={activeTab === "home" ? "#0f172a" : "#64748b"} />
-            <span style={{ fontSize: "10px", fontWeight: activeTab === "home" ? 700 : 500 }}>Synapse</span>
-          </button>
-
-          {/* Tab 2: Perimeter */}
+          {/* Tab 1: Explore Map */}
           <button
             onClick={() => setActiveTab("explore")}
             style={{
               background: "none",
               border: "none",
-              color: activeTab === "explore" ? "#0f172a" : "#64748b",
+              color: activeTab === "explore" ? "#151817" : "#86868b",
               cursor: "pointer",
               display: "flex",
               flexDirection: "column",
@@ -2268,17 +1826,17 @@ export default function EVVerseDriverPage() {
               transition: "all 0.15s ease",
             }}
           >
-            <MapPin size={19} strokeWidth={activeTab === "explore" ? 2.5 : 1.8} color={activeTab === "explore" ? "#0f172a" : "#64748b"} />
-            <span style={{ fontSize: "10px", fontWeight: activeTab === "explore" ? 700 : 500 }}>Perimeter</span>
+            <MapPin size={19} strokeWidth={activeTab === "explore" ? 2.5 : 1.8} color={activeTab === "explore" ? "#151817" : "#86868b"} />
+            <span style={{ fontSize: "10px", fontWeight: activeTab === "explore" ? 700 : 500 }}>Map</span>
           </button>
 
-          {/* Tab 3: Horizon */}
+          {/* Tab 2: Dashboard */}
           <button
-            onClick={() => setActiveTab("journeys")}
+            onClick={() => setActiveTab("dashboard")}
             style={{
               background: "none",
               border: "none",
-              color: activeTab === "journeys" ? "#0f172a" : "#64748b",
+              color: activeTab === "dashboard" ? "#151817" : "#86868b",
               cursor: "pointer",
               display: "flex",
               flexDirection: "column",
@@ -2288,17 +1846,37 @@ export default function EVVerseDriverPage() {
               transition: "all 0.15s ease",
             }}
           >
-            <Navigation size={19} strokeWidth={activeTab === "journeys" ? 2.5 : 1.8} color={activeTab === "journeys" ? "#0f172a" : "#64748b"} />
-            <span style={{ fontSize: "10px", fontWeight: activeTab === "journeys" ? 700 : 500 }}>Horizon</span>
+            <Compass size={19} strokeWidth={activeTab === "dashboard" ? 2.5 : 1.8} color={activeTab === "dashboard" ? "#151817" : "#86868b"} />
+            <span style={{ fontSize: "10px", fontWeight: activeTab === "dashboard" ? 700 : 500 }}>Vehicle</span>
           </button>
 
-          {/* Tab 4: Arbitrage */}
+          {/* Tab 3: Trip Planner */}
+          <button
+            onClick={() => setActiveTab("trips")}
+            style={{
+              background: "none",
+              border: "none",
+              color: activeTab === "trips" ? "#151817" : "#86868b",
+              cursor: "pointer",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              gap: "3px",
+              padding: "6px",
+              transition: "all 0.15s ease",
+            }}
+          >
+            <Navigation size={19} strokeWidth={activeTab === "trips" ? 2.5 : 1.8} color={activeTab === "trips" ? "#151817" : "#86868b"} />
+            <span style={{ fontSize: "10px", fontWeight: activeTab === "trips" ? 700 : 500 }}>Planner</span>
+          </button>
+
+          {/* Tab 4: Charging Session */}
           <button
             onClick={() => setActiveTab("charging")}
             style={{
               background: "none",
               border: "none",
-              color: activeTab === "charging" ? "#0f172a" : "#64748b",
+              color: activeTab === "charging" ? "#151817" : "#86868b",
               cursor: "pointer",
               display: "flex",
               flexDirection: "column",
@@ -2309,8 +1887,8 @@ export default function EVVerseDriverPage() {
               transition: "all 0.15s ease",
             }}
           >
-            <Zap size={19} strokeWidth={activeTab === "charging" ? 2.5 : 1.8} color={activeTab === "charging" ? "#059669" : "#64748b"} />
-            <span style={{ fontSize: "10px", fontWeight: activeTab === "charging" ? 700 : 500 }}>Arbitrage</span>
+            <Zap size={19} strokeWidth={activeTab === "charging" ? 2.5 : 1.8} color={activeTab === "charging" ? "#059669" : "#86868b"} />
+            <span style={{ fontSize: "10px", fontWeight: activeTab === "charging" ? 700 : 500 }}>Charge</span>
             {isCharging && (
               <span
                 style={{
@@ -2333,7 +1911,7 @@ export default function EVVerseDriverPage() {
             style={{
               background: "none",
               border: "none",
-              color: activeTab === "garage" ? "#0f172a" : "#64748b",
+              color: activeTab === "garage" ? "#151817" : "#86868b",
               cursor: "pointer",
               display: "flex",
               flexDirection: "column",
@@ -2343,11 +1921,90 @@ export default function EVVerseDriverPage() {
               transition: "all 0.15s ease",
             }}
           >
-            <Car size={19} strokeWidth={activeTab === "garage" ? 2.5 : 1.8} color={activeTab === "garage" ? "#0f172a" : "#64748b"} />
+            <Car size={19} strokeWidth={activeTab === "garage" ? 2.5 : 1.8} color={activeTab === "garage" ? "#151817" : "#86868b"} />
             <span style={{ fontSize: "10px", fontWeight: activeTab === "garage" ? 700 : 500 }}>Garage</span>
           </button>
         </nav>
       </div>
+
+      {/* ── CHARGE SESSION RECEIPT MODAL ───────────────────────────── */}
+      {showReceiptModal && (
+        <div
+          style={{
+            position: "fixed",
+            inset: 0,
+            zIndex: 2000,
+            background: "rgba(0, 0, 0, 0.5)",
+            backdropFilter: "blur(8px)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            padding: "20px",
+          }}
+          onClick={() => setShowReceiptModal(false)}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              background: "#ffffff",
+              borderRadius: "24px",
+              padding: "24px",
+              maxWidth: "360px",
+              width: "100%",
+              display: "flex",
+              flexDirection: "column",
+              gap: "14px",
+              boxShadow: "0 20px 50px rgba(0,0,0,0.2)",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: "#DCFCE7", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                <CheckCircle2 size={18} color="#166534" />
+              </div>
+              <div>
+                <h3 style={{ fontSize: "16px", fontWeight: 700, margin: 0 }}>Charging Session Summary</h3>
+                <div style={{ fontSize: "11px", color: "#64748b" }}>Completed at {chargeStation?.name || "EV Verse Fast Hub"}</div>
+              </div>
+            </div>
+
+            <div style={{ background: "#F8FAFC", borderRadius: "14px", padding: "12px", border: "1px solid #E2E8F0", fontSize: "12px", display: "flex", flexDirection: "column", gap: "6px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span style={{ color: "#64748b" }}>Final Battery Level:</span>
+                <span style={{ fontWeight: 700, color: "#059669" }}>{currentBatteryPct}%</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span style={{ color: "#64748b" }}>Energy Transferred:</span>
+                <span style={{ fontWeight: 700 }}>{chargeKwhDelivered} kWh</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between" }}>
+                <span style={{ color: "#64748b" }}>Session Duration:</span>
+                <span style={{ fontWeight: 700 }}>{Math.floor(chargeElapsedSeconds / 60)}m {chargeElapsedSeconds % 60}s</span>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px solid #E2E8F0", paddingTop: "6px" }}>
+                <span style={{ fontWeight: 700 }}>Total Billed Cost:</span>
+                <span style={{ fontWeight: 800, color: "#151817" }}>${chargeCost.toFixed(2)}</span>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setShowReceiptModal(false)}
+              style={{
+                width: "100%",
+                padding: "12px",
+                borderRadius: "12px",
+                border: "none",
+                background: "#151817",
+                color: "#ffffff",
+                fontSize: "13px",
+                fontWeight: 700,
+                cursor: "pointer",
+              }}
+            >
+              Done
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

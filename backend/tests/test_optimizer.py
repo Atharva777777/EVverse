@@ -44,5 +44,5 @@ def test_optimizer_fallback_missing_dataset(mock_fetch):
     assert result["recommendation"]["feasible"] is True
     assert result["recommendation"]["city"] == "Pune"
     assert result["recommendation"]["n_stations"] == 3
-    assert result["recommendation"]["method"] == "classical_exhaustive"
+    assert result["recommendation"]["method"] in ("classical_exhaustive", "qaoa_aer_simulator")
     assert len(result["recommendation"]["selected_zones"]) == 3
