@@ -12,7 +12,7 @@ import type { LiveStation } from "@/types/api";
 // Driver Mobile Components
 import { DriverNav, DriverTab } from "@/components/driver/DriverNav";
 import { VehicleCockpit, EVVehicle } from "@/components/driver/VehicleCockpit";
-import { JourneyPlanner, TripDestination } from "@/components/driver/JourneyPlanner";
+import { JourneyPlanner } from "@/components/driver/JourneyPlanner";
 import { ChargingConsole } from "@/components/driver/ChargingConsole";
 import { GarageFleet } from "@/components/driver/GarageFleet";
 import {
@@ -168,33 +168,6 @@ export default function EVVerseDriverPage() {
   const [showReceiptModal, setShowReceiptModal] = useState(false);
   const chargeIntervalRef = useRef<any>(null);
 
-  // Trip Energy Planner State
-  const [tripDestIndex, setTripDestIndex] = useState(0);
-
-  // Pre-configured real corridor destinations per city
-  const cityTripDestinations = useMemo<TripDestination[]>(() => {
-    if (selectedCity === "Mumbai") {
-      return [
-        { name: "Pune Expressway Superhub", distanceKm: 118, elevationGainM: 540 },
-        { name: "Lonavala Transit Station", distanceKm: 84, elevationGainM: 620 },
-        { name: "Navi Mumbai Tech Park", distanceKm: 32, elevationGainM: 40 },
-        { name: "Thane Viviana Mall Charger", distanceKm: 28, elevationGainM: 30 },
-      ];
-    }
-    if (selectedCity === "San Francisco") {
-      return [
-        { name: "Silicon Valley Tech Corridor (Palo Alto)", distanceKm: 52, elevationGainM: 80 },
-        { name: "Napa Valley Destination Charger", distanceKm: 88, elevationGainM: 140 },
-        { name: "San Jose Diridon Supercharger", distanceKm: 76, elevationGainM: 60 },
-        { name: "Oakland City Center", distanceKm: 19, elevationGainM: 20 },
-      ];
-    }
-    return [
-      { name: "Metropolitan Airport Hub", distanceKm: 38, elevationGainM: 40 },
-      { name: "Intercity Expressway Node", distanceKm: 92, elevationGainM: 320 },
-      { name: "Downtown Business District", distanceKm: 14, elevationGainM: 20 },
-    ];
-  }, [selectedCity]);
 
   // Hydrate vehicles & preferences from storage adapter on mount
   useEffect(() => {
@@ -1063,30 +1036,34 @@ export default function EVVerseDriverPage() {
           {activeTab === "journeys" && (
             <div className="p-4 flex-1">
               <JourneyPlanner
-                destinations={cityTripDestinations}
-                selectedDestIndex={tripDestIndex}
-                onSelectDestIndex={setTripDestIndex}
                 activeVehicle={activeVehicle}
                 currentBatteryPct={currentBatteryPct}
-                onStartTripNavigation={(dest) => {
-                  // Synthesize corridor target location
-                  const destStation: DriverStation = {
-                    station_id: `CORRIDOR-${dest.name.replace(/\s+/g, "-")}`,
-                    name: dest.name,
-                    latitude: cityConfig.lat + (dest.distanceKm / 111) * 0.7,
-                    longitude: cityConfig.lng + (dest.distanceKm / 111) * 0.7,
-                    address: `${dest.name} Corridor, ${selectedCity}`,
-                    operator: "QuantEV Superhub Network",
-                    status: "Operational",
-                    is_operational: true,
-                    power_kw: 250,
-                    bays: 8,
-                    connector_types: ["CCS2", "Type 2"],
-                    usage_cost: "$0.28/kWh",
-                    source: "kaggle_baseline",
-                    distanceKm: dest.distanceKm,
-                  };
-                  startNavigation(destStation);
+                candidateStations={liveData?.stations || []}
+                userLocation={userLocation}
+                selectedCity={selectedCity}
+                onStartTripNavigation={({ name, latitude, longitude, primaryStation }) => {
+                  const targetStation: DriverStation = primaryStation
+                    ? {
+                        ...primaryStation,
+                        distanceKm: haversineKm(userLocation[0], userLocation[1], primaryStation.latitude, primaryStation.longitude),
+                      }
+                    : {
+                        station_id: `CORRIDOR-${name.replace(/\s+/g, "-")}`,
+                        name,
+                        latitude,
+                        longitude,
+                        address: `${name} Transit Corridor, ${selectedCity}`,
+                        operator: "QuantEV Superhub Network",
+                        status: "Operational",
+                        is_operational: true,
+                        power_kw: 250,
+                        bays: 8,
+                        connector_types: [activeVehicle.plugType, "CCS2 Combo", "Type 2"],
+                        usage_cost: "$0.28/kWh",
+                        source: "open_charge_map",
+                        distanceKm: haversineKm(userLocation[0], userLocation[1], latitude, longitude),
+                      };
+                  startNavigation(targetStation);
                 }}
               />
             </div>
