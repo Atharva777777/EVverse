@@ -59,6 +59,20 @@ export function DriverNav({
               aria-label={tab.label}
               id={`driver-tab-${tab.id}`}
               onClick={() => onTabChange(tab.id)}
+              onKeyDown={(e) => {
+                const currentIndex = tabs.findIndex((t) => t.id === tab.id);
+                if (e.key === "ArrowRight") {
+                  e.preventDefault();
+                  const nextIndex = (currentIndex + 1) % tabs.length;
+                  onTabChange(tabs[nextIndex].id);
+                  document.getElementById(`driver-tab-${tabs[nextIndex].id}`)?.focus();
+                } else if (e.key === "ArrowLeft") {
+                  e.preventDefault();
+                  const prevIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+                  onTabChange(tabs[prevIndex].id);
+                  document.getElementById(`driver-tab-${tabs[prevIndex].id}`)?.focus();
+                }
+              }}
               className="relative flex flex-col items-center justify-center min-h-[48px] py-1.5 px-2 sm:px-3 rounded-2xl transition-all duration-200 active:scale-95 cursor-pointer focus-visible:outline-2 focus-visible:outline-[#111312] focus-visible:outline-offset-2"
               style={{ minWidth: "52px" }}
             >

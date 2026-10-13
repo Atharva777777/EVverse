@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useEffect, useRef } from "react";
+import { Crosshair, Plus, Minus } from "lucide-react";
 import type { LiveStation } from "@/types/api";
 
 interface DriverMobileMapProps {
@@ -230,14 +231,53 @@ export default function DriverMobileMap({
   }, [isNavigating, navigationStation, userLocation, navProgress]);
 
   return (
-    <div
-      ref={mapContainerRef}
-      style={{
-        width: "100%",
-        height: "100%",
-        background: "#F7F8F6",
-        position: "relative",
-      }}
-    />
+    <div className="relative w-full h-full">
+      <div
+        ref={mapContainerRef}
+        style={{
+          width: "100%",
+          height: "100%",
+          background: "#F7F8F6",
+        }}
+      />
+
+      {/* Floating Map Controls */}
+      <div className="absolute right-3 bottom-24 z-30 flex flex-col gap-2">
+        <button
+          type="button"
+          onClick={() => {
+            if (mapInstanceRef.current) {
+              mapInstanceRef.current.setView(userLocation, 14, { animate: true, duration: 0.6 });
+            }
+          }}
+          aria-label="Center map on my location"
+          className="w-11 h-11 min-w-[44px] min-h-[44px] bg-white/95 backdrop-blur-md rounded-xl border border-[rgba(17,19,18,0.12)] shadow-md flex items-center justify-center text-[#111312] hover:bg-[#F3F2ED] active:scale-95 transition-all cursor-pointer"
+        >
+          <Crosshair size={18} />
+        </button>
+        <div className="flex flex-col rounded-xl overflow-hidden border border-[rgba(17,19,18,0.12)] shadow-md bg-white/95 backdrop-blur-md">
+          <button
+            type="button"
+            onClick={() => {
+              if (mapInstanceRef.current) mapInstanceRef.current.zoomIn();
+            }}
+            aria-label="Zoom in"
+            className="w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center text-[#111312] hover:bg-[#F3F2ED] active:scale-95 transition-all border-b border-[rgba(17,19,18,0.08)] cursor-pointer"
+          >
+            <Plus size={16} />
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              if (mapInstanceRef.current) mapInstanceRef.current.zoomOut();
+            }}
+            aria-label="Zoom out"
+            className="w-11 h-11 min-w-[44px] min-h-[44px] flex items-center justify-center text-[#111312] hover:bg-[#F3F2ED] active:scale-95 transition-all cursor-pointer"
+          >
+            <Minus size={16} />
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }

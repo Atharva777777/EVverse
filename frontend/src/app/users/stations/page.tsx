@@ -206,6 +206,22 @@ export default function EVVerseDriverPage() {
     syncFavouritesWithBackend().then(setSavedStationIds);
   }, []);
 
+  // User geolocation detection with graceful denial handling
+  useEffect(() => {
+    if (typeof window !== "undefined" && navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
+          const coords: [number, number] = [pos.coords.latitude, pos.coords.longitude];
+          setUserLocation(coords);
+        },
+        (err) => {
+          console.info("[EV Verse] Geolocation not granted; using regional baseline coordinates:", err.code);
+        },
+        { enableHighAccuracy: false, timeout: 5000, maximumAge: 60000 }
+      );
+    }
+  }, []);
+
   // Center map on city change
   useEffect(() => {
     setMapCenter([cityConfig.lat, cityConfig.lng]);
