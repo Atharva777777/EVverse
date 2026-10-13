@@ -668,7 +668,7 @@ export default function EVVerseDriverPage() {
           <div
             className={
               isFramed
-                ? "w-full h-full rounded-[48px] bg-[#0A0C0B] p-[8px] flex flex-col relative overflow-hidden"
+                ? "w-full h-full rounded-[48px] bg-[#0A0C0B] p-[6px] flex flex-col relative overflow-hidden"
                 : "w-full h-full flex flex-col"
             }
           >
@@ -683,97 +683,101 @@ export default function EVVerseDriverPage() {
               />
             )}
 
-            {/* iOS Dynamic Island & Status Bar (in frame mode) */}
-            {isFramed && (
-              <div className="h-11 w-full flex items-center justify-between px-6 shrink-0 z-40 bg-[#FAF9F6] border-b border-black/[0.04] select-none">
-                {/* iOS Time */}
-                <span className="text-[13px] font-semibold text-[#111312] font-mono tracking-tight">
-                  9:41
-                </span>
+            {/* ── Seamless Display Canvas ── */}
+            <div
+              className={`w-full h-full flex flex-col relative bg-[#FAF9F6] overflow-hidden ${
+                isFramed ? "rounded-[42px]" : ""
+              }`}
+            >
+              {/* iOS Dynamic Island & Status Bar (in frame mode) */}
+              {isFramed && (
+                <div className="h-10 w-full flex items-center justify-between px-6 shrink-0 z-40 bg-[#FAF9F6] border-b border-black/[0.04] select-none">
+                  {/* iOS Time */}
+                  <span className="text-[13px] font-semibold text-[#111312] font-mono tracking-tight">
+                    9:41
+                  </span>
 
-                {/* Hyperrealistic Dynamic Island with Live Activity Expansion */}
-                <div
-                  className={`transition-all duration-300 h-7 bg-black rounded-full flex items-center justify-between px-2.5 shadow-md ${
-                    isCharging
-                      ? "w-48 bg-black text-[#C8F369]"
-                      : isNavigating
-                      ? "w-44 bg-black text-white"
-                      : "w-24 bg-black"
-                  }`}
-                >
-                  {isCharging ? (
-                    <>
-                      <div className="flex items-center gap-1.5 text-[10px] font-mono font-bold">
-                        <Zap size={11} className="text-[#C8F369] animate-pulse" />
-                        <span>+{chargeCurrentKw} kW</span>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <span className="text-[10px] font-mono font-bold text-white">
-                          {currentBatteryPct}%
-                        </span>
-                        <div className="w-2.5 h-2.5 rounded-full bg-[#16A34A] border border-black" />
-                      </div>
-                    </>
-                  ) : isNavigating && navStation ? (
-                    <>
-                      <div className="flex items-center gap-1.5 text-[10px] font-mono font-bold text-[#C8F369]">
-                        <Navigation size={11} />
-                        <span>{Math.round((1 - navProgress) * (navStation.distanceKm || 4.2) * 10) / 10} km</span>
-                      </div>
-                      <div className="w-2 h-2 rounded-full bg-[#C8F369] animate-pulse" />
-                    </>
-                  ) : (
-                    <>
-                      {/* True sapphire lens reflection & sensor */}
-                      <span className="w-2.5 h-2.5 rounded-full bg-[#0D1527] border border-[#233554] shadow-inner" />
-                      <span className="w-2.5 h-2.5 rounded-full bg-[#0A0E17] border border-[#162136]" />
-                    </>
-                  )}
-                </div>
+                  {/* Hyperrealistic Dynamic Island with Live Activity Expansion */}
+                  <div
+                    className={`transition-all duration-300 h-7 bg-black rounded-full flex items-center justify-between px-2.5 shadow-md ${
+                      isCharging
+                        ? "w-48 bg-black text-[#C8F369]"
+                        : isNavigating
+                        ? "w-44 bg-black text-white"
+                        : "w-24 bg-black"
+                    }`}
+                  >
+                    {isCharging ? (
+                      <>
+                        <div className="flex items-center gap-1.5 text-[10px] font-mono font-bold">
+                          <Zap size={11} className="text-[#C8F369] animate-pulse" />
+                          <span>+{chargeCurrentKw} kW</span>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <span className="text-[10px] font-mono font-bold text-white">
+                            {currentBatteryPct}%
+                          </span>
+                          <div className="w-2.5 h-2.5 rounded-full bg-[#16A34A] border border-black" />
+                        </div>
+                      </>
+                    ) : isNavigating && navStation ? (
+                      <>
+                        <div className="flex items-center gap-1.5 text-[10px] font-mono font-bold text-[#C8F369]">
+                          <Navigation size={11} />
+                          <span>{Math.round((1 - navProgress) * (navStation.distanceKm || 4.2) * 10) / 10} km</span>
+                        </div>
+                        <div className="w-2 h-2 rounded-full bg-[#C8F369] animate-pulse" />
+                      </>
+                    ) : (
+                      <>
+                        {/* True sapphire lens reflection & sensor */}
+                        <span className="w-2.5 h-2.5 rounded-full bg-[#0D1527] border border-[#233554] shadow-inner" />
+                        <span className="w-2.5 h-2.5 rounded-full bg-[#0A0E17] border border-[#162136]" />
+                      </>
+                    )}
+                  </div>
 
-                {/* iOS Status Indicators (Cellular Bars, 5G, Wi-Fi, Battery) */}
-                <div className="flex items-center gap-1.5 text-[#111312]">
-                  {/* Cellular 4-Bars SVG */}
-                  <svg className="w-3.5 h-2.5 fill-current" viewBox="0 0 17 12">
-                    <rect x="0" y="9" width="2.5" height="3" rx="0.5" />
-                    <rect x="4.5" y="6" width="2.5" height="6" rx="0.5" />
-                    <rect x="9" y="3" width="2.5" height="9" rx="0.5" />
-                    <rect x="13.5" y="0" width="2.5" height="12" rx="0.5" />
-                  </svg>
+                  {/* iOS Status Indicators (Cellular Bars, 5G, Wi-Fi, Battery) */}
+                  <div className="flex items-center gap-1.5 text-[#111312]">
+                    {/* Cellular 4-Bars SVG */}
+                    <svg className="w-3.5 h-2.5 fill-current" viewBox="0 0 17 12">
+                      <rect x="0" y="9" width="2.5" height="3" rx="0.5" />
+                      <rect x="4.5" y="6" width="2.5" height="6" rx="0.5" />
+                      <rect x="9" y="3" width="2.5" height="9" rx="0.5" />
+                      <rect x="13.5" y="0" width="2.5" height="12" rx="0.5" />
+                    </svg>
 
-                  {/* 5G Badge */}
-                  <span className="text-[10.5px] font-mono font-bold">5G</span>
+                    {/* 5G Badge */}
+                    <span className="text-[10.5px] font-mono font-bold">5G</span>
 
-                  {/* Wi-Fi Arcs SVG */}
-                  <svg className="w-3.5 h-2.5 fill-current" viewBox="0 0 16 12">
-                    <path d="M8 10.5a1.5 1.5 0 100 3 1.5 1.5 0 000-3zm-4.24-2.83a6 6 0 018.48 0l-1.06 1.06a4.5 4.5 0 00-6.36 0L3.76 7.67zm-2.83-2.83a10 10 0 0114.14 0l-1.06 1.06a8.5 8.5 0 00-12.02 0L.93 4.84z" />
-                  </svg>
+                    {/* Wi-Fi Arcs SVG */}
+                    <svg className="w-3.5 h-2.5 fill-current" viewBox="0 0 16 12">
+                      <path d="M8 10.5a1.5 1.5 0 100 3 1.5 1.5 0 000-3zm-4.24-2.83a6 6 0 018.48 0l-1.06 1.06a4.5 4.5 0 00-6.36 0L3.76 7.67zm-2.83-2.83a10 10 0 0114.14 0l-1.06 1.06a8.5 8.5 0 00-12.02 0L.93 4.84z" />
+                    </svg>
 
-                  {/* iOS Battery Cylinder with Fill */}
-                  <div className="relative w-5 h-2.5 border-[1.5px] border-[#111312] rounded-[3px] p-[1px] flex items-center">
-                    <div
-                      className="h-full bg-[#111312] rounded-[1px] transition-all"
-                      style={{ width: `${Math.max(10, currentBatteryPct)}%` }}
-                    />
-                    <div className="absolute -right-[3px] top-[2px] w-[1.5px] h-1 bg-[#111312] rounded-r-[1px]" />
+                    {/* iOS Battery Cylinder with Fill */}
+                    <div className="relative w-5 h-2.5 border-[1.5px] border-[#111312] rounded-[3px] p-[1px] flex items-center">
+                      <div
+                        className="h-full bg-[#111312] rounded-[1px] transition-all"
+                        style={{ width: `${Math.max(10, currentBatteryPct)}%` }}
+                      />
+                      <div className="absolute -right-[3px] top-[2px] w-[1.5px] h-1 bg-[#111312] rounded-r-[1px]" />
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
+              )}
 
-            {/* ── Screen Wrapper ── */}
-            <div className={`w-full flex-1 flex flex-col overflow-y-auto no-scrollbar bg-[#FAF9F6] relative ${isFramed ? "rounded-b-[40px]" : "rounded-none"}`}>
-            {/* ── Top Driver Status Header ─────────────────────────────────────── */}
-            <header
-              className="sticky top-0 z-40 px-3 sm:px-4 py-2.5 sm:py-3 border-b flex items-center justify-between"
-              style={{
-                background: "rgba(250, 249, 246, 0.96)",
-                backdropFilter: "blur(20px)",
-                WebkitBackdropFilter: "blur(20px)",
-                borderColor: "rgba(17, 19, 18, 0.07)",
-              }}
-              aria-label="Driver App Header"
-            >
+              {/* ── Top Driver Status Header ─────────────────────────────────────── */}
+              <header
+                className="shrink-0 z-30 px-3 sm:px-4 py-2 sm:py-2.5 border-b flex items-center justify-between"
+                style={{
+                  background: "rgba(250, 249, 246, 0.96)",
+                  backdropFilter: "blur(20px)",
+                  WebkitBackdropFilter: "blur(20px)",
+                  borderColor: "rgba(17, 19, 18, 0.07)",
+                }}
+                aria-label="Driver App Header"
+              >
               {/* Brand Logo & Model */}
               <div className="flex items-center gap-2">
                 <Link href="/" className="flex items-center gap-2 group cursor-pointer focus-visible:outline-2 focus-visible:outline-[#111312]">
@@ -878,7 +882,7 @@ export default function EVVerseDriverPage() {
             )}
 
             {/* ── Main Viewport Content ────────────────────────────────────────── */}
-            <main className="flex-1 flex flex-col relative overflow-y-auto">
+            <main className="flex-1 flex flex-col relative overflow-y-auto no-scrollbar">
               
               {/* ═════════ TAB 1: HOME (Cockpit) ═════════ */}
               {activeTab === "home" && (
@@ -909,7 +913,7 @@ export default function EVVerseDriverPage() {
 
               {/* ═════════ TAB 2: EXPLORE (Charging Map) ═════════ */}
               {activeTab === "explore" && (
-                <div className="flex-1 flex flex-col relative w-full h-[calc(100vh-140px)] min-h-[460px] md:h-[620px]">
+                <div className="flex-1 flex flex-col relative w-full h-full min-h-[500px]">
                   {/* Interactive Leaflet Map Viewport */}
                   <div className="flex-1 relative w-full h-full">
                 <DriverMobileMap
