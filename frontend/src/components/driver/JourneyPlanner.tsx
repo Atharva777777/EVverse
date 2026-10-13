@@ -109,23 +109,25 @@ export function JourneyPlanner({
   const isLowArrival = arrivalPct < 15;
 
   return (
-    <div className="space-y-4 pb-20 max-w-lg mx-auto">
-      {/* ── Page Header ─────────────────────────────────────────── */}
-      <div className="pt-1">
-        <h2 className="text-xl font-bold tracking-tight text-[#111312]">
-          Plan Trip
-        </h2>
-        <p className="text-xs text-[#525854] mt-0.5">
-          {activeVehicle.make} {activeVehicle.model} • {currentBatteryPct}% Battery
-        </p>
-      </div>
-
-      {/* ── Destination Selector ─────────────────────────────────── */}
+    <div className="w-full flex-1 flex flex-col justify-between gap-2.5 sm:gap-3 max-w-lg mx-auto h-full">
+      {/* ── Top Header & Destination Selector ────────────────────── */}
       <div className="space-y-2">
-        <div className="text-xs font-semibold text-[#111312]">
-          Select Destination ({selectedCity})
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-base sm:text-lg font-bold tracking-tight text-[#111312] leading-none">
+              Plan Trip
+            </h2>
+            <p className="text-[11px] text-[#525854] mt-0.5">
+              {selectedCity} corridors
+            </p>
+          </div>
+          <span className="text-[11px] font-mono font-semibold bg-[#FAF9F6] border border-black/[0.08] px-2.5 py-1 rounded-xl text-[#111312]">
+            {activeVehicle.make} • {currentBatteryPct}%
+          </span>
         </div>
-        <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+
+        {/* Destination Pills */}
+        <div className="flex gap-1.5 overflow-x-auto pb-0.5 no-scrollbar">
           {cityCorridors.map((dest) => {
             const isSelected = selectedDestination.id === dest.id;
             return (
@@ -136,20 +138,20 @@ export function JourneyPlanner({
                   setSelectedDestination(dest);
                   setPrimaryStopId(undefined);
                 }}
-                className={`min-h-[44px] px-3.5 py-2 rounded-2xl border text-left shrink-0 transition-all cursor-pointer flex items-center gap-2.5 ${
+                className={`min-h-[38px] px-3 py-1.5 rounded-xl border text-left shrink-0 transition-all cursor-pointer flex items-center gap-2 ${
                   isSelected
-                    ? "bg-[#111312] text-white border-[#111312] shadow-sm"
+                    ? "bg-[#111312] text-white border-[#111312] shadow-xs"
                     : "bg-white text-[#111312] border-black/[0.08] hover:bg-[#F4F3EE]"
                 }`}
               >
                 <MapPin
-                  size={14}
+                  size={13}
                   className={isSelected ? "text-[#C8F369]" : "text-[#767D78]"}
                 />
                 <div>
                   <div className="text-xs font-bold leading-tight">{dest.name}</div>
                   <div
-                    className={`text-[10px] font-mono mt-0.5 ${
+                    className={`text-[9.5px] font-mono ${
                       isSelected ? "text-[#C8F369]" : "text-[#767D78]"
                     }`}
                   >
@@ -162,15 +164,14 @@ export function JourneyPlanner({
         </div>
       </div>
 
-      {/* ── Trip Overview Card ───────────────────────────────────── */}
-      <div className="bg-white rounded-3xl p-5 border border-black/[0.08] shadow-sm space-y-4">
-        {/* Destination & Key Stats */}
+      {/* ── Trip & Battery Overview Card ─────────────────────────── */}
+      <div className="bg-white rounded-2xl p-3.5 sm:p-4 border border-black/[0.08] shadow-xs space-y-2.5">
         <div className="flex items-start justify-between">
           <div>
-            <div className="text-[10px] font-mono uppercase tracking-wider text-[#767D78] font-semibold">
-              Destination
+            <div className="text-[9.5px] font-mono uppercase tracking-wider text-[#767D78]">
+              Route
             </div>
-            <div className="text-base font-bold text-[#111312] mt-0.5">
+            <div className="text-sm font-bold text-[#111312] mt-0.5">
               {selectedDestination.name}
             </div>
           </div>
@@ -189,44 +190,26 @@ export function JourneyPlanner({
         </div>
 
         {/* Battery Prediction Bar */}
-        <div className="bg-[#FAF9F6] p-3.5 rounded-2xl border border-black/[0.05] space-y-2.5">
-          <div className="flex items-center justify-between text-xs">
-            <span className="text-[#525854] font-medium flex items-center gap-1.5">
-              <Zap size={14} className="text-[#16A34A]" />
-              Battery Projection
+        <div className="bg-[#FAF9F6] p-2.5 rounded-xl border border-black/[0.05] space-y-2">
+          <div className="flex items-center justify-between text-xs font-mono">
+            <span className="text-[#525854] text-[11px] font-sans font-medium flex items-center gap-1">
+              <Zap size={13} className="text-[#16A34A]" />
+              Battery
             </span>
-            <span
-              className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                isLowArrival
-                  ? "bg-[#FEE2E2] text-[#991B1B]"
-                  : "bg-[#DCFCE7] text-[#15803D]"
-              }`}
-            >
-              {isLowArrival ? "Charge Recommended" : "Plenty of Range"}
-            </span>
-          </div>
-
-          {/* Simple Before & After Visual */}
-          <div className="flex items-center justify-between font-mono text-sm">
-            <div>
-              <div className="text-[10px] text-[#767D78] uppercase">Current</div>
-              <div className="font-bold text-[#111312]">{currentBatteryPct}%</div>
-            </div>
-            <ArrowRight size={14} className="text-[#767D78]" />
-            <div className="text-right">
-              <div className="text-[10px] text-[#767D78] uppercase">On Arrival</div>
-              <div
+            <div className="flex items-center gap-1.5">
+              <span className="font-bold text-[#111312]">{currentBatteryPct}%</span>
+              <ArrowRight size={12} className="text-[#767D78]" />
+              <span
                 className={`font-bold ${
                   isLowArrival ? "text-[#DC2626]" : "text-[#16A34A]"
                 }`}
               >
                 ~{arrivalPct}%
-              </div>
+              </span>
             </div>
           </div>
 
-          {/* Progress Bar */}
-          <div className="w-full h-2 bg-black/[0.06] rounded-full overflow-hidden">
+          <div className="w-full h-1.5 bg-black/[0.06] rounded-full overflow-hidden">
             <div
               className={`h-full rounded-full transition-all duration-300 ${
                 isLowArrival ? "bg-[#DC2626]" : "bg-[#16A34A]"
@@ -236,67 +219,63 @@ export function JourneyPlanner({
           </div>
         </div>
 
-        {/* Energy Note */}
-        <div className="text-[11px] text-[#767D78] flex items-center justify-between">
-          <span>
-            Estimated trip energy: ~{planResult?.tripRequiredKwh || 18} kWh
-          </span>
-          <span className="font-mono text-[10px]">
-            {activeVehicle.plugType.split(" ")[0]}
+        <div className="flex items-center justify-between text-[10.5px] text-[#767D78]">
+          <span>Trip energy: ~{planResult?.tripRequiredKwh || 18} kWh</span>
+          <span
+            className={`font-semibold ${
+              isLowArrival ? "text-[#DC2626]" : "text-[#15803D]"
+            }`}
+          >
+            {isLowArrival ? "Charge Recommended" : "Plenty of Range"}
           </span>
         </div>
       </div>
 
-      {/* ── Charging Stop Section ─────────────────────────────────── */}
-      <div className="bg-white rounded-3xl p-5 border border-black/[0.08] shadow-sm space-y-3">
-        <div className="text-xs font-semibold text-[#111312] flex items-center gap-1.5">
-          <Zap size={14} className="text-[#16A34A]" />
-          <span>Recommended Charging Stop</span>
+      {/* ── Recommended Stop Section ──────────────────────────────── */}
+      <div className="bg-white rounded-2xl p-3.5 sm:p-4 border border-black/[0.08] shadow-xs">
+        <div className="text-[11px] font-semibold text-[#111312] flex items-center gap-1.5 mb-2">
+          <Zap size={13} className="text-[#16A34A]" />
+          <span>Recommended Stop</span>
         </div>
 
         {primaryStop ? (
-          <div className="p-4 rounded-2xl bg-[#F0FDF4] border border-[#BBF7D0] space-y-2.5">
+          <div className="p-3 rounded-xl bg-[#F0FDF4] border border-[#BBF7D0]">
             <div className="flex items-start justify-between gap-2">
-              <div>
-                <span className="text-[9.5px] font-mono uppercase font-bold px-2 py-0.5 rounded-md bg-[#15803D] text-white">
-                  Main Stop
-                </span>
-                <h4 className="text-sm font-bold text-[#111312] mt-1.5">
+              <div className="min-w-0">
+                <div className="text-xs font-bold text-[#111312] truncate">
                   {primaryStop.station.name}
-                </h4>
-                <p className="text-[11px] text-[#525854] mt-0.5">
+                </div>
+                <div className="text-[10px] text-[#525854] truncate mt-0.5">
                   {primaryStop.station.address || primaryStop.station.operator}
-                </p>
+                </div>
               </div>
               <div className="text-right shrink-0">
                 <div className="text-xs font-bold text-[#15803D] font-mono">
                   {primaryStop.powerKw} kW DC
                 </div>
-                <div className="text-[10px] text-[#767D78]">
-                  ~{primaryStop.estimatedChargeDurationMins} min charge
+                <div className="text-[9.5px] text-[#767D78]">
+                  ~{primaryStop.estimatedChargeDurationMins}m charge
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center justify-between pt-1 border-t border-[#86EFAC]/40 text-[11px] text-[#15803D] font-medium">
-              <span>{primaryStop.distanceAlongRouteKm} km along route</span>
-              <span>Arrive at ~{primaryStop.arrivalBatteryPct}% battery</span>
+            <div className="flex items-center justify-between pt-2 mt-2 border-t border-[#86EFAC]/40 text-[10px] text-[#15803D] font-medium">
+              <span>{primaryStop.distanceAlongRouteKm} km into trip</span>
+              <span>Arrive with ~{primaryStop.arrivalBatteryPct}%</span>
             </div>
           </div>
         ) : (
-          <div className="p-4 rounded-2xl bg-[#FAF9F6] border border-black/[0.05] text-center space-y-1">
-            <div className="text-xs font-semibold text-[#111312]">
-              Direct Drive Possible
-            </div>
-            <p className="text-[11px] text-[#525854]">
-              You have enough battery to reach {selectedDestination.name} without stopping to charge.
+          <div className="p-2.5 rounded-xl bg-[#FAF9F6] border border-black/[0.05] text-center">
+            <div className="text-xs font-semibold text-[#111312]">Direct Drive</div>
+            <p className="text-[10.5px] text-[#525854] mt-0.5">
+              No charging needed to reach {selectedDestination.name}.
             </p>
           </div>
         )}
       </div>
 
       {/* ── Start Navigation Button ──────────────────────────────── */}
-      <div className="pt-2">
+      <div className="pt-0.5">
         <button
           type="button"
           onClick={() =>
@@ -307,11 +286,11 @@ export function JourneyPlanner({
               primaryStation: primaryStop?.station,
             })
           }
-          className="w-full min-h-[52px] py-3.5 bg-[#111312] text-white text-sm font-bold rounded-2xl flex items-center justify-center gap-2 hover:bg-[#252826] active:scale-[0.99] transition-all shadow-md cursor-pointer focus-visible:outline-2 focus-visible:outline-[#111312]"
+          className="w-full min-h-[46px] py-3 bg-[#111312] text-white text-xs sm:text-sm font-bold rounded-2xl flex items-center justify-center gap-2 hover:bg-[#252826] active:scale-[0.99] transition-all shadow-sm cursor-pointer focus-visible:outline-2 focus-visible:outline-[#111312]"
         >
-          <Navigation size={16} className="text-[#C8F369]" />
+          <Navigation size={15} className="text-[#C8F369]" />
           <span>Start Navigation</span>
-          <ArrowRight size={16} className="text-[#C8F369]" />
+          <ArrowRight size={15} className="text-[#C8F369]" />
         </button>
       </div>
     </div>

@@ -1085,7 +1085,7 @@ export default function EVVerseDriverPage() {
 
           {/* ═════════ TAB 3: JOURNEYS (Corridor Planner) ═════════ */}
           {activeTab === "journeys" && (
-            <div className="p-4 flex-1">
+            <div className="p-3 sm:p-4 flex-1 flex flex-col justify-between w-full h-full max-w-lg mx-auto">
               <JourneyPlanner
                 activeVehicle={activeVehicle}
                 currentBatteryPct={currentBatteryPct}
