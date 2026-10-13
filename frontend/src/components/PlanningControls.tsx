@@ -31,17 +31,16 @@ export function PlanningControls({
   disabled,
   defaultCollapsed = false,
 }: PlanningControlsProps) {
-  const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
-
-  // Remember collapse state in localStorage
-  useEffect(() => {
+  const [isCollapsed, setIsCollapsed] = useState(() => {
+    if (typeof window === "undefined") return defaultCollapsed;
     try {
       const saved = localStorage.getItem("quantev_planning_collapsed");
       if (saved !== null) {
-        setIsCollapsed(saved === "true");
+        return saved === "true";
       }
     } catch {}
-  }, []);
+    return defaultCollapsed;
+  });
 
   const toggleCollapse = () => {
     const next = !isCollapsed;

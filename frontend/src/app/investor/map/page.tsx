@@ -2,12 +2,13 @@
 
 
 
-import { useRef, useState, useCallback } from "react";
+import { useRef, useState, useCallback, useEffect } from "react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 
 import dynamic from "next/dynamic";
 import { BrandLogo } from "@/components/BrandLogo";
+import { Building2, BookOpen } from "lucide-react";
 
 import { useOptimize } from "@/hooks/useOptimize";
 import { useLiveData } from "@/hooks/useLiveData";
@@ -80,7 +81,6 @@ export default function Page() {
     gapScore?: number;
     quboScore?: number;
   } | null>(null);
-  const [is3DMode, setIs3DMode] = useState(false);
 
   const handleCountrySelect = useCallback((country: string) => {
     setSelectedCountry(country);
@@ -123,21 +123,20 @@ export default function Page() {
     await apiPromise;
   }, [run, stationCount, scenario, selectedCity]);
 
-  // Transition on API state change (render-phase ref pattern)
-  const prevStatusRef = useRef(state.status);
-  if (state.status !== prevStatusRef.current) {
-    prevStatusRef.current = state.status;
+  // Transition on API state change
+  useEffect(() => {
     if (state.status === "success") {
-      // Drive map animation with microtask
-      Promise.resolve().then(async () => {
-        if (state.status !== "success") return;
-        const { zone_details, selected_zones } = state.data.recommendation;
+      let isCancelled = false;
+      const { zone_details, selected_zones } = state.data.recommendation;
 
+      (async () => {
         // Run the fast, sleek optimization sequence on the map
         await mapRef.current?.runOptimizationSequence(zone_details);
+        if (isCancelled) return;
 
         setSequenceStep(5);
         await new Promise((r) => setTimeout(r, 150));
+        if (isCancelled) return;
 
         // Then reveal the results
         setPhase("result");
@@ -146,16 +145,18 @@ export default function Page() {
         setTimeout(() => {
           resultScrollRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
         }, 150);
-      });
+      })();
+
+      return () => {
+        isCancelled = true;
+      };
+    } else if (state.status === "error") {
+      const errTimer = setTimeout(() => {
+        setPhase("error");
+      }, 0);
+      return () => clearTimeout(errTimer);
     }
-
-    if (state.status === "error") {
-
-      setPhase("error");
-
-    }
-
-  }
+  }, [state]);
 
 
 
@@ -288,7 +289,7 @@ export default function Page() {
             }}
             title="View 3D Station Model & Investment Pro-Forma"
           >
-            <span>🏛️</span>
+            <Building2 size={13} />
             <span>3D Station Model</span>
           </button>
 
@@ -360,7 +361,7 @@ export default function Page() {
               }}
               title="Explore EV Powertrains, Charging Standards & Knowledge"
             >
-              <span>📖</span>
+              <BookOpen size={13} />
               <span>EV Knowledge</span>
             </button>
           </Link>
@@ -395,8 +396,6 @@ export default function Page() {
             ref={mapRef}
             onSequenceStep={setSequenceStep}
             liveStations={liveData?.stations}
-            is3DMode={is3DMode}
-            onToggle3D={() => setIs3DMode((prev) => !prev)}
             onOpen3DTwin={(siteInfo) => {
               setSpatialModalSite(siteInfo);
               setSpatialModalOpen(true);
@@ -541,7 +540,7 @@ export default function Page() {
                     onMouseEnter={(e) => { e.currentTarget.style.opacity = "0.9"; e.currentTarget.style.transform = "translateY(-1px)"; }}
                     onMouseLeave={(e) => { e.currentTarget.style.opacity = "1"; e.currentTarget.style.transform = "translateY(0)"; }}
                   >
-                    <span>⚡ Find Optimal Locations</span>
+                    <span>Find Optimal Locations</span>
                     <span>→</span>
                   </button>
                 </div>

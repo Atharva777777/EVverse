@@ -13,6 +13,7 @@ import {
   TrendingUp,
   DollarSign,
   Zap,
+  RefreshCw,
 } from "lucide-react";
 
 export interface Spatial3DDigitalTwinModalProps {
@@ -310,7 +311,8 @@ export function Spatial3DDigitalTwinModal({
                 }}
                 title="Simulate normal grid-to-vehicle fast charging"
               >
-                <span>⚡ Charge Flow</span>
+                <Zap size={11} className={v2gMode === "charge" ? "text-emerald-400" : "text-slate-400"} />
+                <span>Charge Flow</span>
               </button>
               <button
                 onClick={() => setV2gMode("v2g")}
@@ -330,7 +332,8 @@ export function Spatial3DDigitalTwinModal({
                 }}
                 title="Simulate bidirectional vehicle-to-grid power export & grid stabilization"
               >
-                <span>🔄 V2G Backflow</span>
+                <RefreshCw size={11} className={v2gMode === "v2g" ? "text-sky-300" : "text-slate-400"} />
+                <span>V2G Backflow</span>
               </button>
             </div>
 

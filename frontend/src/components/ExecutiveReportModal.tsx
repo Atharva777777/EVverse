@@ -1,5 +1,6 @@
 "use client";
 
+import React, { useMemo } from "react";
 import type { OptimizeResponse, PlanningScenario } from "@/types/api";
 
 interface ExecutiveReportModalProps {
@@ -28,6 +29,17 @@ export function ExecutiveReportModal({
   stationCount,
   scenario,
 }: ExecutiveReportModalProps) {
+  const runtime = data?.pipeline_runtime_s ?? 0;
+  const { currentDate, docRef } = useMemo(() => {
+    const d = new Date().toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+    const ref = `QEV-GLO-${Math.abs(Math.round(runtime * 10000) + stationCount * 137).toString().padStart(6, "0").slice(-6)}`;
+    return { currentDate: d, docRef: ref };
+  }, [runtime, stationCount]);
+
   if (!isOpen || !data) return null;
 
   const { recommendation, qaoa, classical, demand_prediction, pipeline_runtime_s } = data;
@@ -46,12 +58,6 @@ export function ExecutiveReportModal({
   function handlePrint() {
     window.print();
   }
-
-  const currentDate = new Date().toLocaleDateString("en-US", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  });
 
   return (
     <div
@@ -168,7 +174,7 @@ export function ExecutiveReportModal({
               </div>
               <div style={{ textAlign: "right" }}>
                 <div style={{ fontSize: "12px", color: "#6b7282" }}>Date: {currentDate}</div>
-                <div style={{ fontSize: "11px", color: "#6b7282", marginTop: "2px" }}>Doc Ref: QEV-GLO-{Date.now().toString().slice(-6)}</div>
+                <div style={{ fontSize: "11px", color: "#6b7282", marginTop: "2px" }}>Doc Ref: {docRef}</div>
                 <div style={{ display: "inline-block", marginTop: "6px", padding: "2px 8px", background: "#eef5fc", border: "1px solid #c8cdd8", borderRadius: "4px", fontSize: "10px", color: "#162d58", fontWeight: 600 }}>
                   QUANTUM VERIFIED (QAOA)
                 </div>

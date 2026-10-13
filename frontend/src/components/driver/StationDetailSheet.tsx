@@ -27,6 +27,7 @@ import {
   Car,
 } from "lucide-react";
 import { ParkingBookingModal } from "./ParkingBookingModal";
+import type { EVVehicle } from "./VehicleCockpit";
 
 interface StationDetailSheetProps {
   station: LiveStation | null;
@@ -39,6 +40,8 @@ interface StationDetailSheetProps {
   onToggleSave: (stationId: string) => void;
   activeVehicleSoc?: number;
   vehicleWltpKm?: number;
+  activeVehicle?: EVVehicle;
+  onOpenBookingModal?: () => void;
 }
 
 export const StationDetailSheet: React.FC<StationDetailSheetProps> = ({
@@ -52,6 +55,8 @@ export const StationDetailSheet: React.FC<StationDetailSheetProps> = ({
   onToggleSave,
   activeVehicleSoc = 75,
   vehicleWltpKm = 470,
+  activeVehicle,
+  onOpenBookingModal,
 }) => {
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [isReportingOpen, setIsReportingOpen] = useState(false);
@@ -505,11 +510,17 @@ export const StationDetailSheet: React.FC<StationDetailSheetProps> = ({
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
-                onClick={() => setIsBookingModalOpen(true)}
+                onClick={() => {
+                  if (onOpenBookingModal) {
+                    onOpenBookingModal();
+                  } else {
+                    setIsBookingModalOpen(true);
+                  }
+                }}
                 className="min-h-[44px] py-2.5 bg-[#F0FDF4] text-[#15803D] border border-[#BBF7D0] rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-[#DCFCE7] active:scale-98 transition-all shadow-2xs cursor-pointer focus-visible:outline-2 focus-visible:outline-[#15803D]"
               >
                 <Zap size={14} className="text-[#16A34A]" aria-hidden="true" />
-                <span>Book Spot (₹49)</span>
+                <span>Book Stall & Charge</span>
               </button>
 
               <button
@@ -542,6 +553,7 @@ export const StationDetailSheet: React.FC<StationDetailSheetProps> = ({
         onClose={() => setIsBookingModalOpen(false)}
         station={station}
         onStartNavigation={(st) => onStartNavigation(st)}
+        activeVehicle={activeVehicle}
       />
 
       {/* Issue Reporting Modal */}

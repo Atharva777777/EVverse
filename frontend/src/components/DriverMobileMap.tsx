@@ -2,6 +2,7 @@
 
 import React, { useEffect, useRef } from "react";
 import { Crosshair, Plus, Minus } from "lucide-react";
+import type * as L from "leaflet";
 import type { LiveStation } from "@/types/api";
 
 interface DriverMobileMapProps {
@@ -28,13 +29,13 @@ export default function DriverMobileMap({
   navProgress,
 }: DriverMobileMapProps) {
   const mapContainerRef = useRef<HTMLDivElement>(null);
-  const mapInstanceRef = useRef<any>(null);
-  const markersLayerRef = useRef<any>(null);
-  const routeLayerRef = useRef<any>(null);
+  const mapInstanceRef = useRef<L.Map | null>(null);
+  const markersLayerRef = useRef<L.LayerGroup | null>(null);
+  const routeLayerRef = useRef<L.LayerGroup | null>(null);
 
   // ── Initialize Leaflet Map ────────────────────────────────────────────────
   useEffect(() => {
-    let map: any = null;
+    let map: L.Map | null = null;
     let isMounted = true;
 
     async function init() {
@@ -76,30 +77,33 @@ export default function DriverMobileMap({
 
   // ── Update View on center change or navigation ───────────────────────────
   useEffect(() => {
-    if (mapInstanceRef.current) {
+    const map = mapInstanceRef.current;
+    if (map) {
       if (isNavigating && navigationStation) {
         import("leaflet").then(({ default: L }) => {
           const bounds = L.latLngBounds([
             userLocation,
             [navigationStation.latitude, navigationStation.longitude],
           ]);
-          mapInstanceRef.current.fitBounds(bounds.pad(0.28), {
+          map.fitBounds(bounds.pad(0.28), {
             animate: true,
             duration: 0.8,
           });
         });
       } else {
-        mapInstanceRef.current.setView(center, zoom, { animate: true, duration: 0.6 });
+        map.setView(center, zoom, { animate: true, duration: 0.6 });
       }
     }
   }, [center[0], center[1], zoom, isNavigating, navigationStation]);
 
   // ── Render Markers ───────────────────────────────────────────────────────
   useEffect(() => {
-    if (!mapInstanceRef.current || !markersLayerRef.current) return;
+    const map = mapInstanceRef.current;
+    const markersLayer = markersLayerRef.current;
+    if (!map || !markersLayer) return;
 
     import("leaflet").then(({ default: L }) => {
-      markersLayerRef.current.clearLayers();
+      markersLayer.clearLayers();
 
       // 1. User Location Pulse Pin
       const userHtml = `
@@ -112,7 +116,7 @@ export default function DriverMobileMap({
       `;
       const userIcon = L.divIcon({ html: userHtml, className: "", iconSize: [0, 0] });
       L.marker(userLocation, { icon: userIcon, zIndexOffset: 1000 }).addTo(
-        markersLayerRef.current
+        markersLayer
       );
 
       // 2. Station Markers
@@ -170,7 +174,7 @@ export default function DriverMobileMap({
         const marker = L.marker([st.latitude, st.longitude], {
           icon,
           zIndexOffset: isSelected || isTarget ? 900 : 400,
-        }).addTo(markersLayerRef.current);
+        }).addTo(markersLayer);
 
         marker.on("click", () => {
           onStationSelect(st);
@@ -181,10 +185,12 @@ export default function DriverMobileMap({
 
   // ── Render Navigation Route ───────────────────────────────────────────────
   useEffect(() => {
-    if (!mapInstanceRef.current || !routeLayerRef.current) return;
+    const map = mapInstanceRef.current;
+    const routeLayer = routeLayerRef.current;
+    if (!map || !routeLayer) return;
 
     import("leaflet").then(({ default: L }) => {
-      routeLayerRef.current.clearLayers();
+      routeLayer.clearLayers();
 
       if (isNavigating && navigationStation) {
         const start = userLocation;
@@ -200,7 +206,7 @@ export default function DriverMobileMap({
           weight: 10,
           lineCap: "round",
           lineJoin: "round",
-        }).addTo(routeLayerRef.current);
+        }).addTo(routeLayer);
 
         // Core route dashed volt line
         L.polyline([start, [midLat, midLng], end], {
@@ -209,7 +215,7 @@ export default function DriverMobileMap({
           dashArray: "8, 6",
           lineCap: "round",
           lineJoin: "round",
-        }).addTo(routeLayerRef.current);
+        }).addTo(routeLayer);
 
         // Animated Vehicle Pin along route
         const currentLat = start[0] + (end[0] - start[0]) * navProgress;
@@ -224,7 +230,7 @@ export default function DriverMobileMap({
         `;
         const carIcon = L.divIcon({ html: carHtml, className: "", iconSize: [0, 0] });
         L.marker([currentLat, currentLng], { icon: carIcon, zIndexOffset: 1200 }).addTo(
-          routeLayerRef.current
+          routeLayer
         );
       }
     });

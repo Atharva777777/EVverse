@@ -13,8 +13,11 @@ REST router for EV Verse driver services:
 from __future__ import annotations
 
 import logging
+import os
+import re
 from typing import Any, Dict, List, Optional
 
+import httpx
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
 from pydantic import BaseModel, Field, field_validator
 
@@ -425,3 +428,401 @@ async def create_charging_session(
 ) -> ChargingSessionResponse:
     session = driver_db.record_charging_session(driver["driver_id"], payload.model_dump())
     return ChargingSessionResponse(**session)
+
+
+# ── Driver Booking & Monad Testnet Payment Endpoints ──────────────────────────
+
+def get_active_monad_rpc() -> tuple[str, str]:
+    """
+    Returns (rpc_url, provider_name).
+    Sponsor Integration: Alchemy Monad Testnet RPC.
+    If ALCHEMY_API_KEY is configured in the environment, routes JSON-RPC queries
+    via https://monad-testnet.g.alchemy.com/v2/<ALCHEMY_API_KEY>.
+    Otherwise falls back to MONAD_RPC_URL (default: https://testnet-rpc.monad.xyz).
+    """
+    alchemy_url = (os.environ.get("MONAD_ALCHEMY_RPC_URL") or os.environ.get("NEXT_PUBLIC_MONAD_ALCHEMY_RPC_URL") or "").strip()
+    if alchemy_url:
+        return alchemy_url, "Alchemy Monad Testnet RPC"
+
+    alchemy_key = (os.environ.get("ALCHEMY_API_KEY") or os.environ.get("NEXT_PUBLIC_ALCHEMY_API_KEY") or "").strip()
+    if alchemy_key:
+        return f"https://monad-testnet.g.alchemy.com/v2/{alchemy_key}", "Alchemy Monad Testnet RPC"
+
+    custom_rpc = (os.environ.get("MONAD_RPC_URL") or os.environ.get("NEXT_PUBLIC_MONAD_RPC_URL") or "").strip()
+    if custom_rpc:
+        return custom_rpc, "Monad RPC"
+
+    return "https://testnet-rpc.monad.xyz", "Monad Public Testnet RPC"
+
+
+MONAD_RPC_URL = os.environ.get("MONAD_RPC_URL", "https://testnet-rpc.monad.xyz")
+MONAD_EXPLORER_URL = os.environ.get("MONAD_EXPLORER_URL", "https://testnet.monadexplorer.com")
+MONAD_PAYMENT_RECIPIENT_ADDRESS = os.environ.get(
+    "MONAD_PAYMENT_RECIPIENT_ADDRESS",
+    os.environ.get("NEXT_PUBLIC_MONAD_PAYMENT_RECIPIENT_ADDRESS", "")
+).strip()
+
+
+def parse_mon_to_wei(mon_amount_str: str) -> int:
+    """Parse MON string (e.g. '0.025 MON' or '0.025') to exact integer wei without float rounding errors."""
+    clean = re.sub(r"[^0-9.]", "", mon_amount_str)
+    if not clean or clean == ".":
+        return 0
+    parts = clean.split(".")
+    whole_part = parts[0] or "0"
+    frac_part = (parts[1] if len(parts) > 1 else "").ljust(18, "0")[:18]
+    combined = frac_part.lstrip("0") if whole_part == "0" else f"{whole_part}{frac_part}"
+    return int(combined) if combined else 0
+
+
+async def verify_monad_payment_onchain(
+    tx_hash: str,
+    expected_mon_str: str,
+    station_recipient_override: Optional[str] = None,
+) -> Dict[str, Any]:
+    """
+    Independently query Monad Testnet JSON-RPC to verify transaction receipt.
+    NEVER trusts frontend payment-success flags.
+    Enforces receipt status == 0x1, expected recipient address, and expected wei amount.
+    """
+    tx_hash = tx_hash.strip()
+    if not re.match(r"^0x[a-fA-F0-9]{64}$", tx_hash):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid transaction hash format: {tx_hash}"
+        )
+
+    expected_wei = parse_mon_to_wei(expected_mon_str)
+    expected_recipient = (station_recipient_override or MONAD_PAYMENT_RECIPIENT_ADDRESS).strip().lower()
+    rpc_url, provider_name = get_active_monad_rpc()
+    log.info(f"Verifying payment {tx_hash} via {provider_name} ({rpc_url})")
+
+    async with httpx.AsyncClient(timeout=12.0) as client:
+        # 1. Fetch transaction receipt
+        try:
+            receipt_res = await client.post(
+                rpc_url,
+                json={"jsonrpc": "2.0", "id": 1, "method": "eth_getTransactionReceipt", "params": [tx_hash]},
+            )
+            receipt_json = receipt_res.json()
+        except Exception as e:
+            log.error(f"Error querying {provider_name} eth_getTransactionReceipt: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=f"Failed to reach Monad Testnet RPC via {provider_name}: {e}"
+            )
+
+        receipt = receipt_json.get("result")
+        if not receipt or not receipt.get("blockNumber"):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Transaction has not been included in a block on Monad Testnet yet (receipt pending)."
+            )
+
+        status_hex = receipt.get("status")
+        if status_hex != "0x1":
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Transaction reverted on-chain on Monad Testnet (status 0x0). Payment unverified."
+            )
+
+        # 2. Fetch full transaction to verify recipient and value
+        try:
+            tx_res = await client.post(
+                rpc_url,
+                json={"jsonrpc": "2.0", "id": 2, "method": "eth_getTransactionByHash", "params": [tx_hash]},
+            )
+            tx_json = tx_res.json()
+        except Exception as e:
+            log.error(f"Error querying {provider_name} eth_getTransactionByHash: {e}")
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail=f"Failed to fetch transaction details from {provider_name}: {e}"
+            )
+
+        tx_data = tx_json.get("result")
+        if not tx_data:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Could not retrieve mined transaction parameters from Monad RPC."
+            )
+
+        actual_to = (tx_data.get("to") or receipt.get("to") or "").lower()
+        if expected_recipient and actual_to != expected_recipient:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Security verification failed: Mined recipient ({actual_to}) does not match expected payment address ({expected_recipient})."
+            )
+
+        raw_val = tx_data.get("value", "0x0")
+        actual_wei = int(raw_val, 16)
+        if expected_wei > 0 and actual_wei < expected_wei:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Security verification failed: Mined amount ({actual_wei} wei) is less than required fee ({expected_wei} wei)."
+            )
+
+        block_num = int(receipt.get("blockNumber", "0x0"), 16)
+        gas_used = str(int(receipt.get("gasUsed", "0x0"), 16))
+
+        return {
+            "verified": True,
+            "block_number": block_num,
+            "from_address": tx_data.get("from", ""),
+            "to_address": actual_to,
+            "gas_used": gas_used,
+            "value_wei": str(actual_wei),
+        }
+
+
+class DriverBookingCreateRequest(BaseModel):
+    id: Optional[str] = Field(default=None, description="Client reservation ID")
+    station_id: str
+    station_name: str
+    bay_number: str = "Bay 01"
+    connector_type: str = "CCS2 Combo"
+    duration_minutes: int = Field(default=30, ge=15, le=120)
+    total_cost: str = "₹49"
+    mon_amount: str = "0.025 MON"
+    tx_hash: Optional[str] = None
+    recipient_address: Optional[str] = None
+    payment_method: str = "monad_testnet"
+    session_type: Optional[str] = "charging_session"
+    target_kwh: Optional[float] = None
+    target_battery_pct: Optional[int] = None
+    pin_code: Optional[str] = None
+    start_time: Optional[str] = None
+    expiry_time: Optional[str] = None
+    expiry_timestamp: Optional[int] = None
+
+
+class DriverBookingResponse(BaseModel):
+    id: str
+    station_id: str
+    station_name: str
+    bay_number: str
+    connector_type: str
+    duration_minutes: int
+    total_cost: str
+    mon_amount: str
+    pin_code: str
+    start_time: str
+    expiry_time: str
+    expiry_timestamp: int
+    payment_method: str
+    tx_hash: Optional[str] = None
+    block_number: Optional[int] = None
+    from_address: Optional[str] = None
+    to_address: Optional[str] = None
+    gas_used: Optional[str] = None
+    payment_status: str
+    explorer_url: Optional[str] = None
+    created_at: str
+    verified_at: Optional[str] = None
+    session_type: Optional[str] = "hold_only"
+    target_kwh: Optional[float] = None
+    target_battery_pct: Optional[int] = None
+    physical_activation_triggered: bool = False
+    settlement_note: str = (
+        "Testnet on-chain payment verified. Cryptographic reservation hold confirmed. "
+        "Physical charging and hardware activation remain decoupled in testnet mode."
+    )
+
+
+class StationOwnerBookingsResponse(BaseModel):
+    items: List[DriverBookingResponse]
+    total: int
+
+
+@router.post(
+    "/bookings",
+    response_model=DriverBookingResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Create and independently verify on-chain Monad charging booking",
+)
+async def create_booking(
+    payload: DriverBookingCreateRequest,
+    driver: Dict[str, Any] = Depends(get_current_driver),
+) -> DriverBookingResponse:
+    # 1. Reject duplicate transaction hashes safely
+    if payload.tx_hash:
+        existing = driver_db.get_booking_by_tx_hash(payload.tx_hash)
+        if existing:
+            # Safe idempotent retry: if already confirmed for this station, return existing
+            if existing.get("station_id") == payload.station_id and existing.get("payment_status") == "confirmed":
+                log.info(f"Idempotent retry for existing booking {existing['id']} with tx {payload.tx_hash}")
+                explorer_url = f"{MONAD_EXPLORER_URL}/tx/{existing['tx_hash']}" if existing.get("tx_hash") else None
+                return DriverBookingResponse(
+                    id=existing["id"],
+                    station_id=existing["station_id"],
+                    station_name=existing["station_name"],
+                    bay_number=existing["bay_number"],
+                    connector_type=existing["connector_type"],
+                    duration_minutes=existing["duration_minutes"],
+                    total_cost=existing["total_cost"],
+                    mon_amount=existing["mon_amount"],
+                    pin_code=existing["pin_code"],
+                    start_time=existing["start_time"],
+                    expiry_time=existing["expiry_time"],
+                    expiry_timestamp=existing["expiry_timestamp"],
+                    payment_method=existing["payment_method"],
+                    tx_hash=existing["tx_hash"],
+                    block_number=existing["block_number"],
+                    from_address=existing["from_address"],
+                    to_address=existing["to_address"],
+                    gas_used=existing["gas_used"],
+                    payment_status=existing["payment_status"],
+                    explorer_url=explorer_url,
+                    created_at=existing["created_at"],
+                    verified_at=existing["verified_at"],
+                    session_type=existing.get("session_type"),
+                    target_kwh=existing.get("target_kwh"),
+                    target_battery_pct=existing.get("target_battery_pct"),
+                )
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail=f"Transaction hash {payload.tx_hash} has already been registered."
+            )
+
+    # 2. Independent On-Chain Verification for Monad Testnet payments
+    verified_meta = {}
+    verified_at = None
+    if payload.payment_method == "monad_testnet":
+        if not payload.tx_hash:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="tx_hash is required for Monad Testnet payment verification."
+            )
+        # Independently verify payment on Monad Testnet JSON-RPC (Alchemy or native)
+        verified_meta = await verify_monad_payment_onchain(
+            tx_hash=payload.tx_hash,
+            expected_mon_str=payload.mon_amount,
+            station_recipient_override=payload.recipient_address,
+        )
+        verified_at = driver_db._now_iso()
+        payment_status = "confirmed"
+    else:
+        # Sandbox fallback
+        payment_status = "confirmed"
+
+    # 3. Persist confirmed booking in SQLite
+    booking_dict = payload.model_dump()
+    booking_dict["payment_status"] = payment_status
+    booking_dict["block_number"] = verified_meta.get("block_number")
+    booking_dict["from_address"] = verified_meta.get("from_address")
+    booking_dict["to_address"] = verified_meta.get("to_address")
+    booking_dict["gas_used"] = verified_meta.get("gas_used")
+    booking_dict["wei_amount"] = verified_meta.get("value_wei", "0")
+    booking_dict["verified_at"] = verified_at
+
+    record = driver_db.create_driver_booking(driver["driver_id"], booking_dict)
+    explorer_url = f"{MONAD_EXPLORER_URL}/tx/{record['tx_hash']}" if record.get("tx_hash") else None
+
+    return DriverBookingResponse(
+        id=record["id"],
+        station_id=record["station_id"],
+        station_name=record["station_name"],
+        bay_number=record["bay_number"],
+        connector_type=record["connector_type"],
+        duration_minutes=record["duration_minutes"],
+        total_cost=record["total_cost"],
+        mon_amount=record["mon_amount"],
+        pin_code=record["pin_code"],
+        start_time=record["start_time"],
+        expiry_time=record["expiry_time"],
+        expiry_timestamp=record["expiry_timestamp"],
+        payment_method=record["payment_method"],
+        tx_hash=record["tx_hash"],
+        block_number=record["block_number"],
+        from_address=record["from_address"],
+        to_address=record["to_address"],
+        gas_used=record["gas_used"],
+        payment_status=record["payment_status"],
+        explorer_url=explorer_url,
+        created_at=record["created_at"],
+        verified_at=record["verified_at"],
+        session_type=record.get("session_type"),
+        target_kwh=record.get("target_kwh"),
+        target_battery_pct=record.get("target_battery_pct"),
+    )
+
+
+@router.get(
+    "/station-owner/bookings",
+    response_model=StationOwnerBookingsResponse,
+    summary="List confirmed bookings and transaction receipts for station owners",
+)
+async def get_station_owner_bookings(
+    station_id: Optional[str] = Query(default=None),
+    limit: int = Query(default=50, ge=1, le=100),
+) -> StationOwnerBookingsResponse:
+    rows = driver_db.list_station_bookings(station_id=station_id, limit=limit)
+    items = []
+    for r in rows:
+        explorer_url = f"{MONAD_EXPLORER_URL}/tx/{r['tx_hash']}" if r.get("tx_hash") else None
+        items.append(
+            DriverBookingResponse(
+                id=r["id"],
+                station_id=r["station_id"],
+                station_name=r["station_name"],
+                bay_number=r["bay_number"],
+                connector_type=r["connector_type"],
+                duration_minutes=r["duration_minutes"],
+                total_cost=r["total_cost"],
+                mon_amount=r["mon_amount"],
+                pin_code=r["pin_code"],
+                start_time=r["start_time"],
+                expiry_time=r["expiry_time"],
+                expiry_timestamp=r["expiry_timestamp"],
+                payment_method=r["payment_method"],
+                tx_hash=r["tx_hash"],
+                block_number=r["block_number"],
+                from_address=r["from_address"],
+                to_address=r["to_address"],
+                gas_used=r["gas_used"],
+                payment_status=r["payment_status"],
+                explorer_url=explorer_url,
+                created_at=r["created_at"],
+                verified_at=r["verified_at"],
+                session_type=r.get("session_type"),
+                target_kwh=r.get("target_kwh"),
+                target_battery_pct=r.get("target_battery_pct"),
+            )
+        )
+    return StationOwnerBookingsResponse(items=items, total=len(items))
+
+
+@router.get(
+    "/rpc-status",
+    summary="Get Monad and Alchemy RPC connection status and latest block",
+)
+async def get_rpc_status():
+    rpc_url, provider_name = get_active_monad_rpc()
+    is_alchemy = "Alchemy" in provider_name
+    block_num = None
+    connected = False
+    error_msg = None
+    try:
+        async with httpx.AsyncClient(timeout=6.0) as client:
+            res = await client.post(
+                rpc_url,
+                json={"jsonrpc": "2.0", "id": 1, "method": "eth_blockNumber", "params": []},
+            )
+            data = res.json()
+            if "result" in data:
+                block_num = int(data["result"], 16)
+                connected = True
+    except Exception as e:
+        error_msg = str(e)
+
+    return {
+        "provider": provider_name,
+        "is_alchemy": is_alchemy,
+        "chain_id": 10143,
+        "chain_name": "Monad Testnet",
+        "connected": connected,
+        "latest_block": block_num,
+        "rpc_configured": bool(rpc_url),
+        "error": error_msg,
+    }
+

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { OptimizeResponse, PlanningScenario } from "@/types/api";
+import { Building2 } from "lucide-react";
 
 function haversine(lat1: number, lng1: number, lat2: number, lng2: number): number {
   const R = 6371;
@@ -654,7 +655,7 @@ export function ResultPanel({
               e.currentTarget.style.background = "var(--color-navy-50)";
             }}
           >
-            <span>🏛️</span>
+            <Building2 size={13} />
             <span>Inspect Candidate in 3D Urban Digital Twin →</span>
           </button>
         )}

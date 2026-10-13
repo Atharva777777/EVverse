@@ -234,6 +234,41 @@ def init_driver_db() -> None:
                 );
 
                 CREATE INDEX IF NOT EXISTS idx_charging_sessions_driver ON charging_sessions(driver_id);
+
+                CREATE TABLE IF NOT EXISTS driver_bookings (
+                    id TEXT PRIMARY KEY,
+                    driver_id TEXT NOT NULL,
+                    station_id TEXT NOT NULL,
+                    station_name TEXT NOT NULL,
+                    bay_number TEXT NOT NULL,
+                    connector_type TEXT NOT NULL,
+                    duration_minutes INTEGER NOT NULL,
+                    total_cost TEXT NOT NULL,
+                    mon_amount TEXT NOT NULL,
+                    wei_amount TEXT NOT NULL,
+                    pin_code TEXT NOT NULL,
+                    start_time TEXT NOT NULL,
+                    expiry_time TEXT NOT NULL,
+                    expiry_timestamp INTEGER NOT NULL,
+                    payment_method TEXT NOT NULL,
+                    tx_hash TEXT UNIQUE,
+                    block_number INTEGER,
+                    from_address TEXT,
+                    to_address TEXT,
+                    gas_used TEXT,
+                    payment_status TEXT NOT NULL,
+                    session_type TEXT DEFAULT 'hold_only',
+                    target_kwh REAL,
+                    target_battery_pct INTEGER,
+                    created_at TEXT NOT NULL,
+                    verified_at TEXT,
+                    FOREIGN KEY (driver_id) REFERENCES driver_sessions(driver_id) ON DELETE CASCADE
+                );
+
+                CREATE INDEX IF NOT EXISTS idx_driver_bookings_station ON driver_bookings(station_id);
+                CREATE INDEX IF NOT EXISTS idx_driver_bookings_driver ON driver_bookings(driver_id);
+                CREATE INDEX IF NOT EXISTS idx_driver_bookings_status ON driver_bookings(payment_status);
+                CREATE UNIQUE INDEX IF NOT EXISTS idx_driver_bookings_tx_hash ON driver_bookings(tx_hash) WHERE tx_hash IS NOT NULL;
             """)
 
 
@@ -709,3 +744,125 @@ def record_charging_session(driver_id: str, session_data: Dict[str, Any]) -> Dic
             "SELECT * FROM charging_sessions WHERE id = ?", (session_id,)
         ).fetchone()
         return dict(row)
+
+
+# ── Driver Bookings & Monad Settlement Operations ─────────────────────────────
+
+def create_driver_booking(driver_id: str, booking_data: Dict[str, Any]) -> Dict[str, Any]:
+    """Persist a new driver booking record."""
+    import secrets
+
+    init_driver_db()
+    now = _now_iso()
+    booking_id = booking_data.get("id") or f"RES-{secrets.randbelow(9000) + 1000}-EV"
+    pin_code = booking_data.get("pin_code") or str(secrets.randbelow(9000) + 1000)
+
+    with get_db_connection() as conn:
+        conn.execute(
+            """
+            INSERT INTO driver_bookings (
+                id, driver_id, station_id, station_name, bay_number,
+                connector_type, duration_minutes, total_cost, mon_amount,
+                wei_amount, pin_code, start_time, expiry_time, expiry_timestamp,
+                payment_method, tx_hash, block_number, from_address, to_address,
+                gas_used, payment_status, session_type, target_kwh, target_battery_pct,
+                created_at, verified_at
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                booking_id,
+                driver_id,
+                booking_data["station_id"],
+                booking_data["station_name"],
+                booking_data.get("bay_number", "Bay 01"),
+                booking_data.get("connector_type", "CCS2 Combo"),
+                int(booking_data.get("duration_minutes", 30)),
+                booking_data.get("total_cost", "₹49"),
+                booking_data.get("mon_amount", "0.025 MON"),
+                booking_data.get("wei_amount", "0"),
+                pin_code,
+                booking_data.get("start_time", now),
+                booking_data.get("expiry_time", now),
+                int(booking_data.get("expiry_timestamp", 0)),
+                booking_data.get("payment_method", "monad_testnet"),
+                booking_data.get("tx_hash"),
+                booking_data.get("block_number"),
+                booking_data.get("from_address"),
+                booking_data.get("to_address"),
+                booking_data.get("gas_used"),
+                booking_data.get("payment_status", "pending_verification"),
+                booking_data.get("session_type", "hold_only"),
+                float(booking_data["target_kwh"]) if booking_data.get("target_kwh") is not None else None,
+                int(booking_data["target_battery_pct"]) if booking_data.get("target_battery_pct") is not None else None,
+                now,
+                booking_data.get("verified_at"),
+            ),
+        )
+
+        row = conn.execute(
+            "SELECT * FROM driver_bookings WHERE id = ?", (booking_id,)
+        ).fetchone()
+        return dict(row)
+
+
+def get_driver_booking(booking_id: str) -> Optional[Dict[str, Any]]:
+    """Fetch booking by primary ID."""
+    init_driver_db()
+    with get_db_connection() as conn:
+        row = conn.execute(
+            "SELECT * FROM driver_bookings WHERE id = ?", (booking_id,)
+        ).fetchone()
+        return dict(row) if row else None
+
+
+def get_booking_by_tx_hash(tx_hash: str) -> Optional[Dict[str, Any]]:
+    """Fetch booking by unique transaction hash to prevent duplicate submissions."""
+    if not tx_hash:
+        return None
+    init_driver_db()
+    with get_db_connection() as conn:
+        row = conn.execute(
+            "SELECT * FROM driver_bookings WHERE LOWER(tx_hash) = LOWER(?)", (tx_hash.strip(),)
+        ).fetchone()
+        return dict(row) if row else None
+
+
+def list_station_bookings(station_id: Optional[str] = None, limit: int = 50) -> List[Dict[str, Any]]:
+    """List confirmed bookings for station owners."""
+    init_driver_db()
+    with get_db_connection() as conn:
+        if station_id:
+            rows = conn.execute(
+                """
+                SELECT * FROM driver_bookings
+                WHERE station_id = ? AND payment_status = 'confirmed'
+                ORDER BY created_at DESC LIMIT ?
+                """,
+                (station_id, limit),
+            ).fetchall()
+        else:
+            rows = conn.execute(
+                """
+                SELECT * FROM driver_bookings
+                WHERE payment_status = 'confirmed'
+                ORDER BY created_at DESC LIMIT ?
+                """,
+                (limit,),
+            ).fetchall()
+        return [dict(r) for r in rows]
+
+
+def list_driver_bookings(driver_id: str, limit: int = 20) -> List[Dict[str, Any]]:
+    """List bookings created by driver."""
+    init_driver_db()
+    with get_db_connection() as conn:
+        rows = conn.execute(
+            """
+            SELECT * FROM driver_bookings
+            WHERE driver_id = ?
+            ORDER BY created_at DESC LIMIT ?
+            """,
+            (driver_id, limit),
+        ).fetchall()
+        return [dict(r) for r in rows]
+

@@ -150,7 +150,7 @@ export default function EVverseEntryPage() {
               >
                 <Image
                   src="/images/card-investor.png"
-                  alt="Investor Quantum Planning"
+                  alt="Investor Urban Charging Infrastructure Planning"
                   fill
                   sizes="(max-width: 768px) 100vw, 360px"
                   style={{
@@ -244,7 +244,7 @@ export default function EVverseEntryPage() {
               >
                 <Image
                   src="/images/card-station-owners.png"
-                  alt="EV Station Owners Operations and Telemetry"
+                  alt="Real-World Commercial EV Charging Plaza"
                   fill
                   sizes="(max-width: 768px) 100vw, 360px"
                   style={{

@@ -23,7 +23,10 @@ import type {
   ChargingSessionItem,
 } from "@/types/api";
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+const BASE_URL =
+  process.env.NEXT_PUBLIC_API_URL ||
+  process.env.NEXT_PUBLIC_API_BASE_URL ||
+  "http://localhost:8000";
 const SESSION_TOKEN_KEY = "evverse_driver_session_token";
 
 // ── Token Storage Helpers ─────────────────────────────────────────────────────
@@ -260,4 +263,85 @@ export async function recordChargingSession(
     method: "POST",
     body: JSON.stringify(session),
   });
+}
+
+// ── 7. Monad Testnet Booking & Station Owner Integration ───────────────────────
+
+export interface BookingCreateInput {
+  id?: string;
+  station_id: string;
+  station_name: string;
+  bay_number: string;
+  connector_type: string;
+  duration_minutes: number;
+  total_cost: string;
+  mon_amount: string;
+  tx_hash?: string;
+  recipient_address?: string;
+  payment_method: string;
+  session_type?: "hold_only" | "charging_session";
+  target_kwh?: number;
+  target_battery_pct?: number;
+  pin_code?: string;
+  start_time?: string;
+  expiry_time?: string;
+  expiry_timestamp?: number;
+}
+
+export interface BookingResponseItem {
+  id: string;
+  station_id: string;
+  station_name: string;
+  bay_number: string;
+  connector_type: string;
+  duration_minutes: number;
+  total_cost: string;
+  mon_amount: string;
+  pin_code: string;
+  start_time: string;
+  expiry_time: string;
+  expiry_timestamp: number;
+  payment_method: string;
+  tx_hash?: string | null;
+  block_number?: number | null;
+  from_address?: string | null;
+  to_address?: string | null;
+  gas_used?: string | null;
+  payment_status: string;
+  explorer_url?: string | null;
+  created_at: string;
+  verified_at?: string | null;
+  session_type?: string;
+  target_kwh?: number | null;
+  target_battery_pct?: number | null;
+  physical_activation_triggered: boolean;
+  settlement_note: string;
+}
+
+export interface StationOwnerBookingsResponse {
+  items: BookingResponseItem[];
+  total: number;
+}
+
+export async function createDriverBooking(
+  booking: BookingCreateInput
+): Promise<BookingResponseItem> {
+  return driverRequest<BookingResponseItem>("/api/v1/driver/bookings", {
+    method: "POST",
+    body: JSON.stringify(booking),
+  });
+}
+
+export async function getStationOwnerBookings(
+  stationId?: string,
+  limit: number = 50
+): Promise<StationOwnerBookingsResponse> {
+  const query = new URLSearchParams({
+    limit: String(limit),
+  });
+  if (stationId) query.set("station_id", stationId);
+
+  return driverRequest<StationOwnerBookingsResponse>(
+    `/api/v1/driver/station-owner/bookings?${query.toString()}`
+  );
 }

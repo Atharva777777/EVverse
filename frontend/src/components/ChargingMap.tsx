@@ -8,7 +8,9 @@ import {
   forwardRef,
   useImperativeHandle,
 } from "react";
+import type * as L from "leaflet";
 import type { ZoneDetail, LiveStation } from "@/types/api";
+import { Building2 } from "lucide-react";
 
 export interface ChargingMapHandle {
   setUserLocation: (lat: number, lng: number) => void;
@@ -76,15 +78,13 @@ function delay(ms: number) {
 const ChargingMap = forwardRef<ChargingMapHandle, ChargingMapProps>(
   ({ onSequenceStep, onReady, liveStations, onStationClick, selectedStationId, showLiveStationsOverride, hideInternalLayerControls, is3DMode, onToggle3D, onOpen3DTwin }, ref) => {
     const containerRef = useRef<HTMLDivElement>(null);
-    const mapRef = useRef<any>(null);
-    const userMarkerRef = useRef<any>(null);
-    const customMarkerRef = useRef<any>(null);
-    const layersRef = useRef<any[]>([]);
-    const liveStationLayersRef = useRef<any[]>([]);
+    const mapRef = useRef<L.Map | null>(null);
+    const userMarkerRef = useRef<L.Marker | null>(null);
+    const customMarkerRef = useRef<L.Marker | null>(null);
+    const layersRef = useRef<L.Layer[]>([]);
+    const liveStationLayersRef = useRef<L.Layer[]>([]);
     const userLatLngRef = useRef<[number, number]>([37.8032, -122.4005]);
 
-    const [internal3D, setInternal3D] = useState(false);
-    const active3D = is3DMode !== undefined ? is3DMode : internal3D;
     const [isPlaceChargerActive, setIsPlaceChargerActive] = useState(false);
 
     const [showCoverage, setShowCoverage] = useState(true);
@@ -120,7 +120,7 @@ const ChargingMap = forwardRef<ChargingMapHandle, ChargingMapProps>(
         // or if another mount already initialised the map on this container,
         // bail out to avoid the "Map container is already initialized" error.
         if (cancelled || mapRef.current) return;
-        if ((el as any)._leaflet_id) return;
+        if ((el as HTMLElement & { _leaflet_id?: number })._leaflet_id) return;
 
         el.style.width = "100%";
         el.style.height = "100%";
@@ -173,7 +173,7 @@ const ChargingMap = forwardRef<ChargingMapHandle, ChargingMapProps>(
         L.control.zoom({ position: "bottomright" }).addTo(map);
 
         // Map click handler: allows investor to drop a charger anywhere in the city
-        map.on("click", (e: any) => {
+        map.on("click", (e: L.LeafletMouseEvent) => {
           const { lat, lng } = e.latlng;
           if (customMarkerRef.current) {
             customMarkerRef.current.remove();
@@ -210,7 +210,7 @@ const ChargingMap = forwardRef<ChargingMapHandle, ChargingMapProps>(
                   onclick="window.__open3DTwin && window.__open3DTwin('Custom Candidate', 'Custom Location (${lat.toFixed(3)}°, ${lng.toFixed(3)}°)', ${lat}, ${lng}, 520, 8.8, 0.91)"
                   style="width:100%;padding:10px;border-radius:8px;border:none;background:var(--color-navy-900);color:white;font-family:'Times New Roman',serif;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;box-shadow:0 2px 8px rgba(10,22,40,0.2);"
                 >
-                  <span>🏛️ Launch 3D Hyperrealistic Twin & Pro-Forma →</span>
+                  <span>Launch 3D Digital Twin & Pro-Forma →</span>
                 </button>
               </div>
             `)
@@ -241,7 +241,7 @@ const ChargingMap = forwardRef<ChargingMapHandle, ChargingMapProps>(
 
     // Bind global popup click handler for 3D digital twin launch
     useEffect(() => {
-      (window as any).__open3DTwin = (
+      (window as unknown as Record<string, unknown>).__open3DTwin = (
         label: string,
         name: string,
         lat: number,
@@ -253,7 +253,7 @@ const ChargingMap = forwardRef<ChargingMapHandle, ChargingMapProps>(
         onOpen3DTwin?.({ label, name, lat, lng, demandKwh, gapScore, quboScore });
       };
       return () => {
-        delete (window as any).__open3DTwin;
+        delete (window as unknown as Record<string, unknown>).__open3DTwin;
       };
     }, [onOpen3DTwin]);
 
@@ -429,7 +429,7 @@ const ChargingMap = forwardRef<ChargingMapHandle, ChargingMapProps>(
                   onclick="window.__open3DTwin && window.__open3DTwin('${z.label}', '${(z.name_primary || `Site ${z.label}`).replace(/'/g, "\\'")}', ${z.latitude}, ${z.longitude}, ${z.predicted_demand_kwh_h}, ${z.infrastructure_gap_score || 8.4}, ${z.qubo_c_value})"
                   style="width:100%;margin-top:12px;padding:10px;border-radius:8px;border:none;background:var(--color-navy-900);color:white;font-family:'Times New Roman',serif;font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;box-shadow:0 2px 8px rgba(10,22,40,0.2);"
                 >
-                  <span>🏛️ View 3D Station & Investment Pro-Forma →</span>
+                  <span>View 3D Station & Investment Pro-Forma →</span>
                 </button>
               </div>`));
             layersRef.current.push(m);
@@ -585,7 +585,7 @@ const ChargingMap = forwardRef<ChargingMapHandle, ChargingMapProps>(
 
         // ── Step 1: Demand heatmap — zones pulse in with fill intensity ───
         onSequenceStep?.(0);
-        const heatLayers: any[] = [];
+        const heatLayers: L.Path[] = [];
         for (let i = 0; i < zones.length; i++) {
           const z = zones[i];
           const ratio = z.predicted_demand_kwh_h / maxDemand;
@@ -648,7 +648,7 @@ const ChargingMap = forwardRef<ChargingMapHandle, ChargingMapProps>(
 
         // ── Step 3: Candidate evaluation & QAOA quantum superposition ─────
         onSequenceStep?.(2);
-        const pulseMarkers: any[] = [];
+        const pulseMarkers: L.Path[] = [];
         for (const z of zones) {
           const ring = L.circleMarker([z.latitude, z.longitude], {
             radius: 8,
@@ -711,59 +711,12 @@ const ChargingMap = forwardRef<ChargingMapHandle, ChargingMapProps>(
             position: "absolute",
             inset: 0,
             background: "#e8edf4",
-            transform: active3D ? "perspective(1150px) rotateX(34deg) scale(1.07)" : "none",
-            transformOrigin: "center 75%",
-            transition: "transform 0.65s cubic-bezier(0.16, 1, 0.3, 1)",
-            willChange: "transform",
           }}
         />
 
-        {/* 3D Horizon vignette */}
-        {active3D && (
-          <div
-            style={{
-              position: "absolute",
-              top: 0,
-              left: 0,
-              right: 0,
-              height: "90px",
-              background: "linear-gradient(to bottom, rgba(232,237,244,0.7) 0%, transparent 100%)",
-              pointerEvents: "none",
-              zIndex: 10,
-            }}
-          />
-        )}
 
-        {/* 3D Active Indicator Badge */}
-        {active3D && (
-          <div
-            className="anim-fade-in"
-            style={{
-              position: "absolute",
-              top: "70px",
-              left: "20px",
-              zIndex: 35,
-              borderRadius: "8px",
-              padding: "4px 10px",
-              background: "rgba(255, 255, 255, 0.92)",
-              backdropFilter: "blur(12px)",
-              WebkitBackdropFilter: "blur(12px)",
-              border: "1px solid rgba(10, 22, 40, 0.12)",
-              boxShadow: "0 2px 10px rgba(0,0,0,0.06)",
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-              fontFamily: "Times New Roman, serif",
-              fontSize: "11px",
-              color: "var(--color-navy-900)",
-            }}
-          >
-            <span style={{ width: "6px", height: "6px", borderRadius: "50%", background: "#059669" }} />
-            <span>3D Spatial Perspective Active</span>
-          </div>
-        )}
 
-        {/* GIS Map Layer & 3D Perspective Controls */}
+        {/* GIS Map Layer & Station Digital Twin Controls */}
         {!hideInternalLayerControls && (
           <div
             className="anim-fade-in glass"
@@ -781,31 +734,6 @@ const ChargingMap = forwardRef<ChargingMapHandle, ChargingMapProps>(
               border: "1px solid rgba(255,255,255,0.8)",
             }}
           >
-            <button
-              onClick={() => {
-                if (onToggle3D) onToggle3D();
-                else setInternal3D((prev) => !prev);
-              }}
-              style={{
-                padding: "4px 10px",
-                borderRadius: "6px",
-                border: "none",
-                background: active3D ? "var(--color-navy-900)" : "var(--color-grey-100)",
-                color: active3D ? "white" : "var(--color-ink-3)",
-                fontFamily: "Times New Roman, serif",
-                fontSize: "12px",
-                fontWeight: 600,
-                cursor: "pointer",
-                transition: "all 0.15s ease",
-                display: "flex",
-                alignItems: "center",
-                gap: "4px",
-              }}
-              title="Toggle 3D Perspective City View"
-            >
-              <span>{active3D ? "✓ 3D View" : "3D View"}</span>
-            </button>
-
             {/* Direct 3D Digital Twin Pro-Forma quick launch button */}
             <button
               onClick={() => {
@@ -833,11 +761,12 @@ const ChargingMap = forwardRef<ChargingMapHandle, ChargingMapProps>(
                 transition: "all 0.15s ease",
                 display: "flex",
                 alignItems: "center",
-                gap: "4px",
+                gap: "6px",
               }}
               title="View 3D Station Model & Financial Pro-Forma"
             >
-              <span>🏛️ 3D Station</span>
+              <Building2 size={13} />
+              <span>3D Station</span>
             </button>
 
             {(hasResults || (liveStations && liveStations.length > 0)) && (

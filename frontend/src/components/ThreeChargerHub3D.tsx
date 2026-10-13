@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-import { Camera, RotateCw, Eye, Sun, Moon, Sparkles, Maximize2 } from "lucide-react";
+import { Camera, RotateCw, Eye, Sun, Moon, Sparkles, Maximize2, Zap, RefreshCw } from "lucide-react";
 
 export interface ThreeChargerHub3DProps {
   lighting: "day" | "dusk" | "night";
@@ -35,13 +35,17 @@ export function ThreeChargerHub3D({
   const animFrameRef = useRef<number | null>(null);
 
   const [isTurntableActive, setIsTurntableActive] = useState(false);
-  const isTurntableRef = useRef(false);
-  isTurntableRef.current = isTurntableActive;
+  const isTurntableRef = useRef(isTurntableActive);
+  useEffect(() => {
+    isTurntableRef.current = isTurntableActive;
+  }, [isTurntableActive]);
 
   const [internalMode, setInternalMode] = useState<"charge" | "v2g">(mode || "charge");
   const isV2G = mode !== undefined ? mode === "v2g" : internalMode === "v2g";
   const isV2GRef = useRef(isV2G);
-  isV2GRef.current = isV2G;
+  useEffect(() => {
+    isV2GRef.current = isV2G;
+  }, [isV2G]);
 
   // Scene references for live updates
   const lightsRef = useRef<{
@@ -96,7 +100,7 @@ export function ThreeChargerHub3D({
     ctx.fill();
     ctx.fillStyle = v2gActive ? "#38bdf8" : "#34d399";
     ctx.font = "bold 20px -apple-system, sans-serif";
-    ctx.fillText(v2gActive ? "🔄 EXPORTING TO GRID" : "● CHARGING ACTIVE", 256, 144);
+    ctx.fillText(v2gActive ? "● EXPORTING TO GRID" : "● CHARGING ACTIVE", 256, 144);
 
     // Power Delivery / Export Readout
     ctx.fillStyle = v2gActive ? "#38bdf8" : "#10b981";
@@ -177,7 +181,7 @@ export function ThreeChargerHub3D({
 
     ctx.fillStyle = v2gActive ? "#38bdf8" : "#10b981";
     ctx.font = "bold 24px -apple-system, sans-serif";
-    ctx.fillText(v2gActive ? "🔄 SUBSTATION BALANCING ACTIVE" : "● HIGH POWER DC NETWORK", 256, 945);
+    ctx.fillText(v2gActive ? "● SUBSTATION BALANCING ACTIVE" : "● HIGH POWER DC NETWORK", 256, 945);
 
     ctx.fillStyle = "#94a3b8";
     ctx.font = "20px -apple-system, sans-serif";
@@ -1191,7 +1195,17 @@ export function ThreeChargerHub3D({
           }}
           title="Toggle V2G Bidirectional Backflow simulation"
         >
-          <span>{isV2G ? "🔄 V2G Active" : "⚡ Charge Flow"}</span>
+          {isV2G ? (
+            <>
+              <RefreshCw size={12} className="text-sky-600 animate-spin" />
+              <span>V2G Active</span>
+            </>
+          ) : (
+            <>
+              <Zap size={12} className="text-emerald-600" />
+              <span>Charge Flow</span>
+            </>
+          )}
         </button>
 
         <button

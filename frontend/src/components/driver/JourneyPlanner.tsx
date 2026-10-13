@@ -46,14 +46,11 @@ export function JourneyPlanner({
     );
   }, [selectedCity]);
 
-  const [selectedDestination, setSelectedDestination] = useState<JourneyDestination>(
-    cityCorridors[0]
-  );
-
-  // Sync destination if city changes
-  useEffect(() => {
-    setSelectedDestination(cityCorridors[0]);
-  }, [cityCorridors]);
+  const [customDestination, setCustomDestination] = useState<JourneyDestination | null>(null);
+  const selectedDestination =
+    customDestination && cityCorridors.some((c) => c.id === customDestination.id)
+      ? customDestination
+      : cityCorridors[0];
 
   // Selected charging stop & plan result
   const [primaryStopId, setPrimaryStopId] = useState<string | undefined>(undefined);
@@ -63,7 +60,9 @@ export function JourneyPlanner({
   // Compute journey plan using current battery and selected destination
   useEffect(() => {
     let isCancelled = false;
-    setIsComputing(true);
+    const computeTimer = setTimeout(() => {
+      setIsComputing(true);
+    }, 0);
 
     computeEVJourneyPlan({
       origin: userLocation,
@@ -91,6 +90,7 @@ export function JourneyPlanner({
 
     return () => {
       isCancelled = true;
+      clearTimeout(computeTimer);
     };
   }, [
     userLocation,
@@ -135,7 +135,7 @@ export function JourneyPlanner({
                 key={dest.id}
                 type="button"
                 onClick={() => {
-                  setSelectedDestination(dest);
+                  setCustomDestination(dest);
                   setPrimaryStopId(undefined);
                 }}
                 className={`min-h-[38px] px-3 py-1.5 rounded-xl border text-left shrink-0 transition-all cursor-pointer flex items-center gap-2 ${

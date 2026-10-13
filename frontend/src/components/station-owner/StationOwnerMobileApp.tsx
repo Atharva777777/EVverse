@@ -14,7 +14,8 @@ import {
   Clock,
   CheckCircle2,
   Smartphone,
-  Maximize2
+  Maximize2,
+  ArrowLeft,
 } from 'lucide-react';
 import { BrandLogo } from '@/components/BrandLogo';
 import { CodedStationChargersLineup } from './CodedStationChargersLineup';
@@ -131,10 +132,18 @@ export function StationOwnerMobileApp() {
       {/* ── Top Desktop Studio Navigation Toolbar ── */}
       <div className="hidden md:flex w-full max-w-5xl items-center justify-between px-6 py-3 border-b border-[rgba(255,255,255,0.08)] text-xs text-[#8C938E] z-50">
         <div className="flex items-center gap-3">
-          <Link href="/" className="flex items-center gap-2 group">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-white/90 hover:text-white bg-white/10 hover:bg-white/15 transition-all border border-white/10"
+            title="Return to EVverse Landing Page"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            <span>Back to EVverse</span>
+          </Link>
+          <div className="flex items-center gap-2 group">
             <span className="w-2 h-2 rounded-full bg-[#C8F369]" />
             <span className="font-bold text-white tracking-tight">EV VERSE STATION OWNER STUDIO</span>
-          </Link>
+          </div>
           <span className="text-[11px] bg-white/10 text-white/80 px-2 py-0.5 rounded-md font-mono">
             Port 3001
           </span>
@@ -274,6 +283,21 @@ export function StationOwnerMobileApp() {
 
             {/* ── Sticky Header: Station Switcher ── */}
             <header className="sticky top-0 z-30 bg-[#FAF9F6]/95 backdrop-blur-md px-3.5 pt-2.5 pb-2.5 border-b border-black/[0.06] shrink-0">
+              {/* Back to EVverse navigation row (visible in mobile view) */}
+              <div className="flex items-center justify-between pb-2 mb-2 border-b border-black/[0.04]">
+                <Link
+                  href="/"
+                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-[#111312] hover:text-black bg-white border border-black/[0.08] px-2.5 py-1 rounded-xl shadow-2xs hover:bg-black/[0.04] transition-colors"
+                  title="Return to EVverse Landing Page"
+                >
+                  <ArrowLeft className="w-3.5 h-3.5" />
+                  <span>Back to EVverse</span>
+                </Link>
+                <span className="text-[10px] font-mono font-medium text-black/40 uppercase tracking-wider">
+                  Station Owner
+                </span>
+              </div>
+
               <div className="flex items-center justify-between">
                 {/* Station Selector Button */}
                 <div className="relative flex-1 mr-2.5">

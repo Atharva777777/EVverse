@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useId } from "react";
+import React, { useState, useId, useCallback } from "react";
 import Image from "next/image";
 import {
   CheckCircle2,
@@ -121,17 +121,18 @@ export function GarageFleet({
   };
 
   // Add from verified catalogue preset
-  const handleSelectCataloguePreset = (preset: (typeof VERIFIED_OEM_CATALOGUE)[number]) => {
+  const handleSelectCataloguePreset = useCallback((preset: (typeof VERIFIED_OEM_CATALOGUE)[number]) => {
+    const stamp = Date.now().toString().slice(-4);
     const newVehicle: EVVehicle = {
       ...preset,
-      id: `ev-${preset.make.toLowerCase().replace(/[^a-z0-9]/g, "")}-${Date.now().toString().slice(-4)}`,
+      id: `ev-${preset.make.toLowerCase().replace(/[^a-z0-9]/g, "")}-${stamp}`,
       currentBatteryPct: 80,
       sohPct: 99.5,
     };
 
     onAddVehicle?.(newVehicle);
     setIsAddModalOpen(false);
-  };
+  }, [onAddVehicle]);
 
   // Submit Custom Vehicle Form
   const handleSubmitCustomVehicle = (e: React.FormEvent) => {

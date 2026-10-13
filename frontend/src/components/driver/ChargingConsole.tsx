@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import Image from "next/image";
 import {
   Zap,
@@ -66,6 +66,13 @@ export function ChargingConsole({
   // Compute live electrical telemetry
   const busVoltage = 784; // 800V class architecture
   const currentAmps = isCharging && currentKw > 0 ? Math.round((currentKw * 1000) / busVoltage) : 0;
+
+  // Stable invoice identifier derived deterministically from session parameters
+  const invoiceId = useMemo(() => {
+    const rawSum = (vehicle.id || "ev").split("").reduce((acc, c) => acc + c.charCodeAt(0), 0) * 37 +
+      Math.round(kwhDelivered * 100) + Math.round(chargeCost * 100);
+    return 100000 + (Math.abs(rawSum) % 900000);
+  }, [vehicle.id, kwhDelivered, chargeCost]);
 
   return (
     <div className="space-y-3.5 pb-20">
@@ -353,7 +360,7 @@ export function ChargingConsole({
               <div>
                 <h4 className="text-base font-bold text-[#111312]">Session Receipt</h4>
                 <div className="text-[10px] font-mono text-[#767D78]">
-                  Invoice #{Math.floor(100000 + Math.random() * 900000)}
+                  Invoice #{invoiceId}
                 </div>
               </div>
             </div>

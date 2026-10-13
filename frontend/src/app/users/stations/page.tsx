@@ -23,6 +23,17 @@ import {
 } from "@/components/driver/StatusStates";
 import { StationDetailSheet } from "@/components/driver/StationDetailSheet";
 import {
+  ParkingBookingModal,
+  type ParkingBooking,
+} from "@/components/driver/ParkingBookingModal";
+import {
+  MONAD_CONFIG,
+  getExistingAccounts,
+  getCurrentChainId,
+  requestWalletAccounts,
+  truncateAddress,
+} from "@/lib/monadPayment";
+import {
   syncFavouritesWithBackend,
   addFavouriteToBackend,
   removeFavouriteFromBackend,
@@ -59,6 +70,9 @@ import {
   ExternalLink,
   Zap,
   BookOpen,
+  ArrowLeft,
+  Coins,
+  Wallet,
 } from "lucide-react";
 
 // Dynamic Leaflet Map Component
@@ -122,7 +136,7 @@ export default function EVVerseDriverPage() {
   const [vehicles, setVehicles] = useState<EVVehicle[]>(VERIFIED_GARAGE_VEHICLES);
   const [activeVehicleId, setActiveVehicleId] = useState<string>("porsche-taycan-gts");
   const [autoCompatibility, setAutoCompatibility] = useState<boolean>(true);
-  const [isGarageLoading, setIsGarageLoading] = useState<boolean>(false);
+  const [isGarageLoading, setIsGarageLoading] = useState<boolean>(true);
   const [garageErrorMessage, setGarageErrorMessage] = useState<string | null>(null);
 
   // Active Vehicle derived object
@@ -164,7 +178,7 @@ export default function EVVerseDriverPage() {
   const [navStation, setNavStation] = useState<DriverStation | null>(null);
   const [navProgress, setNavProgress] = useState(0);
   const [isNavigating, setIsNavigating] = useState(false);
-  const navIntervalRef = useRef<any>(null);
+  const navIntervalRef = useRef<NodeJS.Timeout | number | null>(null);
 
   // Charging Session State
   const [isCharging, setIsCharging] = useState(false);
@@ -175,12 +189,11 @@ export default function EVVerseDriverPage() {
   const [chargeCurrentKw, setChargeCurrentKw] = useState(0);
   const [chargeCost, setChargeCost] = useState(0);
   const [showReceiptModal, setShowReceiptModal] = useState(false);
-  const chargeIntervalRef = useRef<any>(null);
+  const chargeIntervalRef = useRef<NodeJS.Timeout | number | null>(null);
 
 
   // Hydrate vehicles & preferences from storage adapter on mount
   useEffect(() => {
-    setIsGarageLoading(true);
     loadGaragePreferences()
       .then(({ vehicles: loadedVehicles, activeVehicleId: loadedActiveId, autoCompatibility: loadedAutoCompat }) => {
         setVehicles(loadedVehicles);
@@ -221,19 +234,23 @@ export default function EVVerseDriverPage() {
     }
   }, []);
 
-  // Center map on city change
-  useEffect(() => {
+  // Center map on city change (render-phase state adjustment)
+  const [prevCity, setPrevCity] = useState(selectedCity);
+  if (selectedCity !== prevCity) {
+    setPrevCity(selectedCity);
     setMapCenter([cityConfig.lat, cityConfig.lng]);
     setUserLocation([cityConfig.lat + 0.008, cityConfig.lng - 0.006]);
-  }, [selectedCity, cityConfig.lat, cityConfig.lng]);
+  }
 
   // Update battery percentage when vehicle changes
-  useEffect(() => {
+  const [prevVehicleId, setPrevVehicleId] = useState(activeVehicleId);
+  if (activeVehicleId !== prevVehicleId) {
+    setPrevVehicleId(activeVehicleId);
     setCurrentBatteryPct(activeVehicle.currentBatteryPct);
-  }, [activeVehicleId, activeVehicle.currentBatteryPct]);
+  }
 
   // Active Spot Booking State
-  const [activeSpotBooking, setActiveSpotBooking] = useState<any>(null);
+  const [activeSpotBooking, setActiveSpotBooking] = useState<ParkingBooking | null>(null);
 
   useEffect(() => {
     const checkBooking = () => {
@@ -355,6 +372,105 @@ export default function EVVerseDriverPage() {
     return null;
   }, [stationsWithDistance]);
 
+  // Monad Testnet Payment Modal State & Web3 Wallet Sync
+  const [isPayModalOpen, setIsPayModalOpen] = useState(false);
+  const [driverWalletAddress, setDriverWalletAddress] = useState<string | null>(null);
+  const [driverWalletChainId, setDriverWalletChainId] = useState<string | null>(null);
+  const [isDriverConnectingWallet, setIsDriverConnectingWallet] = useState(false);
+
+  useEffect(() => {
+    if (typeof window === "undefined" || !window.ethereum) return;
+
+    getExistingAccounts().then((accounts) => {
+      if (accounts && accounts.length > 0) {
+        setDriverWalletAddress(accounts[0]);
+      }
+    });
+
+    getCurrentChainId().then((chainId) => {
+      if (chainId) setDriverWalletChainId(chainId.toLowerCase());
+    });
+
+    const handleAccountsChanged = (accounts: unknown) => {
+      const accs = accounts as string[];
+      if (accs && accs.length > 0) {
+        setDriverWalletAddress(accs[0]);
+      } else {
+        setDriverWalletAddress(null);
+      }
+    };
+
+    const handleChainChanged = (chainId: unknown) => {
+      if (typeof chainId === "string") {
+        setDriverWalletChainId(chainId.toLowerCase());
+      }
+    };
+
+    window.ethereum.on?.("accountsChanged", handleAccountsChanged);
+    window.ethereum.on?.("chainChanged", handleChainChanged);
+
+    return () => {
+      window.ethereum?.removeListener?.("accountsChanged", handleAccountsChanged);
+      window.ethereum?.removeListener?.("chainChanged", handleChainChanged);
+    };
+  }, []);
+
+  const isDriverMonadActive =
+    driverWalletChainId === MONAD_CONFIG.chainIdHex.toLowerCase();
+
+  const handleDriverConnectWallet = async (e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setIsDriverConnectingWallet(true);
+    try {
+      const accounts = await requestWalletAccounts();
+      if (accounts && accounts.length > 0) {
+        setDriverWalletAddress(accounts[0]);
+      }
+      const chain = await getCurrentChainId();
+      if (chain) setDriverWalletChainId(chain.toLowerCase());
+    } catch (err) {
+      console.warn("[EVverse Driver Wallet Connect]:", err);
+    } finally {
+      setIsDriverConnectingWallet(false);
+    }
+  };
+
+  // Derive target station for Monad booking/checkout flow
+  const paymentTargetStation = useMemo<LiveStation>(() => {
+    if (selectedStation) return selectedStation;
+    if (activeSpotBooking) {
+      const booked = stationsWithDistance.find((s) => s.station_id === activeSpotBooking.stationId);
+      if (booked) return booked;
+    }
+    if (nearestUltraStation?.raw) return nearestUltraStation.raw;
+    if (filteredStations.length > 0) return filteredStations[0];
+    if (stationsWithDistance.length > 0) return stationsWithDistance[0];
+    return {
+      station_id: `EVV-MONAD-${selectedCity.toUpperCase()}-01`,
+      name: `${selectedCity} Central Monad Fast Charger`,
+      latitude: cityConfig.lat,
+      longitude: cityConfig.lng,
+      address: `Central Hub, ${selectedCity}`,
+      operator: "EVverse Monad Network",
+      status: "Operational",
+      is_operational: true,
+      power_kw: 150,
+      bays: 4,
+      connector_types: [activeVehicle.plugType, "CCS2 Combo", "Type 2"],
+      usage_cost: "$0.28/kWh",
+      source: "open_charge_map",
+    };
+  }, [
+    selectedStation,
+    activeSpotBooking,
+    stationsWithDistance,
+    nearestUltraStation,
+    filteredStations,
+    selectedCity,
+    cityConfig,
+    activeVehicle.plugType,
+  ]);
+
   // Automotive range calculation physics formula:
   // Range (km) = (Usable Battery kWh * (SoC / 100)) / (Efficiency kWh/100km / 100) * DriveModeFactor * HvacFactor
   const calibratedRangeKm = useMemo(() => {
@@ -385,8 +501,8 @@ export default function EVVerseDriverPage() {
       setGarageErrorMessage(null);
       await syncAddVehicle(newVehicle);
       await syncActiveVehicleId(newVehicle.id);
-    } catch (err: any) {
-      setGarageErrorMessage(err?.message || "Failed to persist new vehicle.");
+    } catch (err: unknown) {
+      setGarageErrorMessage(err instanceof Error ? err.message : "Failed to persist new vehicle.");
     }
   };
 
@@ -397,8 +513,8 @@ export default function EVVerseDriverPage() {
       saveStoredVehicles(updated);
       setGarageErrorMessage(null);
       await syncUpdateVehicle(updatedVehicle);
-    } catch (err: any) {
-      setGarageErrorMessage(err?.message || "Failed to update vehicle.");
+    } catch (err: unknown) {
+      setGarageErrorMessage(err instanceof Error ? err.message : "Failed to update vehicle.");
     }
   };
 
@@ -416,8 +532,8 @@ export default function EVVerseDriverPage() {
       }
       setGarageErrorMessage(null);
       await syncDeleteVehicle(id);
-    } catch (err: any) {
-      setGarageErrorMessage(err?.message || "Failed to remove vehicle.");
+    } catch (err: unknown) {
+      setGarageErrorMessage(err instanceof Error ? err.message : "Failed to remove vehicle.");
     }
   };
 
@@ -454,7 +570,7 @@ export default function EVVerseDriverPage() {
     navIntervalRef.current = setInterval(() => {
       setNavProgress((prev) => {
         if (prev >= 1) {
-          clearInterval(navIntervalRef.current);
+          if (navIntervalRef.current) clearInterval(navIntervalRef.current);
           return 1;
         }
         return prev + 0.03;
@@ -550,6 +666,14 @@ export default function EVVerseDriverPage() {
       {/* ── Studio Toolbar (visible on desktop) ── */}
       <div className="hidden md:flex w-full max-w-5xl items-center justify-between px-6 py-3 border-b border-[rgba(255,255,255,0.08)] text-xs text-[#8C938E] z-50">
         <div className="flex items-center gap-3">
+          <Link
+            href="/"
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-white/90 hover:text-white bg-white/10 hover:bg-white/15 transition-all border border-white/10"
+            title="Return to EVverse Landing Page"
+          >
+            <ArrowLeft size={13} />
+            <span>Back to EVverse</span>
+          </Link>
           <div className="flex items-center gap-2">
             <span className="w-2 h-2 rounded-full bg-[#C8F369]" />
             <span className="font-bold text-white tracking-tight">EV VERSE MOBILE DRIVER APP</span>
@@ -602,7 +726,7 @@ export default function EVVerseDriverPage() {
         <div
           className={
             isFramed
-              ? "relative w-[424px] h-[866px] rounded-[56px] p-[10px] flex flex-col select-none"
+              ? "relative w-[424px] max-w-full h-[866px] rounded-[56px] p-[10px] flex flex-col select-none"
               : effectiveViewMode === "expanded"
               ? "w-full max-w-5xl min-h-screen flex flex-col relative bg-[#FAF9F6] shadow-xl rounded-3xl border border-[rgba(17,19,18,0.08)] overflow-hidden"
               : "w-full max-w-[430px] min-h-screen flex flex-col relative bg-[#FAF9F6] shadow-2xl border-x border-[rgba(17,19,18,0.06)]"
@@ -778,41 +902,51 @@ export default function EVVerseDriverPage() {
                 }}
                 aria-label="Driver App Header"
               >
-              {/* Brand Logo & Model */}
-              <div className="flex items-center gap-2">
-                <Link href="/" className="flex items-center gap-2 group cursor-pointer focus-visible:outline-2 focus-visible:outline-[#111312]">
+              {/* Brand Logo, Model & Back Navigation */}
+              <div className="flex items-center gap-2 min-w-0">
+                <Link
+                  href="/"
+                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#111312] bg-white border border-[rgba(17,19,18,0.08)] px-2.5 py-1.5 rounded-xl shadow-2xs hover:bg-[#F5F4EF] transition-colors shrink-0 focus-visible:outline-2 focus-visible:outline-[#111312]"
+                  title="Return to EVverse Landing Page"
+                  aria-label="Back to EVverse"
+                >
+                  <ArrowLeft size={13} />
+                  <span className="hidden xs:inline">EVverse</span>
+                </Link>
+                <div className="w-px h-5 bg-[rgba(17,19,18,0.08)] shrink-0" />
+                <div className="flex items-center gap-2 min-w-0">
                   <div className="w-7 h-7 rounded-lg bg-[#111312] flex items-center justify-center text-[#C8F369] font-bold text-xs shrink-0">
                     EV
                   </div>
                   <div className="min-w-0">
                     <span className="text-xs font-bold tracking-tight text-[#111312] block leading-none">
-                      EV VERSE
+                      EVverse
                     </span>
-                    <span className="text-[9.5px] font-mono text-[#8C938E] leading-none mt-0.5 block truncate max-w-[120px] sm:max-w-[160px]">
+                    <span className="text-[9.5px] font-mono text-[#8C938E] leading-none mt-0.5 block truncate max-w-[80px] xs:max-w-[110px] sm:max-w-[140px]">
                       {activeVehicle.make} {activeVehicle.model}
                     </span>
                   </div>
-                </Link>
+                </div>
               </div>
 
-              {/* City Selector Dropdown & Knowledge Link */}
+              {/* Header Right Controls: Guide Link, City Selector & Live Grid Indicator */}
               <div className="flex items-center gap-1.5 shrink-0">
-                {/* EV Knowledge Link */}
+                {/* EV Knowledge Hub Guide */}
                 <Link
                   href="/users/knowledge"
-                  className="flex items-center gap-1 text-[11px] font-semibold text-[#525854] hover:text-[#111312] bg-white border border-[rgba(17,19,18,0.08)] px-2 py-1.5 rounded-xl shadow-2xs hover:bg-[#F5F4EF] transition-colors cursor-pointer min-h-[34px] focus-visible:outline-2 focus-visible:outline-[#111312]"
-                  title="EV Knowledge Hub"
-                  aria-label="Open EV Knowledge Hub"
+                  className="flex items-center justify-center text-[#525854] hover:text-[#111312] bg-white border border-[rgba(17,19,18,0.08)] p-2 rounded-xl shadow-2xs hover:bg-[#F5F4EF] transition-colors cursor-pointer min-h-[34px] min-w-[34px] focus-visible:outline-2 focus-visible:outline-[#111312]"
+                  title="EV Knowledge Hub Guide"
+                  aria-label="Open EV Knowledge Hub Guide"
                 >
                   <BookOpen size={13} className="text-[#16A34A]" />
-                  <span className="hidden sm:inline">Guide</span>
                 </Link>
 
+                {/* City Selector */}
                 <select
                   value={selectedCity}
                   onChange={(e) => setSelectedCity(e.target.value)}
                   aria-label="Select City"
-                  className="text-xs sm:text-xs text-[16px] font-semibold bg-white border border-[rgba(17,19,18,0.08)] text-[#111312] rounded-xl px-2 sm:px-2.5 py-1.5 focus:outline-hidden cursor-pointer shadow-2xs hover:bg-[#F5F4EF] transition-colors min-h-[34px]"
+                  className="text-xs font-semibold bg-white border border-[rgba(17,19,18,0.08)] text-[#111312] rounded-xl px-2 sm:px-2.5 py-1.5 focus:outline-hidden cursor-pointer shadow-2xs hover:bg-[#F5F4EF] transition-colors min-h-[34px]"
                 >
                   {Object.keys(CITY_CONFIGS).map((cityName) => (
                     <option key={cityName} value={cityName}>
@@ -821,7 +955,7 @@ export default function EVVerseDriverPage() {
                   ))}
                 </select>
 
-                {/* Offline / Live Status Indicator */}
+                {/* Live Status Indicator */}
                 <div
                   className={`w-2.5 h-2.5 rounded-full shrink-0 ${
                     isLive ? "bg-[#16A34A]" : "bg-[#EAB308]"
@@ -832,34 +966,88 @@ export default function EVVerseDriverPage() {
               </div>
             </header>
 
+            {/* ── Monad Testnet Driver Payment Panel (when no active spot booking) ── */}
+            {!activeSpotBooking && (
+              <div className="mx-3 sm:mx-4 mt-2.5 p-3 bg-white border border-black/[0.08] rounded-2xl flex items-center justify-between text-xs shadow-xs animate-in slide-in-from-top-1 gap-2.5">
+                <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                  <div className="w-8 h-8 rounded-xl bg-[#111312] text-[#C8F369] flex items-center justify-center font-bold text-xs shrink-0 shadow-2xs">
+                    <Coins size={15} />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="font-bold text-[#111312]">Monad Testnet</span>
+                      <span className="text-[10px] font-mono text-[#2563EB] bg-[#EFF6FF] px-1.5 py-0.2 rounded border border-[#BFDBFE]">
+                        Chain 10143
+                      </span>
+                    </div>
+                    {/* Hold Amount & Connection Status without truncation cutoffs */}
+                    <div className="flex items-center gap-1.5 mt-0.5 text-[11px] text-[#525854] flex-wrap">
+                      <span className="font-medium text-[#111312]">
+                        Hold Deposit: <strong className="font-mono text-[#16A34A]">₹49</strong> (0.025 MON)
+                      </span>
+                      <span className="text-black/20 hidden xs:inline">•</span>
+                      <span className="inline-flex items-center gap-1 font-mono text-[10.5px]">
+                        <span
+                          className={`w-2 h-2 rounded-full shrink-0 ${
+                            driverWalletAddress
+                              ? isDriverMonadActive
+                                ? "bg-[#16A34A]"
+                                : "bg-[#EAB308]"
+                              : "bg-[#EF4444]"
+                          }`}
+                        />
+                        <span className="truncate max-w-[90px] xs:max-w-[120px]">
+                          {driverWalletAddress
+                            ? truncateAddress(driverWalletAddress)
+                            : "Disconnected"}
+                        </span>
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* ONE Single Primary Action at a time */}
+                <div className="shrink-0">
+                  {!driverWalletAddress ? (
+                    <button
+                      type="button"
+                      onClick={handleDriverConnectWallet}
+                      disabled={isDriverConnectingWallet}
+                      aria-label="Connect Web3 Wallet for Monad Payment"
+                      className="min-h-[34px] px-3 py-1.5 bg-[#111312] hover:bg-[#252826] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs active:scale-95 cursor-pointer transition-all focus-visible:outline-2 focus-visible:outline-[#111312]"
+                    >
+                      <Wallet size={13} className="text-[#C8F369] shrink-0" />
+                      <span>{isDriverConnectingWallet ? "Connecting..." : "Connect Wallet"}</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setIsPayModalOpen(true)}
+                      aria-label="Continue to Monad Payment"
+                      className="min-h-[34px] px-3.5 py-1.5 bg-[#111312] hover:bg-[#252826] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs active:scale-95 cursor-pointer transition-all focus-visible:outline-2 focus-visible:outline-[#111312]"
+                    >
+                      <Zap size={13} className="text-[#C8F369] shrink-0" />
+                      <span>Continue to Payment</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+
             {/* Active Spot Booking Banner */}
             {activeSpotBooking && (
               <div
                 role="button"
                 tabIndex={0}
-                onClick={() => {
-                  const st = (liveData?.stations || []).find(
-                    (s) => s.station_id === activeSpotBooking.stationId
-                  );
-                  if (st) {
-                    setSelectedStation(st as DriverStation);
-                    setIsStationDetailOpen(true);
-                  }
-                }}
+                onClick={() => setIsPayModalOpen(true)}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
-                    const st = (liveData?.stations || []).find(
-                      (s) => s.station_id === activeSpotBooking.stationId
-                    );
-                    if (st) {
-                      setSelectedStation(st as DriverStation);
-                      setIsStationDetailOpen(true);
-                    }
+                    setIsPayModalOpen(true);
                   }
                 }}
-                className="mx-3 sm:mx-4 mt-2 p-2.5 bg-[#F0FDF4] border border-[#BBF7D0] rounded-xl flex items-center justify-between text-xs cursor-pointer shadow-xs animate-in slide-in-from-top-1 hover:bg-[#DCFCE7]/70 transition-colors"
+                className="mx-3 sm:mx-4 mt-2.5 p-2.5 sm:p-3 bg-[#F0FDF4] border border-[#BBF7D0] rounded-2xl flex items-center justify-between text-xs cursor-pointer shadow-xs animate-in slide-in-from-top-1 hover:bg-[#DCFCE7]/70 transition-colors gap-2"
               >
-                <div className="flex items-center gap-2 min-w-0">
+                <div className="flex items-center gap-2 min-w-0 flex-1">
                   <span className="relative flex h-2 w-2 shrink-0">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#16A34A] opacity-75" />
                     <span className="relative inline-flex rounded-full h-2 w-2 bg-[#16A34A]" />
@@ -870,12 +1058,12 @@ export default function EVVerseDriverPage() {
                     <span className="text-[#525854] text-[11px] ml-1">({activeSpotBooking.stationName})</span>
                   </div>
                 </div>
-                <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                <div className="flex items-center gap-1.5 shrink-0">
                   <span className="text-[10px] font-mono font-bold bg-white text-[#15803D] px-2 py-0.5 rounded-md border border-[#86EFAC]">
                     PIN: {activeSpotBooking.pinCode}
                   </span>
-                  <span className="text-[10px] font-semibold text-[#15803D] underline">
-                    View Pass
+                  <span className="min-h-[30px] px-2.5 py-1 bg-[#15803D] text-white rounded-lg text-[11px] font-bold flex items-center gap-1 shadow-2xs">
+                    View Receipt
                   </span>
                 </div>
               </div>
@@ -1114,7 +1302,7 @@ export default function EVVerseDriverPage() {
                             className="min-h-[40px] px-3 py-2 bg-[#F0FDF4] border border-[#BBF7D0] text-[#15803D] rounded-xl text-xs font-bold flex items-center gap-1 hover:bg-[#DCFCE7] active:scale-95 cursor-pointer"
                           >
                             <Zap size={12} className="text-[#16A34A]" />
-                            <span>Book (₹49)</span>
+                            <span>Book Stall</span>
                           </button>
 
                           <button
@@ -1147,6 +1335,8 @@ export default function EVVerseDriverPage() {
                   onToggleSave={(id) => toggleSaveStation(id)}
                   activeVehicleSoc={currentBatteryPct}
                   vehicleWltpKm={activeVehicle.wltpRangeKm}
+                  activeVehicle={activeVehicle}
+                  onOpenBookingModal={() => setIsPayModalOpen(true)}
                 />
               </div>
             </div>
@@ -1236,6 +1426,16 @@ export default function EVVerseDriverPage() {
           activeTab={activeTab}
           onTabChange={setActiveTab}
           isCharging={isCharging}
+        />
+
+        {/* ── Global Monad Payment & Stall Hold Modal ────────────────────── */}
+        <ParkingBookingModal
+          isOpen={isPayModalOpen}
+          onClose={() => setIsPayModalOpen(false)}
+          station={paymentTargetStation}
+          onStartNavigation={(st) => startNavigation(st as DriverStation)}
+          activeVehicle={activeVehicle}
+          initialStep="review"
         />
           </div>
         </div>

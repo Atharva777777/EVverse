@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   TrendingUp,
   ArrowUpRight,
@@ -13,8 +13,18 @@ import {
   ChevronRight,
   ArrowDownLeft,
   Building2,
-  Calendar
+  Calendar,
+  ExternalLink,
+  Copy,
+  Check,
+  Loader2,
+  Coins,
+  AlertCircle,
 } from 'lucide-react';
+import {
+  getStationOwnerBookings,
+  type BookingResponseItem,
+} from '@/lib/driverApi';
 
 interface Receipt {
   id: string;
@@ -96,10 +106,48 @@ export function StationOwnerPaymentsConsole() {
   const [showTariffSheet, setShowTariffSheet] = useState(false);
   const [activeFilter, setActiveFilter] = useState<'all' | 'charging' | 'parking'>('all');
 
+  // Live on-chain bookings from SQLite persistence
+  const [onChainBookings, setOnChainBookings] = useState<BookingResponseItem[]>([]);
+  const [isLoadingBookings, setIsLoadingBookings] = useState<boolean>(true);
+  const [copiedTxHash, setCopiedTxHash] = useState<string | null>(null);
+
   // Interactive rates
   const [ratePerKwh, setRatePerKwh] = useState(18.5);
   const [parkingRatePerHour, setParkingRatePerHour] = useState(50);
   const [savedSuccess, setSavedSuccess] = useState(false);
+
+  useEffect(() => {
+    let isMounted = true;
+    getStationOwnerBookings()
+      .then((res) => {
+        if (isMounted) {
+          setOnChainBookings(res.items || []);
+        }
+      })
+      .catch((err) => {
+        console.warn("[StationOwner] Failed to load on-chain bookings:", err);
+      })
+      .finally(() => {
+        if (isMounted) setIsLoadingBookings(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const handleCopyTx = (txHash: string) => {
+    if (typeof navigator !== "undefined" && navigator.clipboard) {
+      navigator.clipboard.writeText(txHash);
+      setCopiedTxHash(txHash);
+      setTimeout(() => setCopiedTxHash(null), 2000);
+    }
+  };
+
+  const truncateTx = (hash: string) => {
+    if (!hash || hash.length < 14) return hash || '';
+    return `${hash.slice(0, 8)}...${hash.slice(-6)}`;
+  };
 
   const handleInstantPayout = () => {
     setPayoutSent(true);
@@ -315,6 +363,116 @@ export function StationOwnerPaymentsConsole() {
           </div>
           <span className="font-semibold text-black/70">Auto-deposit: Friday</span>
         </div>
+      </div>
+
+      {/* ── Confirmed Monad Testnet Bookings & Settlement Ledger ── */}
+      <div className="rounded-2xl bg-white p-4 border border-black/[0.06] shadow-2xs space-y-3">
+        <div className="flex items-center justify-between pb-2 border-b border-black/[0.06]">
+          <div className="flex items-center gap-1.5">
+            <Coins className="w-4 h-4 text-[#2563EB]" />
+            <h3 className="text-xs font-bold text-[#111312]">
+              Live Monad Testnet Receipts
+            </h3>
+          </div>
+          <span className="text-[10px] font-mono text-[#2563EB] bg-[#EFF6FF] px-2 py-0.5 rounded-full border border-[#BFDBFE] font-semibold">
+            Chain ID 10143
+          </span>
+        </div>
+
+        {/* Clear Testnet vs Physical Charger Activation Distinction Notice */}
+        <div className="p-3 bg-[#EFF6FF] border border-[#BFDBFE] rounded-xl text-[10.5px] text-[#1E40AF] space-y-1">
+          <div className="font-bold flex items-center gap-1.5 text-[#1D4ED8]">
+            <ShieldCheck size={13} />
+            <span>Testnet Settlement Verification</span>
+          </div>
+          <p className="leading-relaxed">
+            All records below are confirmed via on-chain Monad Testnet receipts.
+            <strong> Note:</strong> Testnet transactions represent cryptographic reservation holds; physical charging and barrier hardware activation remain decoupled in testnet mode.
+          </p>
+        </div>
+
+        {/* Bookings List */}
+        {isLoadingBookings ? (
+          <div className="py-6 flex items-center justify-center gap-2 text-xs text-[#767D78]">
+            <Loader2 className="w-4 h-4 animate-spin text-[#2563EB]" />
+            <span>Syncing Monad Testnet receipts from database...</span>
+          </div>
+        ) : onChainBookings.length === 0 ? (
+          <div className="p-4 bg-[#FAF9F6] rounded-xl border border-dashed border-black/[0.1] text-center space-y-1">
+            <Coins className="w-5 h-5 text-[#767D78] mx-auto opacity-50" />
+            <p className="text-xs font-semibold text-[#111312]">No On-Chain Bookings Yet</p>
+            <p className="text-[10px] text-[#767D78]">
+              Stall reservations submitted with verified Monad Testnet payments will appear here with on-chain transaction links.
+            </p>
+          </div>
+        ) : (
+          <div className="divide-y divide-black/[0.05]">
+            {onChainBookings.map((b) => (
+              <div key={b.id} className="py-3 first:pt-0 last:pb-0 space-y-1.5">
+                <div className="flex items-start justify-between gap-2">
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-bold text-[#111312]">
+                        {b.bay_number} ({b.connector_type})
+                      </span>
+                      <span className="text-[9.5px] font-mono px-1.5 py-0.2 rounded-sm bg-[#DCFCE7] text-[#15803D] font-semibold border border-[#86EFAC]">
+                        Confirmed ✓
+                      </span>
+                    </div>
+                    <p className="text-[10.5px] text-[#767D78]">
+                      {b.station_name} • {b.duration_minutes}m hold • PIN {b.pin_code}
+                    </p>
+                  </div>
+
+                  <div className="text-right shrink-0">
+                    <span className="text-xs font-bold font-mono text-[#16A34A] block">
+                      {b.mon_amount}
+                    </span>
+                    <span className="text-[10px] font-mono text-[#767D78]">
+                      {b.total_cost}
+                    </span>
+                  </div>
+                </div>
+
+                {/* On-Chain Transaction & Explorer Link */}
+                {b.tx_hash && (
+                  <div className="flex items-center justify-between pt-1 text-[10.5px] text-[#525854]">
+                    <div className="flex items-center gap-1 font-mono">
+                      <span>Tx: {truncateTx(b.tx_hash)}</span>
+                      <button
+                        type="button"
+                        onClick={() => handleCopyTx(b.tx_hash || "")}
+                        aria-label="Copy transaction hash"
+                        className="p-1 hover:bg-black/[0.05] rounded-sm text-[#767D78]"
+                      >
+                        {copiedTxHash === b.tx_hash ? (
+                          <Check size={11} className="text-[#16A34A]" />
+                        ) : (
+                          <Copy size={11} />
+                        )}
+                      </button>
+                      {b.block_number && (
+                        <span className="text-[10px] text-[#767D78]">
+                          • Block #{b.block_number}
+                        </span>
+                      )}
+                    </div>
+
+                    <a
+                      href={b.explorer_url || `https://testnet.monadexplorer.com/tx/${b.tx_hash}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-[#2563EB] hover:underline font-semibold"
+                    >
+                      <span>Explorer</span>
+                      <ExternalLink size={10} />
+                    </a>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* ── Clean Recent Activity List (Mobile Ledger) ── */}
