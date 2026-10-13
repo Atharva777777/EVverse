@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   X,
   Clock,
@@ -12,6 +12,9 @@ import {
   ShieldCheck,
   Calendar,
   AlertCircle,
+  QrCode,
+  Lock,
+  Unlock,
 } from "lucide-react";
 import type { LiveStation } from "@/types/api";
 
@@ -23,8 +26,10 @@ export interface ParkingBooking {
   connectorType: string;
   durationMinutes: number;
   totalCost: string;
+  pinCode: string;
   startTime: string;
   expiryTime: string;
+  expiryTimestamp: number;
   status: "confirmed" | "active" | "cancelled";
 }
 
@@ -35,12 +40,11 @@ interface ParkingBookingModalProps {
   onStartNavigation?: (station: LiveStation) => void;
 }
 
-const DURATION_OPTIONS = [
-  { mins: 30, label: "30 min", price: "₹40", usdPrice: "$1.50" },
-  { mins: 45, label: "45 min", price: "₹60", usdPrice: "$2.20" },
-  { mins: 60, label: "1 hour", price: "₹80", usdPrice: "$3.00" },
-  { mins: 90, label: "1.5 hours", price: "₹120", usdPrice: "$4.50" },
-  { mins: 120, label: "2 hours", price: "₹150", usdPrice: "$5.50" },
+const RESERVATION_FEE_OPTIONS = [
+  { mins: 30, label: "30 min hold", fee: "₹49", tag: "Most Popular" },
+  { mins: 45, label: "45 min hold", fee: "₹69", tag: "Extra Buffer" },
+  { mins: 60, label: "60 min hold", fee: "₹89", tag: "Long Transit" },
+  { mins: 90, label: "90 min hold", fee: "₹119", tag: "Highway Stop" },
 ];
 
 export function ParkingBookingModal({
@@ -49,23 +53,61 @@ export function ParkingBookingModal({
   station,
   onStartNavigation,
 }: ParkingBookingModalProps) {
-  const [selectedDurationMins, setSelectedDurationMins] = useState<number>(45);
-  const [selectedBay, setSelectedBay] = useState<string>("Bay 02 (Fast DC)");
-  const [paymentMethod, setPaymentMethod] = useState<string>("card");
+  const [selectedMins, setSelectedMins] = useState<number>(30);
+  const [selectedBay, setSelectedBay] = useState<string>("Bay 02 (180 kW Ultra DC)");
+  const [paymentMethod, setPaymentMethod] = useState<string>("upi");
   const [activeBooking, setActiveBooking] = useState<ParkingBooking | null>(null);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
+  const [secondsRemaining, setSecondsRemaining] = useState<number>(1800);
+
+  // Check if there is an existing booking for this station in localStorage
+  useEffect(() => {
+    if (isOpen && station) {
+      try {
+        const stored = localStorage.getItem("evverse_active_spot_booking");
+        if (stored) {
+          const parsed: ParkingBooking = JSON.parse(stored);
+          const timeLeft = Math.floor((parsed.expiryTimestamp - Date.now()) / 1000);
+          if (timeLeft > 0 && parsed.stationId === station.station_id) {
+            setActiveBooking(parsed);
+            setSecondsRemaining(timeLeft);
+          }
+        }
+      } catch (e) {
+        // ignore
+      }
+    }
+  }, [isOpen, station]);
+
+  // Live countdown timer for active booking
+  useEffect(() => {
+    if (!activeBooking) return;
+
+    const interval = setInterval(() => {
+      setSecondsRemaining((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [activeBooking]);
 
   if (!isOpen || !station) return null;
 
-  const selectedDuration =
-    DURATION_OPTIONS.find((d) => d.mins === selectedDurationMins) ||
-    DURATION_OPTIONS[1];
+  const currentOption =
+    RESERVATION_FEE_OPTIONS.find((o) => o.mins === selectedMins) ||
+    RESERVATION_FEE_OPTIONS[0];
 
-  const handleConfirmBooking = () => {
+  const handleConfirmPayment = () => {
     setIsProcessing(true);
     setTimeout(() => {
-      const now = new Date();
-      const expiry = new Date(now.getTime() + selectedDurationMins * 60000);
+      const now = Date.now();
+      const expiryTimestamp = now + selectedMins * 60 * 1000;
+      const expiryDate = new Date(expiryTimestamp);
 
       const booking: ParkingBooking = {
         id: `RES-${Math.floor(1000 + Math.random() * 9000)}-EV`,
@@ -73,42 +115,51 @@ export function ParkingBookingModal({
         stationName: station.name,
         bayNumber: selectedBay,
         connectorType: station.connector_types?.[0] || "CCS2 Combo",
-        durationMinutes: selectedDurationMins,
-        totalCost: selectedDuration.price,
-        startTime: now.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-        expiryTime: expiry.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        durationMinutes: selectedMins,
+        totalCost: currentOption.fee,
+        pinCode: String(Math.floor(1000 + Math.random() * 9000)),
+        startTime: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        expiryTime: expiryDate.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        expiryTimestamp,
         status: "confirmed",
       };
 
       setActiveBooking(booking);
+      setSecondsRemaining(selectedMins * 60);
       setIsProcessing(false);
 
-      // Save to local driver storage
+      // Save to driver storage and notify app
       try {
-        const savedBookings = JSON.parse(
-          localStorage.getItem("evverse_driver_parking_bookings") || "[]"
-        );
-        savedBookings.unshift(booking);
-        localStorage.setItem(
-          "evverse_driver_parking_bookings",
-          JSON.stringify(savedBookings.slice(0, 10))
-        );
+        localStorage.setItem("evverse_active_spot_booking", JSON.stringify(booking));
+        window.dispatchEvent(new CustomEvent("evverse-spot-booking-changed", { detail: booking }));
       } catch (e) {
-        console.warn("Could not save booking to localStorage:", e);
+        console.warn("Storage error:", e);
       }
-    }, 700);
+    }, 750);
   };
 
   const handleCancelBooking = () => {
+    try {
+      localStorage.removeItem("evverse_active_spot_booking");
+      window.dispatchEvent(new CustomEvent("evverse-spot-booking-changed", { detail: null }));
+    } catch (e) {
+      // ignore
+    }
     setActiveBooking(null);
     onClose();
+  };
+
+  const formatCountdown = (secs: number) => {
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
   };
 
   return (
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Book Parking Spot"
+      aria-label="Book Charging Spot"
       className="fixed inset-0 z-60 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in"
     >
       <div className="bg-white rounded-3xl p-5 sm:p-6 w-full max-w-sm border border-black/[0.08] shadow-2xl space-y-4 animate-in zoom-in-95 max-h-[90vh] overflow-y-auto no-scrollbar">
@@ -116,11 +167,11 @@ export function ParkingBookingModal({
         <div className="flex items-center justify-between border-b border-black/[0.06] pb-3">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded-full bg-[#111312] text-white flex items-center justify-center">
-              <Car size={16} />
+              <Zap size={16} className="text-[#C8F369]" />
             </div>
             <div>
               <h3 className="text-sm font-bold text-[#111312]">
-                {activeBooking ? "Spot Reserved" : "Reserve Parking Spot"}
+                {activeBooking ? "Charging Spot Reserved" : "Book Charging Spot"}
               </h3>
               <p className="text-[11px] text-[#525854] truncate max-w-[200px]">
                 {station.name}
@@ -138,51 +189,81 @@ export function ParkingBookingModal({
         </div>
 
         {activeBooking ? (
-          /* ── CONFIRMED BOOKING TICKET VIEW ────────────────────────── */
+          /* ── ACTIVE RESERVATION PASS VIEW ────────────────────────── */
           <div className="space-y-4">
+            {/* Live Hold Status Card */}
             <div className="p-4 bg-[#F0FDF4] border border-[#BBF7D0] rounded-2xl text-center space-y-2">
-              <CheckCircle2 size={32} className="text-[#16A34A] mx-auto" />
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-[#DCFCE7] text-[#16A34A] mx-auto">
+                <CheckCircle2 size={26} />
+              </div>
+
               <div>
                 <span className="text-[10px] font-mono uppercase tracking-wider text-[#15803D] font-bold">
-                  Hold Confirmed
+                  Stall Barrier Reserved
                 </span>
-                <div className="text-lg font-bold text-[#111312] mt-0.5">
+                <div className="text-base font-bold text-[#111312] mt-0.5">
                   {activeBooking.bayNumber}
                 </div>
               </div>
-              <p className="text-xs text-[#166534]">
-                Your spot is held until {activeBooking.expiryTime}. Automatic barrier unlock upon arrival.
-              </p>
-            </div>
 
-            {/* Ticket Details */}
-            <div className="bg-[#FAF9F6] p-3.5 rounded-2xl border border-black/[0.05] space-y-2 text-xs">
-              <div className="flex justify-between">
-                <span className="text-[#767D78]">Booking Code:</span>
-                <span className="font-mono font-bold text-[#111312]">
-                  {activeBooking.id}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-[#767D78]">Reserved Duration:</span>
-                <span className="font-medium text-[#111312]">
-                  {activeBooking.durationMinutes} minutes
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-[#767D78]">Valid Window:</span>
-                <span className="font-medium text-[#111312]">
-                  {activeBooking.startTime} – {activeBooking.expiryTime}
-                </span>
-              </div>
-              <div className="flex justify-between border-t border-black/[0.05] pt-2">
-                <span className="text-[#767D78]">Spot Fee Paid:</span>
-                <span className="font-bold text-[#16A34A]">
-                  {activeBooking.totalCost}
-                </span>
+              {/* Countdown Timer */}
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 bg-white rounded-full border border-[#86EFAC] text-xs font-mono font-bold text-[#15803D]">
+                <Clock size={12} />
+                <span>{formatCountdown(secondsRemaining)} remaining</span>
               </div>
             </div>
 
+            {/* Digital Stall Ticket & Barrier Unlock PIN */}
+            <div className="bg-[#FAF9F6] p-4 rounded-2xl border border-black/[0.05] space-y-3">
+              <div className="flex items-center justify-between pb-2 border-b border-black/[0.06]">
+                <div>
+                  <div className="text-[10px] text-[#767D78] uppercase font-mono">
+                    Stall Barrier PIN
+                  </div>
+                  <div className="text-xl font-mono font-bold text-[#111312] tracking-widest mt-0.5">
+                    {activeBooking.pinCode}
+                  </div>
+                </div>
+                <div className="text-right">
+                  <div className="text-[10px] text-[#767D78] uppercase font-mono">
+                    Booking Code
+                  </div>
+                  <div className="text-xs font-mono font-bold text-[#111312] mt-0.5">
+                    {activeBooking.id}
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-1.5 text-xs">
+                <div className="flex justify-between text-[#525854]">
+                  <span>Reserved Window:</span>
+                  <span className="font-semibold text-[#111312]">
+                    {activeBooking.startTime} – {activeBooking.expiryTime}
+                  </span>
+                </div>
+                <div className="flex justify-between text-[#525854]">
+                  <span>Hold Duration:</span>
+                  <span className="font-semibold text-[#111312]">
+                    {activeBooking.durationMinutes} minutes
+                  </span>
+                </div>
+                <div className="flex justify-between text-[#525854]">
+                  <span>Booking Fee Paid:</span>
+                  <span className="font-bold text-[#16A34A]">
+                    {activeBooking.totalCost}
+                  </span>
+                </div>
+              </div>
+
+              <div className="p-2.5 bg-white rounded-xl border border-black/[0.04] text-[10.5px] text-[#525854] flex items-start gap-2">
+                <ShieldCheck size={14} className="text-[#16A34A] shrink-0 mt-0.5" />
+                <span>
+                  The stall barrier will unlock automatically via camera license plate recognition or by keying your 4-digit PIN.
+                </span>
+              </div>
+            </div>
+
+            {/* Actions */}
             <div className="space-y-2 pt-1">
               <button
                 type="button"
@@ -190,10 +271,10 @@ export function ParkingBookingModal({
                   if (onStartNavigation) onStartNavigation(station);
                   onClose();
                 }}
-                className="w-full min-h-[46px] py-3 bg-[#111312] text-white text-xs font-bold rounded-2xl flex items-center justify-center gap-1.5 hover:bg-[#252826] cursor-pointer"
+                className="w-full min-h-[46px] py-3 bg-[#111312] text-white text-xs font-bold rounded-2xl flex items-center justify-center gap-1.5 hover:bg-[#252826] cursor-pointer shadow-md"
               >
                 <Navigation size={14} className="text-[#C8F369]" />
-                <span>Navigate to Reserved Spot</span>
+                <span>Navigate to Reserved Stall</span>
               </button>
 
               <button
@@ -201,51 +282,75 @@ export function ParkingBookingModal({
                 onClick={handleCancelBooking}
                 className="w-full min-h-[40px] py-2 bg-[#FAF9F6] text-[#DC2626] text-xs font-semibold rounded-2xl border border-black/[0.06] hover:bg-[#FEE2E2] cursor-pointer"
               >
-                Cancel Reservation
+                Cancel Reservation & Release Stall
               </button>
             </div>
           </div>
         ) : (
-          /* ── BOOKING CONFIGURATION VIEW ───────────────────────────── */
+          /* ── SPOT BOOKING CONFIGURATION VIEW ──────────────────────── */
           <div className="space-y-4">
-            {/* 1. Duration Selection */}
+            {/* Value Proposition Banner */}
+            <div className="p-3 bg-[#F0FDF4] border border-[#BBF7D0] rounded-2xl flex items-start gap-2.5">
+              <Zap size={15} className="text-[#16A34A] shrink-0 mt-0.5" />
+              <div className="text-xs text-[#166534] leading-relaxed">
+                <span className="font-bold">Guaranteed Stall: </span>
+                Pay a small fee to hold your charger stall. The barrier stays locked until your vehicle arrives.
+              </div>
+            </div>
+
+            {/* 1. Choose Hold Duration & Small Fee */}
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-[#111312] flex items-center gap-1">
-                <Clock size={13} className="text-[#16A34A]" />
-                <span>Select Duration</span>
+              <label className="text-xs font-semibold text-[#111312] flex items-center justify-between">
+                <span className="flex items-center gap-1">
+                  <Clock size={13} className="text-[#16A34A]" />
+                  <span>Hold Duration & Small Fee</span>
+                </span>
+                <span className="text-[10px] text-[#767D78] font-mono">
+                  Refundable if cancelled in 10m
+                </span>
               </label>
-              <div className="grid grid-cols-3 gap-1.5">
-                {DURATION_OPTIONS.map((opt) => {
-                  const isSelected = selectedDurationMins === opt.mins;
+
+              <div className="grid grid-cols-2 gap-2">
+                {RESERVATION_FEE_OPTIONS.map((opt) => {
+                  const isSelected = selectedMins === opt.mins;
                   return (
                     <button
                       key={opt.mins}
                       type="button"
-                      onClick={() => setSelectedDurationMins(opt.mins)}
-                      className={`p-2 rounded-xl border text-center transition-all cursor-pointer min-h-[44px] flex flex-col items-center justify-center ${
+                      onClick={() => setSelectedMins(opt.mins)}
+                      className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer min-h-[48px] flex flex-col justify-between ${
                         isSelected
                           ? "bg-[#111312] text-white border-[#111312] shadow-xs"
                           : "bg-[#FAF9F6] text-[#111312] border-black/[0.06] hover:bg-[#F4F3EE]"
                       }`}
                     >
-                      <div className="text-xs font-bold">{opt.label}</div>
-                      <div
-                        className={`text-[10px] font-mono mt-0.5 ${
-                          isSelected ? "text-[#C8F369]" : "text-[#767D78]"
+                      <div className="flex items-center justify-between w-full">
+                        <span className="text-xs font-bold">{opt.label}</span>
+                        <span
+                          className={`text-xs font-mono font-bold ${
+                            isSelected ? "text-[#C8F369]" : "text-[#16A34A]"
+                          }`}
+                        >
+                          {opt.fee}
+                        </span>
+                      </div>
+                      <span
+                        className={`text-[9px] font-mono mt-0.5 ${
+                          isSelected ? "text-[#A0AAA2]" : "text-[#767D78]"
                         }`}
                       >
-                        {opt.price}
-                      </div>
+                        {opt.tag}
+                      </span>
                     </button>
                   );
                 })}
               </div>
             </div>
 
-            {/* 2. Bay Selection */}
+            {/* 2. Choose Stall / Bay */}
             <div className="space-y-1.5">
               <label className="text-xs font-semibold text-[#111312] flex items-center gap-1">
-                <Zap size={13} className="text-[#16A34A]" />
+                <Car size={13} className="text-[#16A34A]" />
                 <span>Select Charging Stall</span>
               </label>
               <select
@@ -253,10 +358,10 @@ export function ParkingBookingModal({
                 onChange={(e) => setSelectedBay(e.target.value)}
                 className="w-full text-xs p-2.5 rounded-xl border border-black/[0.1] bg-white text-[#111312] cursor-pointer"
               >
-                <option value="Bay 01 (CCS2 180kW)">Bay 01 — CCS2 (180 kW Ultra DC)</option>
-                <option value="Bay 02 (Fast DC)">Bay 02 — CCS2 / Type 2 (120 kW Fast DC)</option>
-                <option value="Bay 03 (Dedicated EV)">Bay 03 — Type 2 Mennekes (22 kW AC)</option>
-                <option value="Bay 04 (Accessible)">Bay 04 — Universal Accessible EV Bay</option>
+                <option value="Bay 01 (180 kW Ultra DC)">Bay 01 — 180 kW Ultra Fast DC (CCS2)</option>
+                <option value="Bay 02 (120 kW Fast DC)">Bay 02 — 120 kW Fast DC (CCS2 / Type 2)</option>
+                <option value="Bay 03 (60 kW Fast DC)">Bay 03 — 60 kW Fast DC (CCS2 Combo)</option>
+                <option value="Bay 04 (22 kW Fast AC)">Bay 04 — 22 kW Mennekes (Type 2 AC)</option>
               </select>
             </div>
 
@@ -266,66 +371,60 @@ export function ParkingBookingModal({
                 <CreditCard size={13} className="text-[#16A34A]" />
                 <span>Payment Method</span>
               </label>
-              <div className="grid grid-cols-2 gap-2 text-xs">
-                <button
-                  type="button"
-                  onClick={() => setPaymentMethod("card")}
-                  className={`p-2.5 rounded-xl border text-left flex items-center gap-2 cursor-pointer ${
-                    paymentMethod === "card"
-                      ? "border-[#111312] bg-[#FAF9F6] font-semibold text-[#111312]"
-                      : "border-black/[0.08] text-[#525854]"
-                  }`}
-                >
-                  <CreditCard size={14} className="text-[#16A34A]" />
-                  <span>Card / UPI</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPaymentMethod("wallet")}
-                  className={`p-2.5 rounded-xl border text-left flex items-center gap-2 cursor-pointer ${
-                    paymentMethod === "wallet"
-                      ? "border-[#111312] bg-[#FAF9F6] font-semibold text-[#111312]"
-                      : "border-black/[0.08] text-[#525854]"
-                  }`}
-                >
-                  <ShieldCheck size={14} className="text-[#16A34A]" />
-                  <span>EVverse Pay</span>
-                </button>
+              <div className="grid grid-cols-3 gap-1.5 text-xs">
+                {[
+                  { id: "upi", label: "UPI / GPay" },
+                  { id: "card", label: "Card" },
+                  { id: "wallet", label: "EVverse" },
+                ].map((pm) => (
+                  <button
+                    key={pm.id}
+                    type="button"
+                    onClick={() => setPaymentMethod(pm.id)}
+                    className={`py-2 px-1 text-center rounded-xl border text-[11px] font-medium cursor-pointer transition-all ${
+                      paymentMethod === pm.id
+                        ? "border-[#111312] bg-[#FAF9F6] font-bold text-[#111312]"
+                        : "border-black/[0.08] text-[#525854]"
+                    }`}
+                  >
+                    {pm.label}
+                  </button>
+                ))}
               </div>
             </div>
 
-            {/* Price Breakdown */}
-            <div className="p-3 bg-[#FAF9F6] rounded-2xl border border-black/[0.05] space-y-1 text-xs">
+            {/* Fee Summary */}
+            <div className="p-3 bg-[#FAF9F6] rounded-2xl border border-black/[0.05] space-y-1.5 text-xs">
               <div className="flex justify-between text-[#525854]">
-                <span>Parking Bay Hold ({selectedDuration.label}):</span>
-                <span className="font-mono">{selectedDuration.price}</span>
+                <span>Reservation Hold ({currentOption.label}):</span>
+                <span className="font-mono">{currentOption.fee}</span>
               </div>
               <div className="flex justify-between text-[#525854]">
-                <span>Convenience & Tax:</span>
-                <span className="font-mono">₹0 (Free)</span>
+                <span>Automatic Barrier Unlock:</span>
+                <span className="font-mono text-[#16A34A]">Included</span>
               </div>
-              <div className="flex justify-between font-bold text-[#111312] border-t border-black/[0.05] pt-1.5 mt-1">
-                <span>Total Amount:</span>
+              <div className="flex justify-between font-bold text-[#111312] border-t border-black/[0.05] pt-1.5">
+                <span>Total Booking Fee:</span>
                 <span className="text-[#16A34A] font-mono text-sm">
-                  {selectedDuration.price}
+                  {currentOption.fee}
                 </span>
               </div>
             </div>
 
-            {/* Submit Action */}
+            {/* Submit & Pay Button */}
             <div className="pt-1">
               <button
                 type="button"
                 disabled={isProcessing}
-                onClick={handleConfirmBooking}
+                onClick={handleConfirmPayment}
                 className="w-full min-h-[48px] py-3.5 bg-[#111312] text-white text-xs font-bold rounded-2xl flex items-center justify-center gap-2 hover:bg-[#252826] active:scale-[0.99] transition-all cursor-pointer shadow-md disabled:opacity-50"
               >
                 {isProcessing ? (
-                  <span>Reserving Bay...</span>
+                  <span>Securing Stall...</span>
                 ) : (
                   <>
-                    <Car size={15} className="text-[#C8F369]" />
-                    <span>Confirm & Pay {selectedDuration.price}</span>
+                    <Zap size={14} className="text-[#C8F369]" />
+                    <span>Pay {currentOption.fee} & Book Spot</span>
                   </>
                 )}
               </button>

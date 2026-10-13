@@ -232,6 +232,34 @@ export default function EVVerseDriverPage() {
     setCurrentBatteryPct(activeVehicle.currentBatteryPct);
   }, [activeVehicleId, activeVehicle.currentBatteryPct]);
 
+  // Active Spot Booking State
+  const [activeSpotBooking, setActiveSpotBooking] = useState<any>(null);
+
+  useEffect(() => {
+    const checkBooking = () => {
+      try {
+        const stored = localStorage.getItem("evverse_active_spot_booking");
+        if (stored) {
+          const parsed = JSON.parse(stored);
+          if (parsed.expiryTimestamp > Date.now()) {
+            setActiveSpotBooking(parsed);
+            return;
+          }
+        }
+        setActiveSpotBooking(null);
+      } catch {
+        setActiveSpotBooking(null);
+      }
+    };
+    checkBooking();
+    window.addEventListener("evverse-spot-booking-changed", checkBooking);
+    const interval = setInterval(checkBooking, 4000);
+    return () => {
+      window.removeEventListener("evverse-spot-booking-changed", checkBooking);
+      clearInterval(interval);
+    };
+  }, []);
+
   // Compute stations with real Haversine distance from driver
   const stationsWithDistance = useMemo<DriverStation[]>(() => {
     if (!liveData?.stations) return [];
@@ -800,6 +828,55 @@ export default function EVVerseDriverPage() {
               </div>
             </header>
 
+            {/* Active Spot Booking Banner */}
+            {activeSpotBooking && (
+              <div
+                role="button"
+                tabIndex={0}
+                onClick={() => {
+                  const st = (liveData?.stations || []).find(
+                    (s) => s.station_id === activeSpotBooking.stationId
+                  );
+                  if (st) {
+                    setSelectedStation(st as DriverStation);
+                    setIsStationDetailOpen(true);
+                  }
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    const st = (liveData?.stations || []).find(
+                      (s) => s.station_id === activeSpotBooking.stationId
+                    );
+                    if (st) {
+                      setSelectedStation(st as DriverStation);
+                      setIsStationDetailOpen(true);
+                    }
+                  }
+                }}
+                className="mx-3 sm:mx-4 mt-2 p-2.5 bg-[#F0FDF4] border border-[#BBF7D0] rounded-xl flex items-center justify-between text-xs cursor-pointer shadow-xs animate-in slide-in-from-top-1 hover:bg-[#DCFCE7]/70 transition-colors"
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <span className="relative flex h-2 w-2 shrink-0">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#16A34A] opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-[#16A34A]" />
+                  </span>
+                  <div className="truncate">
+                    <span className="font-bold text-[#15803D]">Spot Held: </span>
+                    <span className="text-[#111312] font-semibold">{activeSpotBooking.bayNumber}</span>
+                    <span className="text-[#525854] text-[11px] ml-1">({activeSpotBooking.stationName})</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                  <span className="text-[10px] font-mono font-bold bg-white text-[#15803D] px-2 py-0.5 rounded-md border border-[#86EFAC]">
+                    PIN: {activeSpotBooking.pinCode}
+                  </span>
+                  <span className="text-[10px] font-semibold text-[#15803D] underline">
+                    View Pass
+                  </span>
+                </div>
+              </div>
+            )}
+
             {/* ── Main Viewport Content ────────────────────────────────────────── */}
             <main className="flex-1 flex flex-col relative overflow-y-auto">
               
@@ -1022,18 +1099,33 @@ export default function EVVerseDriverPage() {
                           </div>
                         </div>
 
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            startNavigation(filteredStations[0]);
-                          }}
-                          aria-label={`Start navigation to ${filteredStations[0].name}`}
-                          className="min-h-[40px] px-3.5 py-2 bg-[#111312] text-white rounded-xl text-xs font-semibold flex items-center gap-1 shadow-xs hover:bg-[#252826] active:scale-95 shrink-0 cursor-pointer focus-visible:outline-2 focus-visible:outline-[#111312]"
-                        >
-                          <Navigation size={12} className="text-[#C8F369]" aria-hidden="true" />
-                          Route
-                        </button>
+                        <div className="flex items-center gap-1.5 shrink-0">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedStation(filteredStations[0]);
+                              setIsStationDetailOpen(true);
+                            }}
+                            className="min-h-[40px] px-3 py-2 bg-[#F0FDF4] border border-[#BBF7D0] text-[#15803D] rounded-xl text-xs font-bold flex items-center gap-1 hover:bg-[#DCFCE7] active:scale-95 cursor-pointer"
+                          >
+                            <Zap size={12} className="text-[#16A34A]" />
+                            <span>Book (₹49)</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              startNavigation(filteredStations[0]);
+                            }}
+                            aria-label={`Start navigation to ${filteredStations[0].name}`}
+                            className="min-h-[40px] px-3.5 py-2 bg-[#111312] text-white rounded-xl text-xs font-semibold flex items-center gap-1 shadow-xs hover:bg-[#252826] active:scale-95 shrink-0 cursor-pointer focus-visible:outline-2 focus-visible:outline-[#111312]"
+                          >
+                            <Navigation size={12} className="text-[#C8F369]" aria-hidden="true" />
+                            Route
+                          </button>
+                        </div>
                       </div>
                     )}
                   </div>

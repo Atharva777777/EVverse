@@ -506,10 +506,10 @@ export const StationDetailSheet: React.FC<StationDetailSheetProps> = ({
               <button
                 type="button"
                 onClick={() => setIsBookingModalOpen(true)}
-                className="min-h-[44px] py-2.5 bg-white text-[#111312] border border-[#111312] rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-[#F4F3EE] active:scale-98 transition-all shadow-2xs cursor-pointer focus-visible:outline-2 focus-visible:outline-[#111312]"
+                className="min-h-[44px] py-2.5 bg-[#F0FDF4] text-[#15803D] border border-[#BBF7D0] rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-[#DCFCE7] active:scale-98 transition-all shadow-2xs cursor-pointer focus-visible:outline-2 focus-visible:outline-[#15803D]"
               >
-                <Car size={14} className="text-[#16A34A]" aria-hidden="true" />
-                <span>Book Spot</span>
+                <Zap size={14} className="text-[#16A34A]" aria-hidden="true" />
+                <span>Book Spot (₹49)</span>
               </button>
 
               <button
