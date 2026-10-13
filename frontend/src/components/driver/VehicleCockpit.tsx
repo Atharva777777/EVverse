@@ -204,7 +204,11 @@ export function VehicleCockpit({
           </span>
         </div>
 
-        <div className="grid grid-cols-3 gap-1.5 p-1 bg-[#F5F4EF] rounded-2xl border border-black/[0.05]">
+        <div
+          role="radiogroup"
+          aria-label="Drive Dynamics & Inverter Tuning Modes"
+          className="grid grid-cols-3 gap-1.5 p-1 bg-[#F5F4EF] rounded-2xl border border-black/[0.05]"
+        >
           {(
             [
               { id: "eco", label: "Eco Range", desc: "Max Conservation" },
@@ -216,8 +220,10 @@ export function VehicleCockpit({
             return (
               <button
                 key={m.id}
+                role="radio"
+                aria-checked={isSelected}
                 onClick={() => setDriveMode(m.id)}
-                className={`py-2 px-1 rounded-xl text-center transition-all duration-200 active:scale-95 ${
+                className={`py-2 px-1 min-h-[44px] rounded-xl text-center transition-all duration-200 active:scale-95 cursor-pointer focus-visible:outline-2 focus-visible:outline-[#111312] ${
                   isSelected
                     ? "bg-[#111312] text-white shadow-xs"
                     : "text-[#525854] hover:text-[#111312]"
@@ -234,10 +240,10 @@ export function VehicleCockpit({
       </div>
 
       {/* ── Tactile Hardware Controls Grid ─────────────────────────── */}
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-3 gap-2" role="group" aria-label="Tactile Vehicle Hardware Controls">
         {/* Climate HVAC with Tactile Stepper */}
         <div
-          className={`p-3 rounded-2xl border transition-all flex flex-col justify-between ${
+          className={`p-2.5 sm:p-3 rounded-2xl border transition-all flex flex-col justify-between min-h-[114px] ${
             hvacActive
               ? "bg-white border-black/[0.12] text-[#111312] shadow-xs"
               : "bg-[#F7F6F1] border-black/[0.06] text-[#767D78]"
@@ -246,8 +252,9 @@ export function VehicleCockpit({
           <div className="flex items-center justify-between w-full">
             <button
               onClick={() => setHvacActive(!hvacActive)}
-              className="p-1 -m-1 hover:opacity-80 transition-opacity"
-              aria-label="Toggle Climate"
+              className="p-1.5 -m-1 hover:opacity-80 transition-opacity rounded-lg focus-visible:outline-2 focus-visible:outline-[#111312]"
+              aria-label={hvacActive ? "Turn off Climate A/C" : "Turn on Climate A/C"}
+              aria-pressed={hvacActive}
             >
               <Thermometer size={16} className={hvacActive ? "text-[#111312]" : "text-[#767D78]"} />
             </button>
@@ -255,32 +262,35 @@ export function VehicleCockpit({
               className={`w-2 h-2 rounded-full ${
                 hvacActive ? "bg-[#C8F369] border border-[#111312]" : "bg-[#D1D5DB]"
               }`}
+              aria-hidden="true"
             />
           </div>
 
-          <div className="mt-2.5">
-            <div className="text-[11px] font-semibold">Climate A/C</div>
-            <div className="text-[10px] text-[#525854] font-mono mt-0.5">
+          <div className="mt-1.5">
+            <div className="text-[10.5px] sm:text-[11px] font-semibold truncate">Climate A/C</div>
+            <div className="text-[9.5px] sm:text-[10px] text-[#525854] font-mono mt-0.5 truncate">
               {hvacActive ? `${targetCabinTemp.toFixed(1)}°C` : "Off (+18km)"}
             </div>
 
             {/* Stepper Buttons */}
             {hvacActive && (
-              <div className="flex items-center gap-1.5 mt-1.5 pt-1.5 border-t border-black/[0.06]">
+              <div className="flex items-center justify-between gap-1 mt-1.5 pt-1.5 border-t border-black/[0.06]">
                 <button
                   onClick={() => setTargetCabinTemp((t) => Math.max(16, +(t - 0.5).toFixed(1)))}
-                  className="w-5 h-5 rounded-md bg-[#F4F3EE] hover:bg-[#EAE8E2] flex items-center justify-center text-[#111312] active:scale-90"
+                  className="w-7 h-7 rounded-lg bg-[#F4F3EE] hover:bg-[#EAE8E2] flex items-center justify-center text-[#111312] active:scale-90 transition-colors focus-visible:outline-2 focus-visible:outline-[#111312]"
+                  aria-label="Decrease cabin temperature by 0.5 degrees"
                 >
-                  <Minus size={10} />
+                  <Minus size={12} />
                 </button>
-                <span className="text-[10px] font-mono font-bold text-[#111312] flex-1 text-center">
+                <span className="text-[10px] sm:text-[11px] font-mono font-bold text-[#111312] text-center" aria-live="polite">
                   {targetCabinTemp.toFixed(1)}°
                 </span>
                 <button
                   onClick={() => setTargetCabinTemp((t) => Math.min(28, +(t + 0.5).toFixed(1)))}
-                  className="w-5 h-5 rounded-md bg-[#F4F3EE] hover:bg-[#EAE8E2] flex items-center justify-center text-[#111312] active:scale-90"
+                  className="w-7 h-7 rounded-lg bg-[#F4F3EE] hover:bg-[#EAE8E2] flex items-center justify-center text-[#111312] active:scale-90 transition-colors focus-visible:outline-2 focus-visible:outline-[#111312]"
+                  aria-label="Increase cabin temperature by 0.5 degrees"
                 >
-                  <Plus size={10} />
+                  <Plus size={12} />
                 </button>
               </div>
             )}
@@ -290,11 +300,13 @@ export function VehicleCockpit({
         {/* Security Doors Lock */}
         <button
           onClick={() => setDoorsLocked(!doorsLocked)}
-          className={`p-3 rounded-2xl border transition-all text-left active:scale-95 flex flex-col justify-between ${
+          className={`p-2.5 sm:p-3 rounded-2xl border transition-all text-left active:scale-95 flex flex-col justify-between min-h-[114px] cursor-pointer focus-visible:outline-2 focus-visible:outline-[#111312] ${
             doorsLocked
               ? "bg-white border-black/[0.12] text-[#111312] shadow-xs"
               : "bg-[#F7F6F1] border-black/[0.06] text-[#767D78]"
           }`}
+          aria-label={doorsLocked ? "Chassis locked. Tap to unlock doors." : "Doors unlocked. Tap to lock doors."}
+          aria-pressed={doorsLocked}
         >
           <div className="flex items-center justify-between w-full">
             {doorsLocked ? <Lock size={16} className="text-[#111312]" /> : <Unlock size={16} className="text-[#B91C1C]" />}
@@ -302,14 +314,15 @@ export function VehicleCockpit({
               className={`w-2 h-2 rounded-full ${
                 doorsLocked ? "bg-[#111312]" : "bg-[#EF4444]"
               }`}
+              aria-hidden="true"
             />
           </div>
-          <div className="mt-2.5">
-            <div className="text-[11px] font-semibold">Chassis Locks</div>
-            <div className="text-[10px] text-[#525854] font-mono mt-0.5">
+          <div className="mt-1.5">
+            <div className="text-[10.5px] sm:text-[11px] font-semibold truncate">Chassis Locks</div>
+            <div className="text-[9.5px] sm:text-[10px] text-[#525854] font-mono mt-0.5 truncate">
               {doorsLocked ? "Arm Guard" : "Unlocked"}
             </div>
-            <div className="text-[9px] text-[#767D78] mt-1.5 pt-1.5 border-t border-black/[0.06]">
+            <div className="text-[8.5px] sm:text-[9px] text-[#767D78] mt-1.5 pt-1.5 border-t border-black/[0.06] truncate">
               {doorsLocked ? "Perimeter Active" : "Doors Ajar"}
             </div>
           </div>
@@ -318,11 +331,13 @@ export function VehicleCockpit({
         {/* Battery Pre-Conditioning */}
         <button
           onClick={() => setIsPreconditioning(!isPreconditioning)}
-          className={`p-3 rounded-2xl border transition-all text-left active:scale-95 flex flex-col justify-between ${
+          className={`p-2.5 sm:p-3 rounded-2xl border transition-all text-left active:scale-95 flex flex-col justify-between min-h-[114px] cursor-pointer focus-visible:outline-2 focus-visible:outline-[#111312] ${
             isPreconditioning
               ? "bg-[#111312] text-white border-[#111312] shadow-xs"
               : "bg-white border-black/[0.07] text-[#111312]"
           }`}
+          aria-label={isPreconditioning ? "Pre-conditioning active. Tap to cancel." : "Pre-conditioning standby. Tap to heat battery core."}
+          aria-pressed={isPreconditioning}
         >
           <div className="flex items-center justify-between w-full">
             <Zap size={16} className={isPreconditioning ? "text-[#C8F369]" : "text-[#111312]"} />
@@ -330,14 +345,15 @@ export function VehicleCockpit({
               className={`w-2 h-2 rounded-full ${
                 isPreconditioning ? "bg-[#C8F369] animate-pulse" : "bg-[#E5E7EB]"
               }`}
+              aria-hidden="true"
             />
           </div>
-          <div className="mt-2.5">
-            <div className="text-[11px] font-semibold">Pre-Condition</div>
-            <div className={`text-[10px] font-mono mt-0.5 ${isPreconditioning ? "text-[#C8F369]" : "text-[#525854]"}`}>
+          <div className="mt-1.5">
+            <div className="text-[10.5px] sm:text-[11px] font-semibold truncate">Pre-Condition</div>
+            <div className={`text-[9.5px] sm:text-[10px] font-mono mt-0.5 truncate ${isPreconditioning ? "text-[#C8F369]" : "text-[#525854]"}`}>
               {isPreconditioning ? "Heating Core" : "Standby"}
             </div>
-            <div className={`text-[9px] mt-1.5 pt-1.5 border-t ${isPreconditioning ? "border-white/10 text-white/70" : "border-black/[0.06] text-[#767D78]"}`}>
+            <div className={`text-[8.5px] sm:text-[9px] mt-1.5 pt-1.5 border-t truncate ${isPreconditioning ? "border-white/10 text-white/70" : "border-black/[0.06] text-[#767D78]"}`}>
               {isPreconditioning ? "Target 28°C" : "Ready for DC"}
             </div>
           </div>
@@ -382,7 +398,9 @@ export function VehicleCockpit({
           </span>
           <button
             onClick={() => setShowDiagnostics(!showDiagnostics)}
-            className="text-[10.5px] font-semibold text-[#111312] hover:underline"
+            aria-expanded={showDiagnostics}
+            aria-controls="cockpit-chassis-diagnostics"
+            className="text-[10.5px] font-semibold text-[#111312] hover:underline py-1.5 px-2 rounded-lg cursor-pointer focus-visible:outline-2 focus-visible:outline-[#111312]"
           >
             {showDiagnostics ? "Hide Details" : "Inspect TPMS & Thermals"}
           </button>

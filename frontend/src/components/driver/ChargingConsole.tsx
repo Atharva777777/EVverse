@@ -212,34 +212,49 @@ export function ChargingConsole({
         </div>
 
         {/* Tactile Target Limit Slider with Haptic Presets */}
-        <div className="bg-[#FAF9F6] rounded-2xl p-3.5 border border-black/[0.05] text-left space-y-2">
+        <div className="bg-[#FAF9F6] rounded-2xl p-3.5 border border-black/[0.05] text-left space-y-2.5">
           <div className="flex items-center justify-between text-xs font-semibold text-[#111312]">
-            <span>Target Battery Level (SoC)</span>
-            <span className="font-mono text-[11px] text-[#111312] bg-white px-2 py-0.5 rounded-md border border-black/[0.06]">
+            <label htmlFor="target-battery-limit" className="cursor-pointer">Target Battery Level (SoC)</label>
+            <span className="font-mono text-[11px] text-[#111312] bg-white px-2.5 py-1 rounded-md border border-black/[0.06] shadow-2xs font-bold">
               {targetLimit}%
             </span>
           </div>
 
           <input
+            id="target-battery-limit"
             type="range"
             min={50}
             max={100}
             step={5}
             value={targetLimit}
             onChange={(e) => setTargetLimit(Number(e.target.value))}
-            className="w-full accent-[#111312] cursor-pointer"
+            aria-label="Target Battery Charge Limit Percentage"
+            aria-valuemin={50}
+            aria-valuemax={100}
+            aria-valuenow={targetLimit}
+            className="w-full accent-[#111312] cursor-pointer h-2 bg-[#EAE8E2] rounded-lg appearance-none"
           />
 
-          <div className="flex items-center justify-between text-[9.5px] font-mono text-[#767D78]">
+          <div className="flex items-center justify-between gap-2 pt-0.5">
             <button
+              type="button"
               onClick={() => setTargetLimit(80)}
-              className={`hover:underline ${targetLimit === 80 ? "font-bold text-[#111312]" : ""}`}
+              className={`px-2.5 py-1.5 rounded-lg text-[10px] sm:text-[10.5px] font-mono transition-colors border cursor-pointer ${
+                targetLimit === 80
+                  ? "bg-[#111312] text-white border-[#111312] font-bold"
+                  : "bg-white text-[#525854] border-black/[0.06] hover:bg-[#F4F3EE]"
+              }`}
             >
               80% (Daily Recommended)
             </button>
             <button
+              type="button"
               onClick={() => setTargetLimit(100)}
-              className={`hover:underline ${targetLimit === 100 ? "font-bold text-[#111312]" : ""}`}
+              className={`px-2.5 py-1.5 rounded-lg text-[10px] sm:text-[10.5px] font-mono transition-colors border cursor-pointer ${
+                targetLimit === 100
+                  ? "bg-[#111312] text-white border-[#111312] font-bold"
+                  : "bg-white text-[#525854] border-black/[0.06] hover:bg-[#F4F3EE]"
+              }`}
             >
               100% (Trip Max)
             </button>
@@ -322,11 +337,17 @@ export function ChargingConsole({
 
       {/* ── Itemized Session Receipt Modal ──────────────────────────── */}
       {showReceiptModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Session Receipt"
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200"
+        >
           <div className="bg-white rounded-3xl max-w-sm w-full p-6 space-y-4 border border-black/[0.08] shadow-2xl relative text-left">
             <button
               onClick={onCloseReceiptModal}
-              className="absolute top-4 right-4 p-1.5 rounded-full hover:bg-[#F4F3EE] text-[#525854] transition-colors"
+              aria-label="Close session receipt"
+              className="absolute top-3.5 right-3.5 w-10 h-10 rounded-full flex items-center justify-center hover:bg-[#F4F3EE] text-[#525854] transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-[#111312]"
             >
               <X size={18} />
             </button>

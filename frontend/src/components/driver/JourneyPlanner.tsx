@@ -76,20 +76,27 @@ export function JourneyPlanner({
         </div>
 
         {/* Destination List */}
-        <div className="space-y-2 pt-1">
+        <div
+          role="radiogroup"
+          aria-label="Available Transit Corridors"
+          className="space-y-2 pt-1"
+        >
           {destinations.map((dest, idx) => {
             const isSelected = selectedDestIndex === idx;
             return (
               <button
                 key={dest.name}
+                role="radio"
+                aria-checked={isSelected}
+                aria-label={`${dest.name}, distance ${dest.distanceKm} kilometers, ascent ${dest.elevationGainM} meters`}
                 onClick={() => onSelectDestIndex(idx)}
-                className={`w-full p-3.5 rounded-2xl border text-left transition-all active:scale-98 flex items-center justify-between ${
+                className={`w-full min-h-[52px] p-3 rounded-2xl border text-left transition-all active:scale-98 flex items-center justify-between cursor-pointer focus-visible:outline-2 focus-visible:outline-[#111312] ${
                   isSelected
                     ? "bg-[#111312] text-white border-[#111312] shadow-xs"
                     : "bg-[#F9F8F5] text-[#111312] border-black/[0.05] hover:bg-[#F3F2ED]"
                 }`}
               >
-                <div className="flex items-center gap-2.5">
+                <div className="flex items-center gap-2.5 min-w-0 pr-2">
                   <div
                     className={`w-8 h-8 rounded-xl flex items-center justify-center shrink-0 ${
                       isSelected
@@ -99,10 +106,10 @@ export function JourneyPlanner({
                   >
                     <MapPin size={15} />
                   </div>
-                  <div>
-                    <div className="text-xs font-bold leading-snug">{dest.name}</div>
+                  <div className="min-w-0">
+                    <div className="text-xs font-bold leading-snug truncate">{dest.name}</div>
                     <div
-                      className={`text-[10px] font-mono ${
+                      className={`text-[10px] font-mono truncate ${
                         isSelected ? "text-[#C8F369]" : "text-[#767D78]"
                       }`}
                     >
@@ -119,7 +126,7 @@ export function JourneyPlanner({
                         : "bg-white text-[#525854] border border-black/[0.06]"
                     }`}
                   >
-                    Select
+                    {isSelected ? "Active" : "Select"}
                   </span>
                 </div>
               </button>
@@ -243,8 +250,9 @@ export function JourneyPlanner({
 
         {/* Launch Navigation in App */}
         <button
+          type="button"
           onClick={() => onStartTripNavigation(currentDest)}
-          className="w-full py-3.5 bg-[#111312] text-white text-xs font-semibold rounded-2xl flex items-center justify-center gap-2 hover:bg-[#252826] active:scale-98 transition-all shadow-xs"
+          className="w-full min-h-[48px] py-3.5 bg-[#111312] text-white text-xs font-semibold rounded-2xl flex items-center justify-center gap-2 hover:bg-[#252826] active:scale-98 transition-all shadow-xs cursor-pointer focus-visible:outline-2 focus-visible:outline-[#111312]"
         >
           <Navigation size={14} className="text-[#C8F369]" />
           Launch In-App Navigation for this Corridor

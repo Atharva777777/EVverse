@@ -47,14 +47,62 @@
   --color-positive-bg: #edfaf3;
   --color-negative:    #b32020;
   --color-negative-bg: #fdf2f2;
+
+  /* EVverse Driver Mobile Design Tokens */
+  --driver-canvas:        #FAF9F6;
+  --driver-card:          #FFFFFF;
+  --driver-ink:           #111312;
+  --driver-muted:         #525854;
+  --driver-subtle:        #8C938E;
+  --driver-accent:        #C8F369;
+  --driver-accent-dark:   #111312;
+  --driver-success:       #16A34A;
+  --driver-warning:       #EAB308;
+  --driver-danger:        #EF4444;
+  --driver-border:        rgba(17, 19, 18, 0.08);
+  --driver-border-subtle: rgba(17, 19, 18, 0.05);
 }
 
 /* ── Reset & base ─────────────────────────────────────────────── */
-*, *::before, *::after { box-sizing: border-box; }
+*, *::before, *::after {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
 
 html {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Minimum 44px touch target utility for accessible mobile buttons */
+.touch-target-44 {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Accessible reduced-motion support */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+  .animate-spin,
+  .animate-pulse,
+  .animate-ping,
+  .animate-bounce {
+    animation: none !important;
+  }
+}
+
+/* Safe area insets for mobile devices */
+.pb-safe {
+  padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0.75rem));
+}
+.pt-safe {
+  padding-top: max(0.75rem, env(safe-area-inset-top, 0.75rem));
 }
 
 /* Do NOT set height:100% on html/body — the page uses 100dvh on its own root */

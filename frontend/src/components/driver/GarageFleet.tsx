@@ -131,13 +131,17 @@ export function GarageFleet({
 
               {/* Air Suspension Ride Height Controls */}
               {isActive && (
-                <div className="mt-3 pt-3 border-t border-black/[0.06] flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 text-[10px] font-mono text-[#767D78]">
-                    <Sliders size={12} />
-                    <span>Chassis Air Suspension:</span>
+                <div className="mt-3 pt-3 border-t border-black/[0.06] flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex items-center gap-1.5 text-[10.5px] font-mono text-[#767D78]">
+                    <Sliders size={13} aria-hidden="true" />
+                    <span>Air Suspension:</span>
                   </div>
 
-                  <div className="flex items-center gap-1">
+                  <div
+                    role="radiogroup"
+                    aria-label="Chassis Air Suspension Height"
+                    className="flex items-center gap-1.5"
+                  >
                     {(
                       [
                         { id: "aero", label: "Low Aero" },
@@ -147,13 +151,16 @@ export function GarageFleet({
                     ).map((mode) => (
                       <button
                         key={mode.id}
+                        role="radio"
+                        aria-checked={currentSuspension === mode.id}
+                        aria-label={`Suspension height: ${mode.label}`}
                         onClick={(e) => {
                           e.stopPropagation();
                           setSuspensionMap((prev) => ({ ...prev, [v.id]: mode.id }));
                         }}
-                        className={`text-[9.5px] px-2 py-0.5 rounded-md font-semibold transition-colors ${
+                        className={`text-[10px] px-2.5 py-1.5 rounded-lg font-semibold transition-colors cursor-pointer min-h-[36px] flex items-center justify-center focus-visible:outline-2 focus-visible:outline-[#111312] ${
                           currentSuspension === mode.id
-                            ? "bg-[#111312] text-[#C8F369]"
+                            ? "bg-[#111312] text-[#C8F369] shadow-xs"
                             : "bg-[#F4F3EE] text-[#525854] hover:bg-[#EAE8E2]"
                         }`}
                       >
@@ -167,11 +174,12 @@ export function GarageFleet({
               {/* Set Active Button if not active */}
               {!isActive && (
                 <button
+                  type="button"
                   onClick={(e) => {
                     e.stopPropagation();
                     onSelectVehicle(v.id);
                   }}
-                  className="w-full mt-3 py-2.5 bg-[#F4F3EE] hover:bg-[#EAE8E2] text-[#111312] text-xs font-semibold rounded-xl active:scale-98 transition-all border border-black/[0.05]"
+                  className="w-full mt-3 py-3 min-h-[44px] bg-[#F4F3EE] hover:bg-[#EAE8E2] text-[#111312] text-xs font-semibold rounded-xl active:scale-98 transition-all border border-black/[0.05] cursor-pointer flex items-center justify-center focus-visible:outline-2 focus-visible:outline-[#111312]"
                 >
                   Select as Active Driver EV
                 </button>

@@ -55,8 +55,9 @@ export function EmptyState({
       </p>
       {onReset && (
         <button
+          type="button"
           onClick={onReset}
-          className="px-4 py-2 bg-[#111312] text-white text-xs font-semibold rounded-xl hover:bg-[#252826] transition-colors active:scale-98"
+          className="min-h-[44px] px-5 py-2.5 bg-[#111312] text-white text-xs font-semibold rounded-xl hover:bg-[#252826] transition-colors active:scale-98 cursor-pointer focus-visible:outline-2 focus-visible:outline-[#111312]"
         >
           Reset All Filters
         </button>
@@ -76,17 +77,21 @@ export function ErrorState({
   onRetry?: () => void;
 }) {
   return (
-    <div className="flex items-center justify-between p-3.5 bg-[#FFF5F5] border border-[#FEE2E2] rounded-xl text-xs text-[#991B1B] my-2">
-      <div className="flex items-center gap-2.5">
-        <AlertCircle size={16} className="text-[#DC2626] shrink-0" />
+    <div
+      role="alert"
+      className="flex items-center justify-between p-3.5 bg-[#FFF5F5] border border-[#FEE2E2] rounded-xl text-xs text-[#991B1B] my-2"
+    >
+      <div className="flex items-center gap-2.5 pr-2">
+        <AlertCircle size={16} className="text-[#DC2626] shrink-0" aria-hidden="true" />
         <span className="font-medium leading-tight">{message}</span>
       </div>
       {onRetry && (
         <button
+          type="button"
           onClick={onRetry}
-          className="flex items-center gap-1 font-semibold text-[#991B1B] hover:text-[#7F1D1D] px-2 py-1 bg-white rounded-lg border border-[#FEE2E2] shadow-2xs active:scale-95"
+          className="min-h-[36px] flex items-center gap-1 font-semibold text-[#991B1B] hover:text-[#7F1D1D] px-3 py-1.5 bg-white rounded-lg border border-[#FEE2E2] shadow-2xs active:scale-95 cursor-pointer focus-visible:outline-2 focus-visible:outline-[#DC2626] shrink-0"
         >
-          <RefreshCw size={12} />
+          <RefreshCw size={12} aria-hidden="true" />
           Retry
         </button>
       )}
@@ -107,22 +112,26 @@ export function OfflineNotice({
   if (source === "open_charge_map") return null;
 
   return (
-    <div className="flex items-center justify-between px-3 py-1.5 bg-[#F6F5F0] border border-[rgba(17,19,18,0.07)] rounded-xl text-[11px] text-[#525854] my-2">
+    <aside
+      aria-label="Data Source Status"
+      className="flex items-center justify-between px-3 py-2 bg-[#F6F5F0] border border-[rgba(17,19,18,0.07)] rounded-xl text-[11px] text-[#525854] my-2"
+    >
       <div className="flex items-center gap-2">
-        <span className="w-2 h-2 rounded-full bg-[#EAB308] animate-pulse" />
+        <span className="w-2 h-2 rounded-full bg-[#EAB308] animate-pulse" aria-hidden="true" />
         <span className="font-medium">
           Verified Regional Dataset (OCM Gateway Offline)
         </span>
       </div>
       {onSync && (
         <button
+          type="button"
           onClick={onSync}
-          className="text-[#111312] font-semibold flex items-center gap-1 hover:underline ml-2"
+          className="min-h-[36px] text-[#111312] font-semibold flex items-center gap-1 hover:underline ml-2 px-2 py-1 rounded-md cursor-pointer focus-visible:outline-2 focus-visible:outline-[#111312]"
         >
-          <RefreshCw size={10} />
+          <RefreshCw size={10} aria-hidden="true" />
           Check Live
         </button>
       )}
-    </div>
+    </aside>
   );
 }
