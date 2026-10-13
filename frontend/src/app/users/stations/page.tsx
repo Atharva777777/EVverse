@@ -100,7 +100,6 @@ export default function EVVerseDriverPage() {
 
   // Desktop Studio Frame Controls: "frame" (iPhone 16 Pro mockup), "fluid" (clean mobile column), "expanded" (wide responsive cockpit)
   const [viewMode, setViewMode] = useState<"frame" | "fluid" | "expanded">("frame");
-  const [scale, setScale] = useState<number>(0.92);
   const [isMobileScreen, setIsMobileScreen] = useState(false);
 
   useEffect(() => {
@@ -559,24 +558,6 @@ export default function EVVerseDriverPage() {
             Expanded View
           </button>
         </div>
-
-        {/* Scale Controls for iPhone Frame */}
-        {viewMode === "frame" && (
-          <div className="flex items-center gap-1 bg-[#1A1D1B] px-2 py-1 rounded-xl border border-[rgba(255,255,255,0.08)]">
-            <span className="text-[10px] text-[#8C938E] uppercase font-mono mr-1">Scale:</span>
-            {[1.0, 0.92, 0.82].map((s) => (
-              <button
-                key={s}
-                onClick={() => setScale(s)}
-                className={`px-2 py-0.5 rounded-md text-[11px] font-mono font-semibold transition-colors ${
-                  scale === s ? "bg-[#C8F369] text-[#111312]" : "text-[#8C938E] hover:text-white"
-                }`}
-              >
-                {Math.round(s * 100)}%
-              </button>
-            ))}
-          </div>
-        )}
       </div>
 
       {/* ── Outer Mobile Container Shell ── */}
@@ -588,14 +569,6 @@ export default function EVVerseDriverPage() {
             ? "py-4 px-4 max-w-5xl"
             : "py-0 px-0 max-w-[430px]"
         }`}
-        style={
-          isFramed
-            ? {
-                transform: `scale(${scale})`,
-                transformOrigin: "top center",
-              }
-            : undefined
-        }
       >
         {/* Hardware Frame or Standard Container */}
         <div
