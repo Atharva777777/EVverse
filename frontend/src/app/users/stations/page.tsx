@@ -182,6 +182,19 @@ export default function EVVerseDriverPage() {
   const [chargeCost, setChargeCost] = useState(331.2);
   const chargeIntervalRef = useRef<any>(null);
 
+  // Neural Co-Pilot state (Range Reality & Stall Reservation)
+  const [rangeMode, setRangeMode] = useState<"reality" | "nominal">("reality");
+  const [isStallReserved, setIsStallReserved] = useState(false);
+  const [reservedStallNumber, setReservedStallNumber] = useState(3);
+  const [reserveTimeLeft, setReserveTimeLeft] = useState(882); // 14 mins 42s
+  const [smart80Cutoff, setSmart80Cutoff] = useState(true);
+
+  // V2G Energy Arbitrage state (Bidirectional Flow)
+  const [chargeMode, setChargeMode] = useState<"charge" | "v2g">("charge");
+  const [v2gDepartureFloor, setV2gDepartureFloor] = useState(75);
+  const [v2gDischargedKwh, setV2gDischargedKwh] = useState(8.2);
+  const [v2gEarnedUsd, setV2gEarnedUsd] = useState(38.4);
+
   // Journey planner state
   const [journeyDest, setJourneyDest] = useState("Pune Expressway Hub");
   const [journeyRouteReady, setJourneyRouteReady] = useState(true);
@@ -256,13 +269,20 @@ export default function EVVerseDriverPage() {
     setNavStation(null);
   };
 
-  // Simulated live charging tick
+  // Simulated live charging and V2G tick
   useEffect(() => {
     if (isCharging) {
       chargeIntervalRef.current = setInterval(() => {
-        setChargeBattery((b) => (b < 100 ? b + 1 : 100));
-        setEnergyDelivered((e) => +(e + 0.35).toFixed(1));
-        setChargeCost((c) => +(c + 6.3).toFixed(1));
+        if (chargeMode === "charge") {
+          setChargeBattery((b) => (b < 100 ? b + 1 : 100));
+          setEnergyDelivered((e) => +(e + 0.35).toFixed(1));
+          setChargeCost((c) => +(c + 6.3).toFixed(1));
+        } else {
+          // V2G Bidirectional Arbitrage: Car -> Grid
+          setChargeBattery((b) => (b > v2gDepartureFloor ? b - 1 : b));
+          setV2gDischargedKwh((k) => +(k + 0.3).toFixed(1));
+          setV2gEarnedUsd((u) => +(u + 0.45).toFixed(2));
+        }
       }, 2500);
     } else {
       if (chargeIntervalRef.current) clearInterval(chargeIntervalRef.current);
@@ -270,7 +290,16 @@ export default function EVVerseDriverPage() {
     return () => {
       if (chargeIntervalRef.current) clearInterval(chargeIntervalRef.current);
     };
-  }, [isCharging]);
+  }, [isCharging, chargeMode, v2gDepartureFloor]);
+
+  // Stall reservation active countdown
+  useEffect(() => {
+    if (!isStallReserved) return;
+    const timer = setInterval(() => {
+      setReserveTimeLeft((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [isStallReserved]);
 
   const toggleFavorite = (id: string) => {
     setSavedStations((prev) => {
@@ -1014,20 +1043,20 @@ export default function EVVerseDriverPage() {
           )}
 
           {/* ══════════════════════════════════════════════════════════
-              TAB 3: JOURNEYS (JOURNEY PLANNER)
+              TAB 3: NEURAL CO-PILOT (RANGE REALITY & STALL RESERVATION)
           ══════════════════════════════════════════════════════════ */}
           {activeTab === "journeys" && (
-            <div style={{ flex: 1, overflowY: "auto", padding: "16px 20px 88px", display: "flex", flexDirection: "column", gap: "20px" }}>
+            <div style={{ flex: 1, overflowY: "auto", padding: "16px 20px 88px", display: "flex", flexDirection: "column", gap: "18px" }}>
               <div>
-                <span style={{ fontSize: "11px", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#86868b" }}>
-                  INTELLIGENT ROUTING
+                <span style={{ fontSize: "11px", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#64748b" }}>
+                  NEURAL CO-PILOT · PILLAR 3
                 </span>
                 <h1 style={{ fontSize: "24px", fontWeight: 700, color: "#151817", margin: "2px 0 0" }}>
-                  Journey Planner
+                  Energy & Range Forensics
                 </h1>
               </div>
 
-              {/* Destination Input Box */}
+              {/* Range Reality vs Nominal Switch */}
               <div
                 style={{
                   background: "#ffffff",
@@ -1037,117 +1066,242 @@ export default function EVVerseDriverPage() {
                   display: "flex",
                   flexDirection: "column",
                   gap: "12px",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.02)",
                 }}
               >
-                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                  <div style={{ width: "10px", height: "10px", borderRadius: "50%", background: "#0071e3" }} />
-                  <div style={{ fontSize: "13px", fontWeight: 600, color: "#151817" }}>
-                    Origin: Current Location ({selectedCity})
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div style={{ fontSize: "11px", fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>
+                    Battery Range Forensics
+                  </div>
+                  <div style={{ display: "flex", background: "#F1F5F9", borderRadius: "8px", padding: "2px" }}>
+                    <button
+                      onClick={() => setRangeMode("reality")}
+                      style={{
+                        padding: "3px 8px",
+                        borderRadius: "6px",
+                        border: "none",
+                        fontSize: "11px",
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        background: rangeMode === "reality" ? "#0f172a" : "transparent",
+                        color: rangeMode === "reality" ? "#ffffff" : "#64748b",
+                      }}
+                    >
+                      Range Reality
+                    </button>
+                    <button
+                      onClick={() => setRangeMode("nominal")}
+                      style={{
+                        padding: "3px 8px",
+                        borderRadius: "6px",
+                        border: "none",
+                        fontSize: "11px",
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        background: rangeMode === "nominal" ? "#0f172a" : "transparent",
+                        color: rangeMode === "nominal" ? "#ffffff" : "#64748b",
+                      }}
+                    >
+                      WLTP Nominal
+                    </button>
                   </div>
                 </div>
-                <div style={{ height: "1px", background: "#EBECE8", margin: "0 6px" }} />
-                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                  <div style={{ width: "10px", height: "10px", borderRadius: "50%", background: "#10b981" }} />
-                  <input
-                    type="text"
-                    value={journeyDest}
-                    onChange={(e) => setJourneyDest(e.target.value)}
-                    placeholder="Enter destination…"
+
+                {/* Range Numbers */}
+                <div style={{ display: "flex", alignItems: "baseline", gap: "8px" }}>
+                  <span style={{ fontSize: "38px", fontWeight: 800, color: "#151817", letterSpacing: "-0.03em" }}>
+                    {rangeMode === "reality" ? "364" : activeVehicle.currentRangeKm}
+                  </span>
+                  <span style={{ fontSize: "16px", fontWeight: 600, color: "#64748b" }}>km</span>
+                  {rangeMode === "reality" && (
+                    <span style={{ fontSize: "11.5px", fontWeight: 600, color: "#059669", marginLeft: "auto" }}>
+                      ● 99.2% Arrival Guarantee
+                    </span>
+                  )}
+                </div>
+
+                {/* Reality Range Deductions Breakdown */}
+                {rangeMode === "reality" && (
+                  <div
                     style={{
-                      border: "none",
-                      outline: "none",
-                      fontSize: "14px",
-                      fontWeight: 600,
-                      color: "#151817",
-                      flex: 1,
+                      background: "#F8FAFC",
+                      borderRadius: "12px",
+                      padding: "10px 12px",
+                      fontSize: "11.5px",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "4px",
+                      border: "1px solid #E2E8F0",
                     }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", color: "#64748b" }}>
+                      <span>Terrain Incline (+420m elevation climb):</span>
+                      <span style={{ fontWeight: 600, color: "#dc2626" }}>-18 km</span>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", color: "#64748b" }}>
+                      <span>Thermal AC Load (28°C ambient weather):</span>
+                      <span style={{ fontWeight: 600, color: "#dc2626" }}>-10 km</span>
+                    </div>
+                    <div style={{ display: "flex", justifyContent: "space-between", color: "#059669", fontWeight: 600, borderTop: "1px solid #E2E8F0", paddingTop: "4px" }}>
+                      <span>Forensic True Range Buffer:</span>
+                      <span>364 km Confirmed</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Guaranteed Stall Reservation Card */}
+              <div
+                style={{
+                  background: isStallReserved ? "rgba(16, 185, 129, 0.06)" : "#ffffff",
+                  borderRadius: "20px",
+                  border: isStallReserved ? "1.5px solid #059669" : "1px solid #E2E5DF",
+                  padding: "16px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "12px",
+                  boxShadow: "0 2px 8px rgba(0,0,0,0.02)",
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div style={{ fontSize: "11px", fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>
+                    Autonomous Stall Reservation
+                  </div>
+                  <span
+                    style={{
+                      fontSize: "10.5px",
+                      fontWeight: 700,
+                      padding: "2px 8px",
+                      borderRadius: "999px",
+                      background: isStallReserved ? "#059669" : "#EDF8DE",
+                      color: isStallReserved ? "#ffffff" : "#3F6212",
+                    }}
+                  >
+                    {isStallReserved ? "RESERVED & LOCKED" : "STALL AVAILABLE"}
+                  </span>
+                </div>
+
+                <div>
+                  <h3 style={{ fontSize: "16px", fontWeight: 700, color: "#151817", margin: 0 }}>
+                    Expressway Superhub · Stall #{reservedStallNumber}
+                  </h3>
+                  <div style={{ fontSize: "12px", color: "#64748b", marginTop: "2px" }}>
+                    350 kW Ultra-Fast CCS2 · Bandra-Worli Transit Corridor
+                  </div>
+                </div>
+
+                {isStallReserved ? (
+                  <div
+                    style={{
+                      background: "#ffffff",
+                      borderRadius: "12px",
+                      padding: "12px",
+                      border: "1px solid #CBD5E1",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "8px",
+                    }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span style={{ fontSize: "12px", fontWeight: 600, color: "#065f46" }}>
+                        🔒 Physical Barrier Locked for {activeVehicle.model}
+                      </span>
+                      <span style={{ fontSize: "13px", fontWeight: 800, color: "#0f172a" }}>
+                        {Math.floor(reserveTimeLeft / 60)}:{String(reserveTimeLeft % 60).padStart(2, "0")}
+                      </span>
+                    </div>
+                    <div style={{ fontSize: "11px", color: "#64748b" }}>
+                      Stall is reserved exclusively for your vehicle. Unlocks automatically on arrival handshake.
+                    </div>
+                    <button
+                      onClick={() => setIsStallReserved(false)}
+                      style={{
+                        padding: "6px",
+                        borderRadius: "8px",
+                        border: "1px solid #E2E8F0",
+                        background: "#F8FAFC",
+                        color: "#64748b",
+                        fontSize: "11px",
+                        fontWeight: 600,
+                        cursor: "pointer",
+                      }}
+                    >
+                      Release Reservation
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => {
+                      setIsStallReserved(true);
+                      setReserveTimeLeft(900);
+                    }}
+                    style={{
+                      background: "#0f172a",
+                      color: "#ffffff",
+                      border: "none",
+                      borderRadius: "12px",
+                      padding: "12px",
+                      fontSize: "13px",
+                      fontWeight: 700,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "6px",
+                      boxShadow: "0 2px 8px rgba(15, 23, 42, 0.15)",
+                    }}
+                  >
+                    <span>🔒 Lock & Hold Stall #{reservedStallNumber} (15 Min Guarantee)</span>
+                  </button>
+                )}
+              </div>
+
+              {/* Battery Longevity & Health Forensics Card */}
+              <div
+                style={{
+                  background: "#ffffff",
+                  borderRadius: "20px",
+                  border: "1px solid #E2E5DF",
+                  padding: "16px",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "10px",
+                }}
+              >
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                  <div style={{ fontSize: "11px", fontWeight: 700, color: "#64748b", textTransform: "uppercase" }}>
+                    Battery Pack Forensics
+                  </div>
+                  <span style={{ fontSize: "11px", fontWeight: 700, color: "#059669" }}>
+                    98.4% SOH (Grade A+)
+                  </span>
+                </div>
+
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", paddingTop: "4px" }}>
+                  <div>
+                    <div style={{ fontSize: "13px", fontWeight: 700, color: "#151817" }}>Smart 80% Fast-Charge Cap</div>
+                    <div style={{ fontSize: "11px", color: "#64748b" }}>Preserves cathode life and saves 35m dwell</div>
+                  </div>
+                  <input
+                    type="checkbox"
+                    checked={smart80Cutoff}
+                    onChange={(e) => setSmart80Cutoff(e.target.checked)}
+                    style={{ width: "18px", height: "18px", accentColor: "#059669", cursor: "pointer" }}
                   />
                 </div>
               </div>
 
-              {/* Route Forecast Card */}
-              <div
-                style={{
-                  background: "#151817",
-                  color: "#ffffff",
-                  borderRadius: "24px",
-                  padding: "20px",
-                  display: "flex",
-                  flexDirection: "column",
-                  gap: "16px",
-                  boxShadow: "0 10px 30px rgba(0, 0, 0, 0.1)",
-                }}
-              >
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                  <div>
-                    <span style={{ fontSize: "11px", fontWeight: 700, color: "#C9F36A", textTransform: "uppercase", letterSpacing: "0.06em" }}>
-                      Optimal Fast Route
-                    </span>
-                    <h3 style={{ fontSize: "20px", fontWeight: 700, margin: "2px 0 0" }}>
-                      148 km · 2 hr 15 min
-                    </h3>
-                  </div>
-                  <span style={{ fontSize: "12px", fontWeight: 700, color: "#C9F36A" }}>
-                    Arrive @ 24% SOC
-                  </span>
-                </div>
-
-                {/* Recommended Charging Stop Along Route */}
-                <div
-                  style={{
-                    background: "rgba(255, 255, 255, 0.08)",
-                    borderRadius: "16px",
-                    padding: "14px",
-                    border: "1px solid rgba(255, 255, 255, 0.12)",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "12px",
-                  }}
-                >
-                  <div
-                    style={{
-                      width: "36px",
-                      height: "36px",
-                      borderRadius: "10px",
-                      background: "#C9F36A",
-                      color: "#151817",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontWeight: 800,
-                      fontSize: "14px",
-                    }}
-                  >
-                    ⚡
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: "13px", fontWeight: 700, color: "#ffffff" }}>
-                      Stop: Expressway Superhub
-                    </div>
-                    <div style={{ fontSize: "11px", color: "rgba(255, 255, 255, 0.7)" }}>
-                      18 min charge (+46 kWh) · 180 kW CCS2
-                    </div>
-                  </div>
-                </div>
-
-                {/* Summary numbers */}
-                <div style={{ display: "flex", justifyContent: "space-between", fontSize: "12px", color: "rgba(255,255,255,0.7)", borderTop: "1px solid rgba(255,255,255,0.1)", paddingTop: "12px" }}>
-                  <span>Est. Charging Cost: ₹ 414 ($5.20)</span>
-                  <span>Vehicle: {activeVehicle.model}</span>
-                </div>
-              </div>
-
-              {/* Start Trip CTA */}
+              {/* Start Guided Navigation CTA */}
               <button
                 onClick={() => {
                   if (filteredStations[0]) startNavigation(filteredStations[0]);
                 }}
                 style={{
-                  background: "#151817",
+                  background: "#0f172a",
                   color: "#C9F36A",
                   border: "none",
                   borderRadius: "16px",
-                  padding: "16px",
+                  padding: "15px",
                   fontSize: "14px",
                   fontWeight: 700,
                   cursor: "pointer",
@@ -1159,67 +1313,88 @@ export default function EVVerseDriverPage() {
                 }}
               >
                 <Navigation size={16} />
-                Start Guided Navigation
+                <span>Launch Neural Route Navigation</span>
               </button>
             </div>
           )}
 
           {/* ══════════════════════════════════════════════════════════
-              TAB 4: CHARGING (LIVE CHARGING SESSION)
+              TAB 4: CHARGING & V2G ENERGY EQUILIBRIUM COCKPIT
           ══════════════════════════════════════════════════════════ */}
           {activeTab === "charging" && (
-            <div style={{ flex: 1, overflowY: "auto", padding: "16px 20px 88px", display: "flex", flexDirection: "column", gap: "22px" }}>
+            <div style={{ flex: 1, overflowY: "auto", padding: "16px 20px 88px", display: "flex", flexDirection: "column", gap: "18px" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div>
-                  <span style={{ fontSize: "11px", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#86868b" }}>
-                    TELEMETRY & HARDWARE
+                  <span style={{ fontSize: "11px", fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", color: "#64748b" }}>
+                    BIDIRECTIONAL ENERGY COCKPIT · PILLAR 1
                   </span>
                   <h1 style={{ fontSize: "24px", fontWeight: 700, color: "#151817", margin: "2px 0 0" }}>
-                    Charging Session
+                    Energy Session
                   </h1>
                 </div>
-                <span
-                  style={{
-                    fontSize: "11px",
-                    fontWeight: 700,
-                    padding: "3px 10px",
-                    borderRadius: "999px",
-                    background: isCharging ? "#EDF8DE" : "#F0F2EE",
-                    color: isCharging ? "#3F6212" : "#6e6e73",
-                  }}
-                >
-                  {isCharging ? "ACTIVE CHARGE" : "STANDBY"}
-                </span>
+
+                {/* Mode Switch: Ultra Charge vs V2G Arbitrage */}
+                <div style={{ display: "flex", background: "#F1F5F9", borderRadius: "8px", padding: "2px" }}>
+                  <button
+                    onClick={() => setChargeMode("charge")}
+                    style={{
+                      padding: "4px 9px",
+                      borderRadius: "6px",
+                      border: "none",
+                      fontSize: "11px",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      background: chargeMode === "charge" ? "#0f172a" : "transparent",
+                      color: chargeMode === "charge" ? "#ffffff" : "#64748b",
+                    }}
+                  >
+                    ⚡ Fast Charge
+                  </button>
+                  <button
+                    onClick={() => setChargeMode("v2g")}
+                    style={{
+                      padding: "4px 9px",
+                      borderRadius: "6px",
+                      border: "none",
+                      fontSize: "11px",
+                      fontWeight: 600,
+                      cursor: "pointer",
+                      background: chargeMode === "v2g" ? "#059669" : "transparent",
+                      color: chargeMode === "v2g" ? "#ffffff" : "#64748b",
+                    }}
+                  >
+                    🔄 V2G Arbitrage
+                  </button>
+                </div>
               </div>
 
-              {/* Circular Battery Progress Graphic */}
+              {/* Progress Wheel Graphic */}
               <div
                 style={{
                   background: "#ffffff",
-                  borderRadius: "28px",
+                  borderRadius: "24px",
                   border: "1px solid #E2E5DF",
-                  padding: "32px 20px",
+                  padding: "26px 20px",
                   display: "flex",
                   flexDirection: "column",
                   alignItems: "center",
-                  gap: "16px",
+                  gap: "14px",
                   boxShadow: "0 4px 20px rgba(0, 0, 0, 0.04)",
                   position: "relative",
                 }}
               >
-                {/* SVG Progress Circle */}
-                <div style={{ position: "relative", width: "170px", height: "170px" }}>
-                  <svg width="170" height="170" viewBox="0 0 170 170">
-                    <circle cx="85" cy="85" r="70" fill="none" stroke="#EBECE8" strokeWidth="12" />
+                <div style={{ position: "relative", width: "160px", height: "160px" }}>
+                  <svg width="160" height="160" viewBox="0 0 160 160">
+                    <circle cx="85" cy="85" r="66" fill="none" stroke="#EBECE8" strokeWidth="11" />
                     <circle
                       cx="85"
                       cy="85"
-                      r="70"
+                      r="66"
                       fill="none"
-                      stroke="#C9F36A"
-                      strokeWidth="12"
-                      strokeDasharray={2 * Math.PI * 70}
-                      strokeDashoffset={2 * Math.PI * 70 * (1 - chargeBattery / 100)}
+                      stroke={chargeMode === "v2g" ? "#059669" : "#C9F36A"}
+                      strokeWidth="11"
+                      strokeDasharray={2 * Math.PI * 66}
+                      strokeDashoffset={2 * Math.PI * 66 * (1 - chargeBattery / 100)}
                       strokeLinecap="round"
                       transform="rotate(-90 85 85)"
                       style={{ transition: "stroke-dashoffset 0.8s ease" }}
@@ -1236,16 +1411,16 @@ export default function EVVerseDriverPage() {
                       justifyContent: "center",
                     }}
                   >
-                    <span style={{ fontSize: "36px", fontWeight: 800, color: "#151817", letterSpacing: "-0.03em" }}>
+                    <span style={{ fontSize: "34px", fontWeight: 800, color: "#151817", letterSpacing: "-0.03em" }}>
                       {chargeBattery}%
                     </span>
-                    <span style={{ fontSize: "11px", fontWeight: 700, color: "#047857" }}>
-                      {isCharging ? "+120 km / 10 min" : "Ready"}
+                    <span style={{ fontSize: "11px", fontWeight: 700, color: chargeMode === "v2g" ? "#059669" : "#047857" }}>
+                      {chargeMode === "v2g" ? "🔄 Feeding Grid" : isCharging ? "+120 km / 10 min" : "Connected"}
                     </span>
                   </div>
                 </div>
 
-                {/* Session Live Telemetry Counters */}
+                {/* Telemetry Grid */}
                 <div
                   style={{
                     width: "100%",
@@ -1253,42 +1428,94 @@ export default function EVVerseDriverPage() {
                     gridTemplateColumns: "1fr 1fr",
                     gap: "12px",
                     borderTop: "1px solid #EBECE8",
-                    paddingTop: "16px",
+                    paddingTop: "14px",
                   }}
                 >
-                  <div>
-                    <div style={{ fontSize: "11px", color: "#86868b", fontWeight: 500 }}>Delivered Energy</div>
-                    <div style={{ fontSize: "17px", fontWeight: 700, color: "#151817" }}>
-                      {energyDelivered} kWh
-                    </div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: "11px", color: "#86868b", fontWeight: 500 }}>Charging Rate</div>
-                    <div style={{ fontSize: "17px", fontWeight: 700, color: "#10b981" }}>
-                      {isCharging ? "84.2 kW DC" : "0 kW"}
-                    </div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: "11px", color: "#86868b", fontWeight: 500 }}>Session Cost</div>
-                    <div style={{ fontSize: "17px", fontWeight: 700, color: "#151817" }}>
-                      ₹ {chargeCost}
-                    </div>
-                  </div>
-                  <div>
-                    <div style={{ fontSize: "11px", color: "#86868b", fontWeight: 500 }}>Time to 80%</div>
-                    <div style={{ fontSize: "17px", fontWeight: 700, color: "#151817" }}>
-                      {isCharging ? "14 mins" : "—"}
-                    </div>
-                  </div>
+                  {chargeMode === "v2g" ? (
+                    <>
+                      <div>
+                        <div style={{ fontSize: "11px", color: "#64748b", fontWeight: 500 }}>Discharged to Grid</div>
+                        <div style={{ fontSize: "17px", fontWeight: 700, color: "#0f172a" }}>
+                          {v2gDischargedKwh} kWh
+                        </div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: "11px", color: "#64748b", fontWeight: 500 }}>Grid Spot Rate</div>
+                        <div style={{ fontSize: "17px", fontWeight: 700, color: "#059669" }}>
+                          $0.48 / kWh
+                        </div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: "11px", color: "#64748b", fontWeight: 500 }}>Arbitrage Earned</div>
+                        <div style={{ fontSize: "17px", fontWeight: 700, color: "#059669" }}>
+                          +${v2gEarnedUsd.toFixed(2)}
+                        </div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: "11px", color: "#64748b", fontWeight: 500 }}>Departure Reserve</div>
+                        <div style={{ fontSize: "17px", fontWeight: 700, color: "#0f172a" }}>
+                          {v2gDepartureFloor}% Floor
+                        </div>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div>
+                        <div style={{ fontSize: "11px", color: "#64748b", fontWeight: 500 }}>Delivered Energy</div>
+                        <div style={{ fontSize: "17px", fontWeight: 700, color: "#151817" }}>
+                          {energyDelivered} kWh
+                        </div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: "11px", color: "#64748b", fontWeight: 500 }}>Charging Rate</div>
+                        <div style={{ fontSize: "17px", fontWeight: 700, color: "#10b981" }}>
+                          {isCharging ? "150 kW DC" : "0 kW"}
+                        </div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: "11px", color: "#64748b", fontWeight: 500 }}>Session Cost</div>
+                        <div style={{ fontSize: "17px", fontWeight: 700, color: "#151817" }}>
+                          ${(chargeCost * 0.012).toFixed(2)}
+                        </div>
+                      </div>
+                      <div>
+                        <div style={{ fontSize: "11px", color: "#64748b", fontWeight: 500 }}>Time to 80%</div>
+                        <div style={{ fontSize: "17px", fontWeight: 700, color: "#151817" }}>
+                          {isCharging ? "12 mins" : "—"}
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
 
-                {/* Toggle Charging Button */}
+                {/* V2G Minimum Departure Buffer Slider */}
+                {chargeMode === "v2g" && (
+                  <div style={{ width: "100%", background: "#F8FAFC", borderRadius: "12px", padding: "10px 12px", border: "1px solid #E2E8F0" }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11.5px", marginBottom: "4px" }}>
+                      <span style={{ color: "#64748b" }}>Minimum Departure Reserve Floor:</span>
+                      <span style={{ fontWeight: 700, color: "#0f172a" }}>{v2gDepartureFloor}%</span>
+                    </div>
+                    <input
+                      type="range"
+                      min="50"
+                      max="90"
+                      value={v2gDepartureFloor}
+                      onChange={(e) => setV2gDepartureFloor(Number(e.target.value))}
+                      style={{ width: "100%", accentColor: "#059669", cursor: "pointer" }}
+                    />
+                    <div style={{ fontSize: "10.5px", color: "#64748b", marginTop: "2px" }}>
+                      System halts discharge automatically if battery reaches {v2gDepartureFloor}%.
+                    </div>
+                  </div>
+                )}
+
+                {/* Toggle Charging / Arbitrage Button */}
                 <button
                   onClick={() => setIsCharging(!isCharging)}
                   style={{
                     width: "100%",
-                    background: isCharging ? "#FEE2E2" : "#151817",
-                    color: isCharging ? "#991B1B" : "#C9F36A",
+                    background: isCharging ? "#FEE2E2" : chargeMode === "v2g" ? "#059669" : "#0f172a",
+                    color: isCharging ? "#991B1B" : "#ffffff",
                     border: "none",
                     borderRadius: "14px",
                     padding: "13px",
@@ -1299,36 +1526,41 @@ export default function EVVerseDriverPage() {
                     alignItems: "center",
                     justifyContent: "center",
                     gap: "6px",
-                    transition: "all 0.2s ease",
                   }}
                 >
                   <Zap size={15} />
-                  {isCharging ? "Stop Charging Session" : "Start 350kW Fast Charge"}
+                  {isCharging
+                    ? "Halt Active Session"
+                    : chargeMode === "v2g"
+                    ? "Activate V2G Grid Dispatch"
+                    : "Start 350kW Fast Charge"}
                 </button>
               </div>
 
-              {/* Hardware Connector Profile */}
+              {/* Verified Hardware Handshake Card */}
               <div
                 style={{
                   background: "#ffffff",
-                  borderRadius: "20px",
+                  borderRadius: "18px",
                   border: "1px solid #E2E5DF",
-                  padding: "16px",
+                  padding: "14px 16px",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "space-between",
                 }}
               >
-                <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-                  <div style={{ position: "relative", width: "42px", height: "42px" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+                  <div style={{ position: "relative", width: "36px", height: "36px" }}>
                     <Image src="/images/plug-ccs2.png" alt="CCS2" fill style={{ objectFit: "contain" }} />
                   </div>
                   <div>
-                    <div style={{ fontSize: "14px", fontWeight: 700, color: "#151817" }}>CCS Type 2 Combo</div>
-                    <div style={{ fontSize: "12px", color: "#86868b" }}>Liquid-cooled cable · 500A peak</div>
+                    <div style={{ fontSize: "13px", fontWeight: 700, color: "#151817" }}>CCS2 Bidirectional Handshake</div>
+                    <div style={{ fontSize: "11px", color: "#64748b" }}>ISO 15118-20 Verified · 800V Architecture</div>
                   </div>
                 </div>
-                <span style={{ fontSize: "11px", fontWeight: 700, color: "#047857" }}>LOCKED</span>
+                <span style={{ fontSize: "10.5px", fontWeight: 700, color: "#059669", background: "rgba(5, 150, 105, 0.1)", padding: "3px 8px", borderRadius: "99px" }}>
+                  SYNCED
+                </span>
               </div>
             </div>
           )}
@@ -1532,7 +1764,7 @@ export default function EVVerseDriverPage() {
             }}
           >
             <Navigation size={20} strokeWidth={activeTab === "journeys" ? 2.5 : 1.8} color={activeTab === "journeys" ? "#151817" : "#86868b"} />
-            <span style={{ fontSize: "10px", fontWeight: activeTab === "journeys" ? 700 : 500 }}>Journeys</span>
+            <span style={{ fontSize: "10px", fontWeight: activeTab === "journeys" ? 700 : 500 }}>Co-Pilot</span>
           </button>
 
           {/* Tab 4: Charging */}

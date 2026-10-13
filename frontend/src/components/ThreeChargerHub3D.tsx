@@ -14,6 +14,8 @@ export interface ThreeChargerHub3DProps {
   batterySoc?: number; // 0 to 100
   chargingSessionNumber?: number;
   isSimulating?: boolean;
+  mode?: "charge" | "v2g";
+  onModeChange?: (mode: "charge" | "v2g") => void;
 }
 
 export function ThreeChargerHub3D({
@@ -22,6 +24,8 @@ export function ThreeChargerHub3D({
   tariffRate = 0.36,
   batterySoc = 78,
   chargingSessionNumber = 42,
+  mode,
+  onModeChange,
 }: ThreeChargerHub3DProps) {
   const mountRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
@@ -33,6 +37,11 @@ export function ThreeChargerHub3D({
   const [isTurntableActive, setIsTurntableActive] = useState(false);
   const isTurntableRef = useRef(false);
   isTurntableRef.current = isTurntableActive;
+
+  const [internalMode, setInternalMode] = useState<"charge" | "v2g">(mode || "charge");
+  const isV2G = mode !== undefined ? mode === "v2g" : internalMode === "v2g";
+  const isV2GRef = useRef(isV2G);
+  isV2GRef.current = isV2G;
 
   // Scene references for live updates
   const lightsRef = useRef<{
@@ -57,40 +66,46 @@ export function ThreeChargerHub3D({
     kw: number,
     soc: number,
     tariff: number,
-    session: number
+    session: number,
+    v2gActive: boolean = false
   ) => {
     ctx.fillStyle = "#0a101d";
     ctx.fillRect(0, 0, 512, 1024);
 
     // Header Bar
     const grad = ctx.createLinearGradient(0, 0, 512, 0);
-    grad.addColorStop(0, "#10b981");
-    grad.addColorStop(1, "#059669");
+    if (v2gActive) {
+      grad.addColorStop(0, "#0284c7");
+      grad.addColorStop(1, "#0ea5e9");
+    } else {
+      grad.addColorStop(0, "#10b981");
+      grad.addColorStop(1, "#059669");
+    }
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, 512, 80);
 
     ctx.fillStyle = "#ffffff";
     ctx.font = "bold 28px -apple-system, BlinkMacSystemFont, sans-serif";
     ctx.textAlign = "center";
-    ctx.fillText("EV VERSE · FAST CHARGER", 256, 50);
+    ctx.fillText(v2gActive ? "EV VERSE · V2G BIDIRECTIONAL" : "EV VERSE · FAST CHARGER", 256, 50);
 
     // Live Status Badge
-    ctx.fillStyle = "rgba(16, 185, 129, 0.16)";
+    ctx.fillStyle = v2gActive ? "rgba(14, 165, 233, 0.22)" : "rgba(16, 185, 129, 0.16)";
     ctx.beginPath();
-    ctx.roundRect(126, 115, 260, 44, 22);
+    ctx.roundRect(106, 115, 300, 44, 22);
     ctx.fill();
-    ctx.fillStyle = "#34d399";
+    ctx.fillStyle = v2gActive ? "#38bdf8" : "#34d399";
     ctx.font = "bold 20px -apple-system, sans-serif";
-    ctx.fillText("● CHARGING ACTIVE", 256, 144);
+    ctx.fillText(v2gActive ? "🔄 EXPORTING TO GRID" : "● CHARGING ACTIVE", 256, 144);
 
-    // Power Delivery Readout
-    ctx.fillStyle = "#10b981";
+    // Power Delivery / Export Readout
+    ctx.fillStyle = v2gActive ? "#38bdf8" : "#10b981";
     ctx.font = "bold 96px -apple-system, BlinkMacSystemFont, sans-serif";
-    ctx.fillText(`${kw}`, 256, 260);
+    ctx.fillText(v2gActive ? "50" : `${kw}`, 256, 260);
 
     ctx.fillStyle = "#94a3b8";
     ctx.font = "600 24px -apple-system, sans-serif";
-    ctx.fillText("CHARGING POWER (kW)", 256, 305);
+    ctx.fillText(v2gActive ? "GRID EXPORT (kW)" : "CHARGING POWER (kW)", 256, 305);
 
     // Divider
     ctx.strokeStyle = "#1e293b";
@@ -107,7 +122,7 @@ export function ThreeChargerHub3D({
 
     ctx.fillStyle = "#94a3b8";
     ctx.font = "600 24px -apple-system, sans-serif";
-    ctx.fillText("BATTERY LEVEL", 256, 500);
+    ctx.fillText(v2gActive ? "PACK STATE OF CHARGE" : "BATTERY LEVEL", 256, 500);
 
     // Battery Progress Bar
     ctx.fillStyle = "#1e293b";
@@ -116,8 +131,13 @@ export function ThreeChargerHub3D({
     ctx.fill();
 
     const barGrad = ctx.createLinearGradient(60, 0, 452, 0);
-    barGrad.addColorStop(0, "#059669");
-    barGrad.addColorStop(1, "#34d399");
+    if (v2gActive) {
+      barGrad.addColorStop(0, "#0284c7");
+      barGrad.addColorStop(1, "#38bdf8");
+    } else {
+      barGrad.addColorStop(0, "#059669");
+      barGrad.addColorStop(1, "#34d399");
+    }
     ctx.fillStyle = barGrad;
     const filledW = Math.max(24, (392 * soc) / 100);
     ctx.beginPath();
@@ -143,20 +163,25 @@ export function ThreeChargerHub3D({
       ctx.fillText(val, x + w / 2, y + 88);
     };
 
-    drawCleanBox(60, 615, 185, 120, "RATE", `$${tariff.toFixed(2)}/kWh`);
-    drawCleanBox(267, 615, 185, 120, "DELIVERED", `${((kw * 0.42) + 14).toFixed(1)} kWh`);
+    if (v2gActive) {
+      drawCleanBox(60, 615, 185, 120, "SPOT RATE", "$0.48/kWh");
+      drawCleanBox(267, 615, 185, 120, "EARNED", `+$${(session * 0.8 + 14.2).toFixed(1)}`);
+    } else {
+      drawCleanBox(60, 615, 185, 120, "RATE", `$${tariff.toFixed(2)}/kWh`);
+      drawCleanBox(267, 615, 185, 120, "DELIVERED", `${((kw * 0.42) + 14).toFixed(1)} kWh`);
+    }
 
     // Clean Footer
     ctx.fillStyle = "#1e293b";
     ctx.fillRect(0, 890, 512, 134);
 
-    ctx.fillStyle = "#10b981";
+    ctx.fillStyle = v2gActive ? "#38bdf8" : "#10b981";
     ctx.font = "bold 24px -apple-system, sans-serif";
-    ctx.fillText("● HIGH POWER DC NETWORK", 256, 945);
+    ctx.fillText(v2gActive ? "🔄 SUBSTATION BALANCING ACTIVE" : "● HIGH POWER DC NETWORK", 256, 945);
 
     ctx.fillStyle = "#94a3b8";
     ctx.font = "20px -apple-system, sans-serif";
-    ctx.fillText(`Active Vehicle Connected · Session #${session}`, 256, 985);
+    ctx.fillText(v2gActive ? "Reverse Energy Export · ISO 15118-20" : `Active Vehicle Connected · Session #${session}`, 256, 985);
   };
 
   // ── Procedural Photorealistic Studio HDRI Environment Map ─────────────────
@@ -496,7 +521,7 @@ export function ThreeChargerHub3D({
     canvas.height = 1024;
     screenCanvasRef.current = canvas;
     const sContext = canvas.getContext("2d")!;
-    updateScreenCanvas(sContext, powerKw, batterySoc, tariffRate, chargingSessionNumber);
+    updateScreenCanvas(sContext, powerKw, batterySoc, tariffRate, chargingSessionNumber, isV2G);
 
     const screenTex = new THREE.CanvasTexture(canvas);
     screenTextureRef.current = screenTex;
@@ -942,13 +967,18 @@ export function ThreeChargerHub3D({
         controls.autoRotate = false;
       }
 
-      // Stream green energy particles along active charging cable
+      // Stream energy particles along active charging cable (Reversed in V2G mode)
       if (energyParticlesRef.current && cableCurveRef.current) {
         const particles = energyParticlesRef.current.children;
         particles.forEach((p, idx) => {
-          const t = (elapsed * 0.7 + idx * 0.16) % 1.0;
+          const rawT = (elapsed * 0.7 + idx * 0.16) % 1.0;
+          // In V2G mode, reverse the particle stream (1 - rawT) so energy flows from car back to grid!
+          const t = isV2GRef.current ? (1.0 - rawT) : rawT;
           const point = cableCurveRef.current!.getPoint(t);
           p.position.copy(point);
+          if (p instanceof THREE.Mesh && p.material instanceof THREE.MeshBasicMaterial) {
+            p.material.color.setHex(isV2GRef.current ? 0x38bdf8 : 0x34d399);
+          }
         });
       }
 
@@ -1032,15 +1062,15 @@ export function ThreeChargerHub3D({
     }
   }, [lighting]);
 
-  // ── SCREEN UPDATE ON TIMESTEP ADVANCEMENT ─────────────────────────────────
+  // ── SCREEN UPDATE ON TIMESTEP & V2G MODE ADVANCEMENT ────────────────────
   useEffect(() => {
     if (!screenCanvasRef.current || !screenTextureRef.current) return;
     const ctx = screenCanvasRef.current.getContext("2d");
     if (!ctx) return;
 
-    updateScreenCanvas(ctx, powerKw, batterySoc, tariffRate, chargingSessionNumber);
+    updateScreenCanvas(ctx, powerKw, batterySoc, tariffRate, chargingSessionNumber, isV2G);
     screenTextureRef.current.needsUpdate = true;
-  }, [powerKw, batterySoc, tariffRate, chargingSessionNumber]);
+  }, [powerKw, batterySoc, tariffRate, chargingSessionNumber, isV2G]);
 
   // ── Camera Preset Controls ────────────────────────────────────────────────
   const setCameraPreset = (preset: "hero" | "dispensers" | "overhead") => {
@@ -1136,6 +1166,32 @@ export function ThreeChargerHub3D({
         >
           <Eye size={13} className="text-emerald-600" />
           <span>Dispensers</span>
+        </button>
+
+        <button
+          onClick={() => {
+            const nextMode = isV2G ? "charge" : "v2g";
+            setInternalMode(nextMode);
+            onModeChange?.(nextMode);
+          }}
+          style={{
+            background: isV2G ? "#0284c7" : "rgba(255, 255, 255, 0.94)",
+            backdropFilter: "blur(10px)",
+            border: isV2G ? "1px solid #0284c7" : "1px solid #e2e8f0",
+            borderRadius: "7px",
+            padding: "5px 10px",
+            fontSize: "11px",
+            fontWeight: 600,
+            color: isV2G ? "#ffffff" : "#0f172a",
+            cursor: "pointer",
+            display: "flex",
+            alignItems: "center",
+            gap: "5px",
+            boxShadow: "0 2px 6px rgba(0,0,0,0.04)",
+          }}
+          title="Toggle V2G Bidirectional Backflow simulation"
+        >
+          <span>{isV2G ? "🔄 V2G Active" : "⚡ Charge Flow"}</span>
         </button>
 
         <button

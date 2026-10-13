@@ -53,6 +53,7 @@ export function Spatial3DDigitalTwinModal({
 }: Spatial3DDigitalTwinModalProps) {
   // ── 3D Viewport Controls ──────────────────────────────────────────────────
   const [lighting, setLighting] = useState<"day" | "night">("day");
+  const [v2gMode, setV2gMode] = useState<"charge" | "v2g">("charge");
 
   // ── Configuration State ───────────────────────────────────────────────────
   const [baysCount, setBaysCount] = useState(2); // 2, 4, 6, 8
@@ -63,7 +64,11 @@ export function Spatial3DDigitalTwinModal({
   // ── 5-Year Horizon Timeline State ─────────────────────────────────────────
   const [activeYearIndex, setActiveYearIndex] = useState(0); // 0 = Year 1 ... 4 = Year 5
   const [isPlaying, setIsPlaying] = useState(false);
-  const [activeTab, setActiveTab] = useState<"proforma" | "config">("proforma");
+  const [activeTab, setActiveTab] = useState<"proforma" | "config" | "syndicate">("proforma");
+
+  // ── Decentralized Syndicate Co-Ownership State (Pillar 4) ──────────────────
+  const [syndicateTicket, setSyndicateTicket] = useState<number>(10000);
+  const [syndicateCommitted, setSyndicateCommitted] = useState<boolean>(false);
 
   // ── Financial Model Calculations ──────────────────────────────────────────
   const hardwareCapex = baysCount * (powerKw === 350 ? 46000 : 26000);
@@ -270,6 +275,65 @@ export function Spatial3DDigitalTwinModal({
               overflow: "hidden",
             }}
           >
+            {/* Top-Left Mode Toggle (Pillar 1: V2G Arbitrage vs Fast Charge) */}
+            <div
+              style={{
+                position: "absolute",
+                top: "14px",
+                left: "14px",
+                zIndex: 20,
+                display: "flex",
+                background: "rgba(255, 255, 255, 0.94)",
+                backdropFilter: "blur(10px)",
+                border: "1px solid #e2e8f0",
+                borderRadius: "7px",
+                padding: "3px",
+                boxShadow: "0 2px 6px rgba(0,0,0,0.04)",
+                gap: "2px",
+              }}
+            >
+              <button
+                onClick={() => setV2gMode("charge")}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "4px",
+                  padding: "4px 8px",
+                  borderRadius: "5px",
+                  border: "none",
+                  fontSize: "11px",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  background: v2gMode === "charge" ? "#0f172a" : "transparent",
+                  color: v2gMode === "charge" ? "#ffffff" : "#475569",
+                  transition: "all 0.15s ease",
+                }}
+                title="Simulate normal grid-to-vehicle fast charging"
+              >
+                <span>⚡ Charge Flow</span>
+              </button>
+              <button
+                onClick={() => setV2gMode("v2g")}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "4px",
+                  padding: "4px 8px",
+                  borderRadius: "5px",
+                  border: "none",
+                  fontSize: "11px",
+                  fontWeight: 600,
+                  cursor: "pointer",
+                  background: v2gMode === "v2g" ? "#0284c7" : "transparent",
+                  color: v2gMode === "v2g" ? "#ffffff" : "#475569",
+                  transition: "all 0.15s ease",
+                }}
+                title="Simulate bidirectional vehicle-to-grid power export & grid stabilization"
+              >
+                <span>🔄 V2G Backflow</span>
+              </button>
+            </div>
+
             {/* Top-Right Lighting Toggle */}
             <div
               style={{
@@ -337,6 +401,7 @@ export function Spatial3DDigitalTwinModal({
                 batterySoc={Math.min(95, 45 + activeYearIndex * 11)}
                 chargingSessionNumber={currentYear.dailyCars}
                 isSimulating={isPlaying}
+                mode={v2gMode}
               />
 
               {/* Minimal Navigation Hint */}
@@ -531,6 +596,38 @@ export function Spatial3DDigitalTwinModal({
                 }}
               >
                 Station Setup & Costs
+              </button>
+
+              <button
+                onClick={() => setActiveTab("syndicate")}
+                style={{
+                  background: "none",
+                  border: "none",
+                  padding: "4px 0",
+                  fontFamily: "Times New Roman, serif",
+                  fontSize: "13px",
+                  fontWeight: activeTab === "syndicate" ? 700 : 500,
+                  color: activeTab === "syndicate" ? "#0f172a" : "#64748b",
+                  borderBottom: activeTab === "syndicate" ? "2px solid #0f172a" : "none",
+                  cursor: "pointer",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "4px",
+                }}
+              >
+                <span>Fractional Syndicate</span>
+                <span
+                  style={{
+                    fontSize: "9.5px",
+                    fontWeight: 700,
+                    padding: "1px 5px",
+                    borderRadius: "4px",
+                    background: "rgba(16, 185, 129, 0.12)",
+                    color: "#059669",
+                  }}
+                >
+                  Pillar 4
+                </span>
               </button>
             </div>
 
@@ -735,6 +832,140 @@ export function Spatial3DDigitalTwinModal({
                   <div style={{ display: "flex", justifyContent: "space-between", borderTop: "1px solid #e2e8f0", paddingTop: "5px", fontWeight: 700, color: "#0f172a" }}>
                     <span>Total Upfront CapEx:</span>
                     <span>${Math.round(totalCapex / 1000)}k USD</span>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB 3: DECENTRALIZED FRACTIONAL SYNDICATE (PILLAR 4) */}
+            {activeTab === "syndicate" && (
+              <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
+                {/* Fractional Ticket Selector */}
+                <div>
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: "11.5px", marginBottom: "4px" }}>
+                    <span style={{ color: "#64748b" }}>Fractional Investment Tier:</span>
+                    <span style={{ fontWeight: 600, color: "#059669" }}>${syndicateTicket.toLocaleString()} USD</span>
+                  </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "6px" }}>
+                    {[5000, 10000, 25000, 50000].map((amount) => {
+                      const isSelected = syndicateTicket === amount;
+                      return (
+                        <button
+                          key={amount}
+                          onClick={() => {
+                            setSyndicateTicket(amount);
+                            setSyndicateCommitted(false);
+                          }}
+                          style={{
+                            padding: "7px 4px",
+                            borderRadius: "7px",
+                            border: isSelected ? "1.5px solid #059669" : "1px solid #e2e8f0",
+                            background: isSelected ? "rgba(16, 185, 129, 0.08)" : "#f8fafc",
+                            color: isSelected ? "#059669" : "#1e293b",
+                            fontSize: "11.5px",
+                            fontWeight: isSelected ? 700 : 600,
+                            cursor: "pointer",
+                            transition: "all 0.15s ease",
+                          }}
+                        >
+                          ${amount >= 1000 ? `${amount / 1000}k` : amount}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Co-Owner Pro-Forma Share Card */}
+                {(() => {
+                  const sharePct = ((syndicateTicket / Math.max(1, totalCapex)) * 100).toFixed(1);
+                  const personalAnnualNet = Math.round((currentYear.netProfit * 0.65) * (syndicateTicket / Math.max(1, totalCapex)));
+                  const personalMonthlyCash = Math.round(personalAnnualNet / 12);
+                  const personal5YrCumulative = Math.round((total5YearNetProfit * 0.65) * (syndicateTicket / Math.max(1, totalCapex)));
+                  const cashYield = ((personalAnnualNet / syndicateTicket) * 100).toFixed(1);
+
+                  return (
+                    <div style={{ padding: "12px", borderRadius: "10px", border: "1px solid #e2e8f0", background: "#f8fafc" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
+                        <span style={{ fontSize: "11px", fontWeight: 700, textTransform: "uppercase", color: "#64748b" }}>
+                          Your Fractional Share ({sharePct}% Equity)
+                        </span>
+                        <span style={{ fontSize: "11px", fontWeight: 700, color: "#059669" }}>
+                          {cashYield}% Cash Yield
+                        </span>
+                      </div>
+
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "8px", marginBottom: "10px" }}>
+                        <div style={{ background: "#ffffff", padding: "8px 10px", borderRadius: "7px", border: "1px solid #edf2f7" }}>
+                          <div style={{ fontSize: "10.5px", color: "#64748b" }}>Monthly Payout</div>
+                          <div style={{ fontFamily: "Times New Roman, serif", fontSize: "17px", fontWeight: 700, color: "#059669", marginTop: "1px" }}>
+                            +${personalMonthlyCash} <span style={{ fontSize: "10px", color: "#64748b", fontWeight: 400 }}>/mo</span>
+                          </div>
+                        </div>
+
+                        <div style={{ background: "#ffffff", padding: "8px 10px", borderRadius: "7px", border: "1px solid #edf2f7" }}>
+                          <div style={{ fontSize: "10.5px", color: "#64748b" }}>5-Year Cumulative</div>
+                          <div style={{ fontFamily: "Times New Roman, serif", fontSize: "17px", fontWeight: 700, color: "#0f172a", marginTop: "1px" }}>
+                            +${personal5YrCumulative.toLocaleString()}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Automated Revenue Waterfall Rule */}
+                      <div style={{ fontSize: "10.5px", color: "#64748b", borderTop: "1px solid #e2e8f0", paddingTop: "8px" }}>
+                        <div style={{ fontWeight: 600, color: "#1e293b", marginBottom: "4px" }}>Automated Revenue Waterfall (Smart Ledger):</div>
+                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "2px" }}>
+                          <span>• 65% Direct Syndicate Pool (Distributed Monthly):</span>
+                          <span style={{ fontWeight: 600, color: "#059669" }}>${Math.round((currentYear.netProfit * 0.65) / 1000)}k/yr</span>
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "2px" }}>
+                          <span>• 20% Grid Wholesale & Maintenance Reserve:</span>
+                          <span style={{ fontWeight: 500, color: "#475569" }}>${Math.round((currentYear.netProfit * 0.20) / 1000)}k/yr</span>
+                        </div>
+                        <div style={{ display: "flex", justifyContent: "space-between" }}>
+                          <span>• 15% Site Landlord Ground Lease:</span>
+                          <span style={{ fontWeight: 500, color: "#475569" }}>${Math.round((currentYear.netProfit * 0.15) / 1000)}k/yr</span>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })()}
+
+                {/* Instant Co-Ownership Commitment Button */}
+                <div>
+                  <button
+                    onClick={() => setSyndicateCommitted(true)}
+                    disabled={syndicateCommitted}
+                    style={{
+                      width: "100%",
+                      padding: "10px",
+                      borderRadius: "7px",
+                      border: "none",
+                      background: syndicateCommitted ? "rgba(16, 185, 129, 0.12)" : "#059669",
+                      color: syndicateCommitted ? "#047857" : "#ffffff",
+                      fontSize: "12px",
+                      fontWeight: 700,
+                      cursor: syndicateCommitted ? "default" : "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: "6px",
+                      transition: "all 0.15s ease",
+                    }}
+                  >
+                    {syndicateCommitted ? (
+                      <>
+                        <CheckCircle2 size={14} />
+                        <span>Syndicate Ticket Confirmed · Certificate #SYN-9148 Locked</span>
+                      </>
+                    ) : (
+                      <>
+                        <DollarSign size={14} />
+                        <span>Commit ${syndicateTicket.toLocaleString()} Syndicate Ticket</span>
+                      </>
+                    )}
+                  </button>
+                  <div style={{ fontSize: "10px", color: "#94a3b8", textAlign: "center", marginTop: "4px" }}>
+                    Direct deposit to bank or corporate wallet. Verified on-chain physical asset deed.
                   </div>
                 </div>
               </div>
