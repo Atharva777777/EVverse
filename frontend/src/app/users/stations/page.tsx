@@ -35,6 +35,7 @@ import {
   SlidersHorizontal,
   ExternalLink,
   Zap,
+  BookOpen,
 } from "lucide-react";
 
 // Dynamic Leaflet Map Component
@@ -171,6 +172,19 @@ export default function EVVerseDriverPage() {
   // Desktop Studio Frame Controls: "frame" (iPhone 16 Pro mockup), "fluid" (clean mobile column), "expanded" (wide responsive cockpit)
   const [viewMode, setViewMode] = useState<"frame" | "fluid" | "expanded">("frame");
   const [scale, setScale] = useState<number>(0.92);
+  const [isMobileScreen, setIsMobileScreen] = useState(false);
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobileScreen(window.innerWidth < 768);
+    };
+    handleResize();
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  const isFramed = !isMobileScreen && viewMode === "frame";
+  const effectiveViewMode = isMobileScreen ? "fluid" : viewMode;
 
   // Selected city & live data
   const [selectedCity, setSelectedCity] = useState("Mumbai");
@@ -467,7 +481,7 @@ export default function EVVerseDriverPage() {
   return (
     <div
       className={`min-h-screen w-full flex flex-col items-center selection:bg-[#111312] selection:text-white transition-colors duration-300 ${
-        viewMode === "frame"
+        isFramed
           ? "bg-[#0C0E0D] text-[#111312]"
           : "bg-[#FAF9F6] text-[#111312]"
       }`}
@@ -537,14 +551,14 @@ export default function EVVerseDriverPage() {
       {/* ── Outer Mobile Container Shell ── */}
       <div
         className={`w-full flex-1 flex items-center justify-center ${
-          viewMode === "frame"
+          isFramed
             ? "py-6 px-4"
-            : viewMode === "expanded"
+            : effectiveViewMode === "expanded"
             ? "py-4 px-4 max-w-5xl"
             : "py-0 px-0 max-w-[430px]"
         }`}
         style={
-          viewMode === "frame"
+          isFramed
             ? {
                 transform: `scale(${scale})`,
                 transformOrigin: "top center",
@@ -555,14 +569,14 @@ export default function EVVerseDriverPage() {
         {/* Hardware Frame or Standard Container */}
         <div
           className={
-            viewMode === "frame"
+            isFramed
               ? "relative w-[424px] h-[866px] rounded-[56px] p-[10px] flex flex-col select-none"
-              : viewMode === "expanded"
+              : effectiveViewMode === "expanded"
               ? "w-full max-w-5xl min-h-screen flex flex-col relative bg-[#FAF9F6] shadow-xl rounded-3xl border border-[rgba(17,19,18,0.08)] overflow-hidden"
               : "w-full max-w-[430px] min-h-screen flex flex-col relative bg-[#FAF9F6] shadow-2xl border-x border-[rgba(17,19,18,0.06)]"
           }
           style={
-            viewMode === "frame"
+            isFramed
               ? {
                   background:
                     "linear-gradient(145deg, #383B39 0%, #1D1F1E 30%, #303331 60%, #151716 100%)",
@@ -573,7 +587,7 @@ export default function EVVerseDriverPage() {
           }
         >
           {/* Physical Hardware Buttons (Left & Right) */}
-          {viewMode === "frame" && (
+          {isFramed && (
             <>
               {/* Left: Action Button */}
               <div
@@ -621,13 +635,13 @@ export default function EVVerseDriverPage() {
           {/* Inner OLED Glass Bezel */}
           <div
             className={
-              viewMode === "frame"
+              isFramed
                 ? "w-full h-full rounded-[48px] bg-[#0A0C0B] p-[8px] flex flex-col relative overflow-hidden"
                 : "w-full h-full flex flex-col"
             }
           >
             {/* Specular Diagonal Glass Highlight Sheen */}
-            {viewMode === "frame" && (
+            {isFramed && (
               <div
                 className="pointer-events-none absolute -top-32 -right-32 w-80 h-80 rounded-full z-50 opacity-40"
                 style={{
@@ -638,7 +652,7 @@ export default function EVVerseDriverPage() {
             )}
 
             {/* iOS Dynamic Island & Status Bar (in frame mode) */}
-            {viewMode === "frame" && (
+            {isFramed && (
               <div className="h-11 w-full flex items-center justify-between px-6 shrink-0 z-40 bg-[#FAF9F6] border-b border-black/[0.04] select-none">
                 {/* iOS Time */}
                 <span className="text-[13px] font-semibold text-[#111312] font-mono tracking-tight">
@@ -716,40 +730,53 @@ export default function EVVerseDriverPage() {
             )}
 
             {/* ── Screen Wrapper ── */}
-            <div className="w-full flex-1 flex flex-col overflow-y-auto no-scrollbar bg-[#FAF9F6] relative rounded-b-[40px]">
+            <div className={`w-full flex-1 flex flex-col overflow-y-auto no-scrollbar bg-[#FAF9F6] relative ${isFramed ? "rounded-b-[40px]" : "rounded-none"}`}>
             {/* ── Top Driver Status Header ─────────────────────────────────────── */}
             <header
-              className="sticky top-0 z-40 px-4 py-3 border-b flex items-center justify-between"
+              className="sticky top-0 z-40 px-3 sm:px-4 py-2.5 sm:py-3 border-b flex items-center justify-between"
               style={{
                 background: "rgba(250, 249, 246, 0.96)",
                 backdropFilter: "blur(20px)",
                 WebkitBackdropFilter: "blur(20px)",
                 borderColor: "rgba(17, 19, 18, 0.07)",
               }}
+              aria-label="Driver App Header"
             >
               {/* Brand Logo & Model */}
-              <div className="flex items-center gap-2.5">
-                <Link href="/" className="flex items-center gap-2 group">
-                  <div className="w-7 h-7 rounded-lg bg-[#111312] flex items-center justify-center text-[#C8F369] font-bold text-xs">
+              <div className="flex items-center gap-2">
+                <Link href="/" className="flex items-center gap-2 group cursor-pointer focus-visible:outline-2 focus-visible:outline-[#111312]">
+                  <div className="w-7 h-7 rounded-lg bg-[#111312] flex items-center justify-center text-[#C8F369] font-bold text-xs shrink-0">
                     EV
                   </div>
-                  <div>
+                  <div className="min-w-0">
                     <span className="text-xs font-bold tracking-tight text-[#111312] block leading-none">
                       EV VERSE
                     </span>
-                    <span className="text-[9.5px] font-mono text-[#8C938E] leading-none mt-0.5 block">
+                    <span className="text-[9.5px] font-mono text-[#8C938E] leading-none mt-0.5 block truncate max-w-[120px] sm:max-w-[160px]">
                       {activeVehicle.make} {activeVehicle.model}
                     </span>
                   </div>
                 </Link>
               </div>
 
-              {/* City Selector Dropdown */}
-              <div className="flex items-center gap-1.5">
+              {/* City Selector Dropdown & Knowledge Link */}
+              <div className="flex items-center gap-1.5 shrink-0">
+                {/* EV Knowledge Link */}
+                <Link
+                  href="/users/knowledge"
+                  className="flex items-center gap-1 text-[11px] font-semibold text-[#525854] hover:text-[#111312] bg-white border border-[rgba(17,19,18,0.08)] px-2 py-1.5 rounded-xl shadow-2xs hover:bg-[#F5F4EF] transition-colors cursor-pointer min-h-[34px] focus-visible:outline-2 focus-visible:outline-[#111312]"
+                  title="EV Knowledge Hub"
+                  aria-label="Open EV Knowledge Hub"
+                >
+                  <BookOpen size={13} className="text-[#16A34A]" />
+                  <span className="hidden sm:inline">Guide</span>
+                </Link>
+
                 <select
                   value={selectedCity}
                   onChange={(e) => setSelectedCity(e.target.value)}
-                  className="text-xs font-semibold bg-white border border-[rgba(17,19,18,0.08)] text-[#111312] rounded-xl px-2.5 py-1.5 focus:outline-hidden cursor-pointer shadow-2xs hover:bg-[#F5F4EF] transition-colors"
+                  aria-label="Select City"
+                  className="text-xs sm:text-xs text-[16px] font-semibold bg-white border border-[rgba(17,19,18,0.08)] text-[#111312] rounded-xl px-2 sm:px-2.5 py-1.5 focus:outline-hidden cursor-pointer shadow-2xs hover:bg-[#F5F4EF] transition-colors min-h-[34px]"
                 >
                   {Object.keys(CITY_CONFIGS).map((cityName) => (
                     <option key={cityName} value={cityName}>
@@ -760,10 +787,11 @@ export default function EVVerseDriverPage() {
 
                 {/* Offline / Live Status Indicator */}
                 <div
-                  className={`w-2.5 h-2.5 rounded-full ${
+                  className={`w-2.5 h-2.5 rounded-full shrink-0 ${
                     isLive ? "bg-[#16A34A]" : "bg-[#EAB308]"
                   }`}
                   title={isLive ? "Open Charge Map Live" : "Verified Regional Baseline"}
+                  aria-label={isLive ? "Connected to live grid" : "Regional baseline data"}
                 />
               </div>
             </header>
@@ -800,7 +828,7 @@ export default function EVVerseDriverPage() {
 
               {/* ═════════ TAB 2: EXPLORE (Charging Map) ═════════ */}
               {activeTab === "explore" && (
-                <div className="flex-1 flex flex-col relative w-full h-[620px] min-h-[500px]">
+                <div className="flex-1 flex flex-col relative w-full h-[calc(100vh-140px)] min-h-[460px] md:h-[620px]">
                   {/* Interactive Leaflet Map Viewport */}
                   <div className="flex-1 relative w-full h-full">
                 <DriverMobileMap
@@ -824,19 +852,21 @@ export default function EVVerseDriverPage() {
                   <div className="relative w-full">
                     <Search
                       size={15}
-                      className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8C938E]"
+                      className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#8C938E] pointer-events-none"
                     />
                     <input
                       type="text"
                       placeholder={`Search charging hubs in ${selectedCity}...`}
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
-                      className="w-full pl-9 pr-8 py-2.5 bg-white/95 backdrop-blur-md rounded-2xl border border-[rgba(17,19,18,0.1)] text-xs font-medium text-[#111312] placeholder-[#8C938E] shadow-sm focus:outline-hidden focus:ring-1 focus:ring-[#111312]"
+                      aria-label={`Search charging hubs in ${selectedCity}`}
+                      className="w-full pl-9 pr-9 py-2.5 bg-white/95 backdrop-blur-md rounded-2xl border border-[rgba(17,19,18,0.1)] text-[16px] sm:text-xs font-medium text-[#111312] placeholder-[#8C938E] shadow-sm focus:outline-hidden focus:ring-1 focus:ring-[#111312]"
                     />
                     {searchQuery && (
                       <button
                         onClick={() => setSearchQuery("")}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-[#8C938E] hover:text-[#111312]"
+                        aria-label="Clear search text"
+                        className="absolute right-1 top-1/2 -translate-y-1/2 w-8 h-8 flex items-center justify-center text-[#8C938E] hover:text-[#111312] cursor-pointer rounded-full"
                       >
                         <X size={14} />
                       </button>
@@ -844,7 +874,11 @@ export default function EVVerseDriverPage() {
                   </div>
 
                   {/* Filter Pills */}
-                  <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
+                  <div
+                    role="group"
+                    aria-label="Filter Charging Hubs"
+                    className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5"
+                  >
                     {(
                       [
                         { id: "all", label: "All Speeds" },
@@ -858,7 +892,8 @@ export default function EVVerseDriverPage() {
                         <button
                           key={f.id}
                           onClick={() => setSpeedFilter(f.id)}
-                          className={`px-3 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap transition-all shadow-2xs active:scale-95 ${
+                          aria-pressed={isActive}
+                          className={`px-3.5 py-2 min-h-[38px] rounded-full text-[11px] font-semibold whitespace-nowrap transition-all shadow-2xs active:scale-95 cursor-pointer flex items-center justify-center focus-visible:outline-2 focus-visible:outline-[#111312] ${
                             isActive
                               ? "bg-[#111312] text-white"
                               : "bg-white/95 backdrop-blur-md text-[#525854] border border-[rgba(17,19,18,0.08)] hover:bg-[#F3F2ED]"
@@ -872,7 +907,8 @@ export default function EVVerseDriverPage() {
                     {/* Connector Match Toggle */}
                     <button
                       onClick={() => setOnlyCompatible(!onlyCompatible)}
-                      className={`px-3 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap transition-all shadow-2xs active:scale-95 ${
+                      aria-pressed={onlyCompatible}
+                      className={`px-3.5 py-2 min-h-[38px] rounded-full text-[11px] font-semibold whitespace-nowrap transition-all shadow-2xs active:scale-95 cursor-pointer flex items-center justify-center focus-visible:outline-2 focus-visible:outline-[#111312] ${
                         onlyCompatible
                           ? "bg-[#111312] text-[#C8F369]"
                           : "bg-white/95 backdrop-blur-md text-[#525854] border border-[rgba(17,19,18,0.08)] hover:bg-[#F3F2ED]"
@@ -885,7 +921,8 @@ export default function EVVerseDriverPage() {
                     {savedStationIds.size > 0 && (
                       <button
                         onClick={() => setOnlySaved(!onlySaved)}
-                        className={`px-3 py-1.5 rounded-full text-[11px] font-semibold whitespace-nowrap transition-all shadow-2xs active:scale-95 ${
+                        aria-pressed={onlySaved}
+                        className={`px-3.5 py-2 min-h-[38px] rounded-full text-[11px] font-semibold whitespace-nowrap transition-all shadow-2xs active:scale-95 cursor-pointer flex items-center justify-center focus-visible:outline-2 focus-visible:outline-[#EF4444] ${
                           onlySaved
                             ? "bg-[#EF4444] text-white"
                             : "bg-white/95 backdrop-blur-md text-[#EF4444] border border-[#FCA5A5]"
@@ -918,8 +955,10 @@ export default function EVVerseDriverPage() {
                     </div>
 
                     <button
+                      type="button"
                       onClick={cancelNavigation}
-                      className="px-2.5 py-1 text-[11px] font-semibold bg-white/10 hover:bg-white/20 text-white rounded-lg transition-colors"
+                      aria-label="Exit navigation mode"
+                      className="min-h-[36px] px-3.5 py-1.5 text-[11px] font-semibold bg-white/10 hover:bg-white/20 text-white rounded-xl transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-white"
                     >
                       Exit
                     </button>
@@ -941,7 +980,7 @@ export default function EVVerseDriverPage() {
                         {filteredStations.length} Verified Charging Hubs
                       </span>
                       <span className="text-[10px] text-[#16A34A] font-semibold flex items-center gap-1">
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#16A34A]" />
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#16A34A]" aria-hidden="true" />
                         Active Grid
                       </span>
                     </div>
@@ -949,11 +988,20 @@ export default function EVVerseDriverPage() {
                     {/* First Station Preview Card */}
                     {filteredStations[0] && (
                       <div
+                        role="button"
+                        tabIndex={0}
+                        aria-label={`View details for ${filteredStations[0].name}`}
                         onClick={() => {
                           setSelectedStation(filteredStations[0]);
                           setIsStationDetailOpen(true);
                         }}
-                        className="flex items-center justify-between cursor-pointer group"
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" || e.key === " ") {
+                            setSelectedStation(filteredStations[0]);
+                            setIsStationDetailOpen(true);
+                          }
+                        }}
+                        className="flex items-center justify-between cursor-pointer group rounded-xl p-1 -m-1 focus-visible:outline-2 focus-visible:outline-[#111312]"
                       >
                         <div className="pr-3 truncate">
                           <div className="text-xs font-bold text-[#111312] group-hover:text-[#16A34A] transition-colors truncate">
@@ -965,13 +1013,15 @@ export default function EVVerseDriverPage() {
                         </div>
 
                         <button
+                          type="button"
                           onClick={(e) => {
                             e.stopPropagation();
                             startNavigation(filteredStations[0]);
                           }}
-                          className="px-3 py-1.5 bg-[#111312] text-white rounded-xl text-xs font-semibold flex items-center gap-1 shadow-xs hover:bg-[#252826] active:scale-95 shrink-0"
+                          aria-label={`Start navigation to ${filteredStations[0].name}`}
+                          className="min-h-[40px] px-3.5 py-2 bg-[#111312] text-white rounded-xl text-xs font-semibold flex items-center gap-1 shadow-xs hover:bg-[#252826] active:scale-95 shrink-0 cursor-pointer focus-visible:outline-2 focus-visible:outline-[#111312]"
                         >
-                          <Navigation size={12} className="text-[#C8F369]" />
+                          <Navigation size={12} className="text-[#C8F369]" aria-hidden="true" />
                           Route
                         </button>
                       </div>
@@ -981,7 +1031,12 @@ export default function EVVerseDriverPage() {
 
                 {/* Station Detail Sheet Modal */}
                 {isStationDetailOpen && selectedStation && (
-                  <div className="absolute inset-x-0 bottom-14 z-40 bg-white rounded-t-3xl p-5 border-t border-[rgba(17,19,18,0.1)] shadow-2xl space-y-4 animate-in slide-in-from-bottom-5">
+                  <div
+                    role="dialog"
+                    aria-modal="true"
+                    aria-label={selectedStation.name}
+                    className="absolute inset-x-0 bottom-14 z-40 bg-white rounded-t-3xl p-5 border-t border-[rgba(17,19,18,0.1)] shadow-2xl space-y-4 animate-in slide-in-from-bottom-5"
+                  >
                     {/* Drawer Header */}
                     <div className="flex items-start justify-between">
                       <div className="pr-4">
@@ -1010,8 +1065,10 @@ export default function EVVerseDriverPage() {
                       <div className="flex items-center gap-1.5 shrink-0">
                         {/* Bookmark Button */}
                         <button
+                          type="button"
                           onClick={() => toggleSaveStation(selectedStation.station_id)}
-                          className={`w-8 h-8 rounded-full flex items-center justify-center border transition-colors ${
+                          aria-label={savedStationIds.has(selectedStation.station_id) ? "Remove station from bookmarks" : "Save station to bookmarks"}
+                          className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center border transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-[#111312] ${
                             savedStationIds.has(selectedStation.station_id)
                               ? "bg-[#FEF2F2] border-[#FCA5A5] text-[#EF4444]"
                               : "bg-[#F4F3EE] border-[rgba(17,19,18,0.06)] text-[#525854]"
@@ -1020,15 +1077,18 @@ export default function EVVerseDriverPage() {
                           <Heart
                             size={16}
                             fill={savedStationIds.has(selectedStation.station_id) ? "#EF4444" : "none"}
+                            aria-hidden="true"
                           />
                         </button>
 
                         {/* Close Sheet */}
                         <button
+                          type="button"
                           onClick={() => setIsStationDetailOpen(false)}
-                          className="w-8 h-8 rounded-full bg-[#F4F3EE] flex items-center justify-center text-[#525854] hover:bg-[#EAE8E2]"
+                          aria-label="Close station details sheet"
+                          className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[#F4F3EE] flex items-center justify-center text-[#525854] hover:bg-[#EAE8E2] cursor-pointer focus-visible:outline-2 focus-visible:outline-[#111312]"
                         >
-                          <X size={16} />
+                          <X size={16} aria-hidden="true" />
                         </button>
                       </div>
                     </div>
@@ -1077,18 +1137,20 @@ export default function EVVerseDriverPage() {
                     {/* Action Buttons */}
                     <div className="grid grid-cols-2 gap-2.5 pt-1">
                       <button
+                        type="button"
                         onClick={() => startNavigation(selectedStation)}
-                        className="py-3 bg-[#111312] text-white rounded-2xl text-xs font-semibold flex items-center justify-center gap-1.5 hover:bg-[#252826] active:scale-98 transition-all shadow-xs"
+                        className="min-h-[48px] py-3.5 bg-[#111312] text-white rounded-2xl text-xs font-semibold flex items-center justify-center gap-1.5 hover:bg-[#252826] active:scale-98 transition-all shadow-xs cursor-pointer focus-visible:outline-2 focus-visible:outline-[#111312]"
                       >
-                        <Navigation size={13} className="text-[#C8F369]" />
+                        <Navigation size={13} className="text-[#C8F369]" aria-hidden="true" />
                         Start Navigation
                       </button>
 
                       <button
+                        type="button"
                         onClick={() => startChargingSession(selectedStation)}
-                        className="py-3 bg-[#C8F369] text-[#111312] border border-[#111312] rounded-2xl text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-[#BCE95D] active:scale-98 transition-all shadow-xs"
+                        className="min-h-[48px] py-3.5 bg-[#C8F369] text-[#111312] border border-[#111312] rounded-2xl text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-[#BCE95D] active:scale-98 transition-all shadow-xs cursor-pointer focus-visible:outline-2 focus-visible:outline-[#111312]"
                       >
-                        <Zap size={13} />
+                        <Zap size={13} aria-hidden="true" />
                         Start Session
                       </button>
                     </div>
@@ -1098,10 +1160,10 @@ export default function EVVerseDriverPage() {
                       href={`https://www.google.com/maps/dir/?api=1&destination=${selectedStation.latitude},${selectedStation.longitude}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-[11px] text-[#525854] flex items-center justify-center gap-1 hover:underline pt-1"
+                      className="min-h-[38px] text-[11px] text-[#525854] flex items-center justify-center gap-1 hover:underline pt-1 focus-visible:outline-2 focus-visible:outline-[#111312] rounded-lg"
                     >
                       <span>Open in External Google Maps</span>
-                      <ExternalLink size={11} />
+                      <ExternalLink size={11} aria-hidden="true" />
                     </a>
                   </div>
                 )}

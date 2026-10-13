@@ -97,20 +97,23 @@ const VEHICLE_CLASSES = [
 
 const FlowDiagram = ({ nodes, isRegen }: { nodes: string[], isRegen?: boolean }) => {
   return (
-    <div className="relative p-6 bg-[var(--color-fog)] rounded-xl border border-[var(--color-border-subtle)] my-8 overflow-x-auto">
-      <div className="min-w-[600px] max-w-[800px] mx-auto">
+    <div className="relative p-3.5 sm:p-6 bg-[var(--color-fog)] rounded-2xl border border-[var(--color-border-subtle)] my-6 overflow-x-auto no-scrollbar">
+      <div className="text-[10px] font-mono text-[var(--color-ink-4)] text-center mb-3 sm:hidden">
+        ← Swipe horizontally to explore 5-stage powertrain topology →
+      </div>
+      <div className="min-w-[560px] max-w-[800px] mx-auto">
         {/* Forward Path */}
         <div className="flex justify-between items-start relative z-10 w-full">
           {nodes.map((node, i) => (
-            <div key={i} className="flex flex-col items-center relative flex-1 px-2">
-              <div className="w-14 h-14 bg-white border border-[var(--color-border)] shadow-sm rounded-full flex items-center justify-center p-1.5 text-center mb-4 relative z-10">
+            <div key={i} className="flex flex-col items-center relative flex-1 px-1.5 sm:px-2">
+              <div className="w-12 h-12 sm:w-14 sm:h-14 bg-white border border-[var(--color-border)] shadow-xs rounded-full flex items-center justify-center p-1.5 text-center mb-3 relative z-10">
                  <div className="w-full h-full bg-[var(--color-canvas)] rounded-full flex items-center justify-center">
                     <span className="text-[11px] uppercase font-bold text-[var(--color-navy-700)]">
                       {i + 1}
                     </span>
                  </div>
               </div>
-              <div className="text-[13px] font-serif font-semibold text-[var(--color-ink)] text-center leading-tight">
+              <div className="text-[12px] sm:text-[13px] font-serif font-semibold text-[var(--color-ink)] text-center leading-tight">
                 {node.split('/').map((line, j) => <div key={j}>{line.trim()}</div>)}
               </div>
               {i < nodes.length - 1 && (
@@ -285,58 +288,59 @@ export default function EVKnowledgeHub() {
   };
 
   return (
-    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: "var(--color-canvas)" }}>
+    <div className="min-h-screen flex flex-col bg-[var(--color-canvas)]">
       {/* ── HEADER ─────────────────────────────────────────── */}
       <header
-        className="glass"
-        style={{
-          position: "sticky",
-          top: 0,
-          zIndex: 50,
-          height: "64px",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          padding: "0 32px",
-          borderBottom: "1px solid var(--color-border-subtle)",
-        }}
+        className="glass sticky top-0 z-50 h-16 flex items-center justify-between px-4 sm:px-6 md:px-8 border-b border-[var(--color-border-subtle)]"
       >
-        <div style={{ display: "flex", alignItems: "center", gap: "24px" }}>
+        <div className="flex items-center gap-3 sm:gap-6">
           <Link
             href="/users"
-            style={{ textDecoration: "none", color: "var(--color-ink-3)", fontFamily: "var(--font-sans)", fontSize: "14px", fontWeight: 500 }}
+            aria-label="Return to EV driver app"
+            className="min-h-[44px] flex items-center gap-1.5 text-xs sm:text-sm font-medium text-[var(--color-ink-3)] hover:text-[var(--color-ink)] px-2 py-1 rounded-xl transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-[#111312]"
           >
-            &larr; Back
+            &larr; <span className="font-sans">Driver Cockpit</span>
           </Link>
-          <Link href="/" style={{ textDecoration: "none", display: "flex", alignItems: "center" }}>
+          <div className="h-4 w-px bg-[var(--color-border)] hidden sm:block" aria-hidden="true" />
+          <Link href="/" className="flex items-center focus-visible:outline-2 focus-visible:outline-[#111312] rounded-lg">
             <BrandLogo suffix="Knowledge" />
           </Link>
         </div>
       </header>
 
-      <main style={{ flex: 1, padding: "56px 32px", maxWidth: "1200px", margin: "0 auto", width: "100%" }}>
+      <main className="flex-1 px-4 sm:px-6 md:px-8 py-8 sm:py-12 max-w-6xl mx-auto w-full">
         {/* Intro */}
-        <div className="mb-12">
-          <h1 className="font-serif text-[36px] text-[var(--color-ink)] mb-4 tracking-tight">
+        <div className="mb-8 sm:mb-12">
+          <h1 className="font-serif text-2xl sm:text-3xl md:text-[36px] text-[var(--color-ink)] mb-3 tracking-tight">
             EV Knowledge Hub
           </h1>
-          <p className="font-serif text-[17px] text-[var(--color-ink-3)] leading-relaxed max-w-[800px] mb-6">
+          <p className="font-serif text-[15px] sm:text-[17px] text-[var(--color-ink-3)] leading-relaxed max-w-[800px] mb-4">
             Electric mobility is defined by two different dimensions: <strong className="text-[var(--color-ink)]">Powertrain Architectures</strong> (the internal technology powering the vehicle) and <strong className="text-[var(--color-ink)]">Vehicle Classes</strong> (the physical form factor and application). Explore both dimensions below.
           </p>
         </div>
 
         {/* TABS */}
-        <div className="flex gap-8 mb-8 border-b border-[var(--color-border-subtle)]">
+        <div
+          role="tablist"
+          aria-label="Knowledge Dimensions"
+          className="flex gap-4 sm:gap-8 mb-6 sm:mb-8 border-b border-[var(--color-border-subtle)] overflow-x-auto no-scrollbar"
+        >
           <button 
+            role="tab"
+            aria-selected={activeTab === 'powertrains'}
+            aria-label="Powertrain Architectures"
             onClick={() => handleTabChange("powertrains")}
-            className={`pb-4 font-serif text-[18px] transition-colors relative ${activeTab === 'powertrains' ? 'text-[var(--color-ink)] font-semibold' : 'text-[var(--color-ink-4)] hover:text-[var(--color-ink-2)]'}`}
+            className={`min-h-[44px] pb-3 sm:pb-4 font-serif text-[15px] sm:text-[18px] transition-colors relative whitespace-nowrap cursor-pointer focus-visible:outline-2 focus-visible:outline-[#111312] ${activeTab === 'powertrains' ? 'text-[var(--color-ink)] font-semibold' : 'text-[var(--color-ink-4)] hover:text-[var(--color-ink-2)]'}`}
           >
             Powertrain Architectures
             {activeTab === 'powertrains' && <div className="absolute bottom-0 left-0 w-full h-[3px] bg-[var(--color-navy-700)] rounded-t-md" />}
           </button>
           <button 
+            role="tab"
+            aria-selected={activeTab === 'classes'}
+            aria-label="Vehicle Classes and Indian Context"
             onClick={() => handleTabChange("classes")}
-            className={`pb-4 font-serif text-[18px] transition-colors relative ${activeTab === 'classes' ? 'text-[var(--color-ink)] font-semibold' : 'text-[var(--color-ink-4)] hover:text-[var(--color-ink-2)]'}`}
+            className={`min-h-[44px] pb-3 sm:pb-4 font-serif text-[15px] sm:text-[18px] transition-colors relative whitespace-nowrap cursor-pointer focus-visible:outline-2 focus-visible:outline-[#111312] ${activeTab === 'classes' ? 'text-[var(--color-ink)] font-semibold' : 'text-[var(--color-ink-4)] hover:text-[var(--color-ink-2)]'}`}
           >
             Vehicle Classes & Context
             {activeTab === 'classes' && <div className="absolute bottom-0 left-0 w-full h-[3px] bg-[var(--color-navy-700)] rounded-t-md" />}
@@ -344,16 +348,22 @@ export default function EVKnowledgeHub() {
         </div>
 
         {/* EXPLORER LAYOUT */}
-        <div className="flex flex-col lg:flex-row gap-8 lg:gap-12">
+        <div className="flex flex-col lg:flex-row gap-6 lg:gap-10">
           {/* LEFT SIDEBAR (List) */}
-          <div className="w-full lg:w-[280px] shrink-0 flex flex-col gap-2">
+          <div
+            role="tablist"
+            aria-label="Selection Items"
+            className="w-full lg:w-[280px] shrink-0 flex flex-col gap-2"
+          >
             {(activeTab === "powertrains" ? POWERTRAINS : VEHICLE_CLASSES).map(item => (
               <button
                 key={item.id}
+                role="tab"
+                aria-selected={activeId === item.id}
                 onClick={() => setActiveId(item.id)}
-                className={`text-left p-4 rounded-xl border transition-all duration-200 ${activeId === item.id ? 'bg-white border-[var(--color-navy-300)] shadow-[0_4px_12px_rgba(10,22,40,0.06)]' : 'bg-transparent border-transparent hover:bg-[rgba(10,22,40,0.03)] hover:border-[var(--color-border-subtle)]'}`}
+                className={`min-h-[48px] text-left p-3.5 sm:p-4 rounded-xl border transition-all duration-200 cursor-pointer focus-visible:outline-2 focus-visible:outline-[#111312] ${activeId === item.id ? 'bg-white border-[var(--color-navy-300)] shadow-[0_4px_12px_rgba(10,22,40,0.06)]' : 'bg-transparent border-transparent hover:bg-[rgba(10,22,40,0.03)] hover:border-[var(--color-border-subtle)]'}`}
               >
-                <div className={`font-serif text-[16px] ${activeId === item.id ? 'font-semibold text-[var(--color-ink)]' : 'text-[var(--color-ink-2)]'}`}>
+                <div className={`font-serif text-[15px] sm:text-[16px] ${activeId === item.id ? 'font-semibold text-[var(--color-ink)]' : 'text-[var(--color-ink-2)]'}`}>
                   {item.name}
                 </div>
               </button>
@@ -361,14 +371,14 @@ export default function EVKnowledgeHub() {
           </div>
 
           {/* MAIN CONTENT AREA */}
-          <div className="flex-1 bg-white border border-[var(--color-border)] rounded-2xl p-8 lg:p-12 shadow-[0_8px_32px_rgba(10,22,40,0.02)] min-h-[600px]">
+          <div className="flex-1 bg-white border border-[var(--color-border)] rounded-2xl p-4 sm:p-6 lg:p-10 shadow-[0_8px_32px_rgba(10,22,40,0.02)] min-h-[500px]">
              {activeTab === "powertrains" && activePowertrain && <PowertrainView data={activePowertrain} />}
              {activeTab === "classes" && activeClass && <ClassView data={activeClass} />}
           </div>
         </div>
 
-        <div className="mt-16 p-6 bg-[var(--color-fog)] rounded-xl border border-[var(--color-border-subtle)] text-center">
-          <p className="font-serif text-[13px] text-[var(--color-ink-3)] leading-relaxed m-0 max-w-[800px] mx-auto">
+        <div className="mt-12 sm:mt-16 p-4 sm:p-6 bg-[var(--color-fog)] rounded-xl border border-[var(--color-border-subtle)] text-center">
+          <p className="font-serif text-[12.5px] sm:text-[13px] text-[var(--color-ink-3)] leading-relaxed m-0 max-w-[800px] mx-auto">
             <strong>Educational Disclaimer:</strong> This page provides general educational information about electric vehicles. It does not contain independently verified vehicle-specific specifications, prices, or performance claims. Always consult official manufacturer documentation and local regulations before making purchase decisions.
           </p>
         </div>
