@@ -21,6 +21,8 @@ import {
   ErrorState,
   OfflineNotice,
 } from "@/components/driver/StatusStates";
+import { StationDetailSheet } from "@/components/driver/StationDetailSheet";
+import { getPersistedFavourites, savePersistedFavourites } from "@/lib/stationAdapter";
 
 import {
   Search,
@@ -268,6 +270,11 @@ export default function EVVerseDriverPage() {
     ];
   }, [selectedCity]);
 
+  // Hydrate persisted favourites from localStorage
+  useEffect(() => {
+    setSavedStationIds(getPersistedFavourites());
+  }, []);
+
   // Center map on city change
   useEffect(() => {
     setMapCenter([cityConfig.lat, cityConfig.lng]);
@@ -387,12 +394,13 @@ export default function EVVerseDriverPage() {
     return Math.round(baseKm * driveFactor * hvacFactor);
   }, [activeVehicle, currentBatteryPct, driveMode, hvacActive]);
 
-  // Toggle Save Station
+  // Toggle Save Station (persisted to localStorage)
   const toggleSaveStation = (stationId: string) => {
     setSavedStationIds((prev) => {
       const next = new Set(prev);
       if (next.has(stationId)) next.delete(stationId);
       else next.add(stationId);
+      savePersistedFavourites(next);
       return next;
     });
   };
@@ -1029,144 +1037,19 @@ export default function EVVerseDriverPage() {
                   </div>
                 )}
 
-                {/* Station Detail Sheet Modal */}
-                {isStationDetailOpen && selectedStation && (
-                  <div
-                    role="dialog"
-                    aria-modal="true"
-                    aria-label={selectedStation.name}
-                    className="absolute inset-x-0 bottom-14 z-40 bg-white rounded-t-3xl p-5 border-t border-[rgba(17,19,18,0.1)] shadow-2xl space-y-4 animate-in slide-in-from-bottom-5"
-                  >
-                    {/* Drawer Header */}
-                    <div className="flex items-start justify-between">
-                      <div className="pr-4">
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={`text-[9.5px] font-mono uppercase tracking-wider px-2 py-0.5 rounded-md font-semibold ${
-                              selectedStation.is_operational
-                                ? "bg-[#DCFCE7] text-[#15803D]"
-                                : "bg-[#FEE2E2] text-[#991B1B]"
-                            }`}
-                          >
-                            {selectedStation.is_operational ? "OPERATIONAL" : "OFFLINE"}
-                          </span>
-                          <span className="text-[10px] text-[#8C938E] font-mono">
-                            {selectedStation.operator || "Public Network"}
-                          </span>
-                        </div>
-                        <h3 className="text-base font-bold text-[#111312] mt-1">
-                          {selectedStation.name}
-                        </h3>
-                        <div className="text-xs text-[#525854] mt-0.5">
-                          {selectedStation.address || `${selectedCity} Hub`}
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-1.5 shrink-0">
-                        {/* Bookmark Button */}
-                        <button
-                          type="button"
-                          onClick={() => toggleSaveStation(selectedStation.station_id)}
-                          aria-label={savedStationIds.has(selectedStation.station_id) ? "Remove station from bookmarks" : "Save station to bookmarks"}
-                          className={`w-9 h-9 sm:w-10 sm:h-10 rounded-full flex items-center justify-center border transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-[#111312] ${
-                            savedStationIds.has(selectedStation.station_id)
-                              ? "bg-[#FEF2F2] border-[#FCA5A5] text-[#EF4444]"
-                              : "bg-[#F4F3EE] border-[rgba(17,19,18,0.06)] text-[#525854]"
-                          }`}
-                        >
-                          <Heart
-                            size={16}
-                            fill={savedStationIds.has(selectedStation.station_id) ? "#EF4444" : "none"}
-                            aria-hidden="true"
-                          />
-                        </button>
-
-                        {/* Close Sheet */}
-                        <button
-                          type="button"
-                          onClick={() => setIsStationDetailOpen(false)}
-                          aria-label="Close station details sheet"
-                          className="w-9 h-9 sm:w-10 sm:h-10 rounded-full bg-[#F4F3EE] flex items-center justify-center text-[#525854] hover:bg-[#EAE8E2] cursor-pointer focus-visible:outline-2 focus-visible:outline-[#111312]"
-                        >
-                          <X size={16} aria-hidden="true" />
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Specs Grid */}
-                    <div className="grid grid-cols-3 gap-2 p-3 bg-[#FAF9F6] rounded-2xl border border-[rgba(17,19,18,0.06)] text-center">
-                      <div>
-                        <div className="text-[9.5px] font-mono uppercase text-[#8C938E]">Distance</div>
-                        <div className="text-xs font-bold text-[#111312] font-mono mt-0.5">
-                          {selectedStation.distanceKm ? `${selectedStation.distanceKm.toFixed(1)} km` : "Nearby"}
-                        </div>
-                        <div className="text-[9.5px] text-[#525854]">
-                          ~{Math.round((selectedStation.distanceKm || 3) * 2.2)} mins
-                        </div>
-                      </div>
-
-                      <div className="border-x border-[rgba(17,19,18,0.06)]">
-                        <div className="text-[9.5px] font-mono uppercase text-[#8C938E]">Speed</div>
-                        <div className="text-xs font-bold text-[#16A34A] font-mono mt-0.5">
-                          {selectedStation.power_kw ? `${selectedStation.power_kw} kW` : "Standard AC"}
-                        </div>
-                        <div className="text-[9.5px] text-[#525854]">
-                          {selectedStation.bays} Bay{selectedStation.bays > 1 ? "s" : ""}
-                        </div>
-                      </div>
-
-                      <div>
-                        <div className="text-[9.5px] font-mono uppercase text-[#8C938E]">Arrival SoC</div>
-                        <div className="text-xs font-bold text-[#111312] font-mono mt-0.5">
-                          ~{Math.max(5, currentBatteryPct - Math.round(((selectedStation.distanceKm || 3) / activeVehicle.wltpRangeKm) * 100))}%
-                        </div>
-                        <div className="text-[9.5px] text-[#16A34A] font-semibold">Safe Reserve</div>
-                      </div>
-                    </div>
-
-                    {/* Connectors Row */}
-                    <div className="text-xs text-[#525854] flex items-center gap-2">
-                      <span className="font-semibold text-[#111312]">Connectors:</span>
-                      <span className="bg-[#F4F3EE] px-2.5 py-1 rounded-lg font-mono text-[11px] text-[#111312]">
-                        {selectedStation.connector_types && selectedStation.connector_types.length > 0
-                          ? selectedStation.connector_types.join(", ")
-                          : "CCS2 Combo (Standard Fast)"}
-                      </span>
-                    </div>
-
-                    {/* Action Buttons */}
-                    <div className="grid grid-cols-2 gap-2.5 pt-1">
-                      <button
-                        type="button"
-                        onClick={() => startNavigation(selectedStation)}
-                        className="min-h-[48px] py-3.5 bg-[#111312] text-white rounded-2xl text-xs font-semibold flex items-center justify-center gap-1.5 hover:bg-[#252826] active:scale-98 transition-all shadow-xs cursor-pointer focus-visible:outline-2 focus-visible:outline-[#111312]"
-                      >
-                        <Navigation size={13} className="text-[#C8F369]" aria-hidden="true" />
-                        Start Navigation
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => startChargingSession(selectedStation)}
-                        className="min-h-[48px] py-3.5 bg-[#C8F369] text-[#111312] border border-[#111312] rounded-2xl text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-[#BCE95D] active:scale-98 transition-all shadow-xs cursor-pointer focus-visible:outline-2 focus-visible:outline-[#111312]"
-                      >
-                        <Zap size={13} aria-hidden="true" />
-                        Start Session
-                      </button>
-                    </div>
-
-                    {/* Google Maps External Link */}
-                    <a
-                      href={`https://www.google.com/maps/dir/?api=1&destination=${selectedStation.latitude},${selectedStation.longitude}`}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="min-h-[38px] text-[11px] text-[#525854] flex items-center justify-center gap-1 hover:underline pt-1 focus-visible:outline-2 focus-visible:outline-[#111312] rounded-lg"
-                    >
-                      <span>Open in External Google Maps</span>
-                      <ExternalLink size={11} aria-hidden="true" />
-                    </a>
-                  </div>
-                )}
+                {/* Complete Station Detail Sheet Experience */}
+                <StationDetailSheet
+                  station={selectedStation}
+                  userLocation={userLocation}
+                  isOpen={isStationDetailOpen && !!selectedStation}
+                  onClose={() => setIsStationDetailOpen(false)}
+                  onStartNavigation={(st) => startNavigation(st as DriverStation)}
+                  onStartCharging={(st) => startChargingSession(st as DriverStation)}
+                  isSaved={selectedStation ? savedStationIds.has(selectedStation.station_id) : false}
+                  onToggleSave={(id) => toggleSaveStation(id)}
+                  activeVehicleSoc={currentBatteryPct}
+                  vehicleWltpKm={activeVehicle.wltpRangeKm}
+                />
               </div>
             </div>
           )}
