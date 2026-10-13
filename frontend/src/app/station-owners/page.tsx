@@ -5,6 +5,7 @@ import React from "react";
 import { BrandLogo } from "@/components/BrandLogo";
 import { useLiveData } from "@/hooks/useLiveData";
 import { ArrowUpRight, Activity, Zap, TrendingUp, ShieldCheck, MapPin } from "lucide-react";
+import { StationOwnerPaymentsConsole } from "@/components/station-owner/StationOwnerPaymentsConsole";
 
 function StationOwnerHubIndicator({
   city,
@@ -674,6 +675,11 @@ export default function StationOwnersDashboard() {
             </div>
           </section>
         </div>
+
+        {/* ── PAYMENTS & REVENUE CONSOLE ─────────────────────── */}
+        <section style={{ marginBottom: "56px" }}>
+          <StationOwnerPaymentsConsole />
+        </section>
 
         {/* ── METHODOLOGY & TELEMETRY NOTES ─────────────────── */}
         <section style={{ marginBottom: "64px" }}>

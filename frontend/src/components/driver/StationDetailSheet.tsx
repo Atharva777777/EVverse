@@ -24,7 +24,9 @@ import {
   DollarSign,
   ChevronRight,
   Star,
+  Car,
 } from "lucide-react";
+import { ParkingBookingModal } from "./ParkingBookingModal";
 
 interface StationDetailSheetProps {
   station: LiveStation | null;
@@ -51,6 +53,7 @@ export const StationDetailSheet: React.FC<StationDetailSheetProps> = ({
   activeVehicleSoc = 75,
   vehicleWltpKm = 470,
 }) => {
+  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [isReportingOpen, setIsReportingOpen] = useState(false);
   const [reportSuccessMessage, setReportSuccessMessage] = useState<string | null>(null);
   const [reportCategory, setReportCategory] = useState<StationReport["category"]>(
@@ -502,27 +505,44 @@ export const StationDetailSheet: React.FC<StationDetailSheetProps> = ({
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
+                onClick={() => setIsBookingModalOpen(true)}
+                className="min-h-[44px] py-2.5 bg-white text-[#111312] border border-[#111312] rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-[#F4F3EE] active:scale-98 transition-all shadow-2xs cursor-pointer focus-visible:outline-2 focus-visible:outline-[#111312]"
+              >
+                <Car size={14} className="text-[#16A34A]" aria-hidden="true" />
+                <span>Book Spot</span>
+              </button>
+
+              <button
+                type="button"
                 onClick={() => onStartCharging(station)}
                 className="min-h-[44px] py-2.5 bg-[#C8F369] text-[#111312] border border-[#111312] rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 hover:bg-[#BCE95D] active:scale-98 transition-all shadow-2xs cursor-pointer focus-visible:outline-2 focus-visible:outline-[#111312]"
               >
                 <Zap size={14} aria-hidden="true" />
-                Start Charging
+                <span>Start Charging</span>
               </button>
-
-              <a
-                href={`https://www.google.com/maps/dir/?api=1&destination=${details.latitude},${details.longitude}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="min-h-[44px] py-2.5 bg-[#FAF9F6] border border-[rgba(17,19,18,0.1)] text-[#111312] rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 hover:bg-[#F4F3EE] active:scale-98 transition-all shadow-2xs focus-visible:outline-2 focus-visible:outline-[#111312]"
-              >
-                <span>Google Maps</span>
-                <ExternalLink size={12} aria-hidden="true" />
-              </a>
             </div>
+
+            <a
+              href={`https://www.google.com/maps/dir/?api=1&destination=${details.latitude},${details.longitude}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full min-h-[36px] py-2 bg-[#FAF9F6] border border-[rgba(17,19,18,0.08)] text-[#525854] hover:text-[#111312] rounded-xl text-[11px] font-semibold flex items-center justify-center gap-1.5 hover:bg-[#F4F3EE] transition-all cursor-pointer"
+            >
+              <span>Open in Google Maps</span>
+              <ExternalLink size={11} aria-hidden="true" />
+            </a>
           </div>
 
         </div>
       </aside>
+
+      {/* Parking Spot Booking Modal */}
+      <ParkingBookingModal
+        isOpen={isBookingModalOpen}
+        onClose={() => setIsBookingModalOpen(false)}
+        station={station}
+        onStartNavigation={(st) => onStartNavigation(st)}
+      />
 
       {/* Issue Reporting Modal */}
       {isReportingOpen && (
