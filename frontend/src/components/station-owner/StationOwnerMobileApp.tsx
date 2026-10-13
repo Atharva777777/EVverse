@@ -12,11 +12,7 @@ import {
   ShieldCheck,
   MapPin,
   Clock,
-  Layers,
-  ArrowUpRight,
-  Sliders,
   CheckCircle2,
-  AlertCircle,
   Smartphone,
   Maximize2
 } from 'lucide-react';
@@ -51,7 +47,7 @@ const OWNED_STATIONS: OwnedStation[] = [
     id: 'superhub-pune',
     name: 'Expressway Fast Superhub',
     location: 'Mumbai-Pune Expressway',
-    address: 'Km 48, Near Khalapur Toll Plaza, Maharashtra',
+    address: 'Km 48, Near Khalapur Toll Plaza, MH',
     status: 'Online',
     totalBays: 6,
     activeBays: 5,
@@ -70,7 +66,7 @@ const OWNED_STATIONS: OwnedStation[] = [
     id: 'bkc-mumbai',
     name: 'BKC Commercial Hub',
     location: 'Bandra Kurla Complex, Mumbai',
-    address: 'G-Block, Opp. Trade Centre, Bandra East, Mumbai',
+    address: 'G-Block, Opp. Trade Centre, Bandra East',
     status: 'Online',
     totalBays: 4,
     activeBays: 3,
@@ -89,7 +85,7 @@ const OWNED_STATIONS: OwnedStation[] = [
     id: 'indiranagar-blr',
     name: 'Indiranagar Transit Hub',
     location: '100 Feet Road, Bengaluru',
-    address: '12th Main Junction, Indiranagar, Bengaluru',
+    address: '12th Main Junction, Indiranagar',
     status: 'Online',
     totalBays: 6,
     activeBays: 4,
@@ -114,7 +110,7 @@ export function StationOwnerMobileApp() {
   const [activeTab, setActiveTab] = useState<OwnerTab>('hub');
   const [isFramed, setIsFramed] = useState<boolean>(true);
 
-  // Station controls state
+  // Station smart controls
   const [autoReleaseEnabled, setAutoReleaseEnabled] = useState<boolean>(true);
   const [nightIllumination, setNightIllumination] = useState<boolean>(true);
   const [parkingReservationsActive, setParkingReservationsActive] = useState<boolean>(true);
@@ -122,9 +118,9 @@ export function StationOwnerMobileApp() {
   const currentStation = OWNED_STATIONS.find((s) => s.id === selectedStationId) || OWNED_STATIONS[0];
 
   return (
-    <div className="min-h-screen bg-[#EDECE8] text-[#111312] flex flex-col items-center justify-start py-0 md:py-6 selection:bg-[#C8F369] selection:text-[#111312]">
-      {/* Top Desktop Studio Navigation Toolbar */}
-      <header className="w-full max-w-5xl px-4 py-2.5 mb-2 hidden md:flex items-center justify-between z-30">
+    <div className="min-h-screen bg-[#EDECE8] text-[#111312] flex flex-col items-center justify-start py-0 md:py-4 selection:bg-[#C8F369] selection:text-[#111312]">
+      {/* ── Top Desktop Studio Navigation Toolbar ── */}
+      <header className="w-full max-w-5xl px-4 py-2 mb-2 hidden md:flex items-center justify-between z-30">
         <div className="flex items-center gap-4">
           <Link href="/" className="flex items-center gap-2 group">
             <BrandLogo suffix="Owner Studio" />
@@ -132,7 +128,7 @@ export function StationOwnerMobileApp() {
 
           <div className="h-4 w-px bg-black/10" />
 
-          {/* Quick role switcher */}
+          {/* Role links */}
           <div className="flex items-center gap-2 text-xs">
             <Link
               href="/users/stations"
@@ -141,7 +137,7 @@ export function StationOwnerMobileApp() {
               Driver View
             </Link>
             <span className="text-black/30">•</span>
-            <span className="font-semibold text-black px-2 py-0.5 rounded-full bg-white shadow-2xs">
+            <span className="font-semibold text-black px-2.5 py-0.5 rounded-full bg-white shadow-2xs">
               Station Owner
             </span>
             <span className="text-black/30">•</span>
@@ -155,11 +151,11 @@ export function StationOwnerMobileApp() {
         </div>
 
         {/* Viewport Frame Toggle */}
-        <div className="flex items-center gap-2 bg-white/80 backdrop-blur-md px-3 py-1.5 rounded-full border border-black/[0.08] shadow-2xs">
+        <div className="flex items-center gap-1.5 bg-white/80 backdrop-blur-md p-1 rounded-full border border-black/[0.08] shadow-2xs">
           <button
             type="button"
             onClick={() => setIsFramed(true)}
-            className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full transition-all ${
+            className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full transition-all ${
               isFramed ? 'bg-[#111312] text-white shadow-xs' : 'text-black/60 hover:text-black'
             }`}
           >
@@ -169,7 +165,7 @@ export function StationOwnerMobileApp() {
           <button
             type="button"
             onClick={() => setIsFramed(false)}
-            className={`flex items-center gap-1.5 text-xs font-semibold px-2.5 py-1 rounded-full transition-all ${
+            className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full transition-all ${
               !isFramed ? 'bg-[#111312] text-white shadow-xs' : 'text-black/60 hover:text-black'
             }`}
           >
@@ -179,319 +175,370 @@ export function StationOwnerMobileApp() {
         </div>
       </header>
 
-      {/* Main Container / Mobile Phone Shell */}
+      {/* ── Main Container: Authentically Proportioned Mobile Phone Frame ── */}
       <div
-        className={`w-full transition-all duration-300 ${
+        className={
           isFramed
-            ? 'max-w-[430px] rounded-[50px] shadow-[0_24px_70px_rgba(0,0,0,0.18)] border-[10px] border-[#1C1F1D] bg-[#FAF9F6] overflow-hidden min-h-[880px] my-auto'
-            : 'max-w-md w-full bg-[#FAF9F6] min-h-screen md:rounded-3xl md:shadow-lg md:border md:border-black/[0.08]'
-        } flex flex-col relative`}
+            ? 'relative w-[424px] h-[866px] rounded-[56px] p-[10px] flex flex-col select-none transition-all my-auto'
+            : 'w-full max-w-[430px] h-screen flex flex-col relative bg-[#FAF9F6] shadow-2xl overflow-hidden'
+        }
+        style={
+          isFramed
+            ? {
+                background:
+                  'linear-gradient(145deg, #383B39 0%, #1D1F1E 30%, #303331 60%, #151716 100%)',
+                boxShadow:
+                  '0 35px 80px -15px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.12), inset 0 1px 2px rgba(255,255,255,0.25)',
+              }
+            : undefined
+        }
       >
-        {/* Dynamic Island / Status Bar (When in phone frame mode) */}
+        {/* Hardware Frame Buttons (in framed mode) */}
         {isFramed && (
-          <div className="h-10 w-full flex items-center justify-between px-7 shrink-0 z-40 bg-[#FAF9F6] border-b border-black/[0.03] select-none">
-            <span className="text-[12px] font-semibold text-[#111312] font-mono">9:41</span>
-            <div className="h-4.5 w-24 bg-black rounded-full flex items-center justify-center">
-              <div className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse mr-1.5" />
-              <span className="text-[9px] font-mono font-bold text-white tracking-wider">LIVE HUB</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <span className="text-[11px] font-medium text-black/60">5G</span>
-              <div className="w-4 h-2 rounded-xs border border-black/40 flex items-center p-0.5">
-                <div className="w-2.5 h-full bg-black rounded-2xs" />
-              </div>
-            </div>
-          </div>
+          <>
+            <div
+              className="absolute -left-[5px] top-28 w-[5px] h-8 rounded-l-xs"
+              style={{
+                background: 'linear-gradient(to right, #242625, #444845)',
+                boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.2)',
+              }}
+            />
+            <div
+              className="absolute -left-[5px] top-40 w-[5px] h-12 rounded-l-xs"
+              style={{
+                background: 'linear-gradient(to right, #242625, #444845)',
+                boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.2)',
+              }}
+            />
+            <div
+              className="absolute -left-[5px] top-56 w-[5px] h-12 rounded-l-xs"
+              style={{
+                background: 'linear-gradient(to right, #242625, #444845)',
+                boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.2)',
+              }}
+            />
+            <div
+              className="absolute -right-[5px] top-36 w-[5px] h-16 rounded-r-xs"
+              style={{
+                background: 'linear-gradient(to left, #242625, #444845)',
+                boxShadow: 'inset 0 1px 1px rgba(255,255,255,0.2)',
+              }}
+            />
+          </>
         )}
 
-        {/* ── Mobile Header: Station Switcher ── */}
-        <header className="sticky top-0 z-30 bg-[#FAF9F6]/95 backdrop-blur-md px-4 pt-3 pb-3 border-b border-black/[0.06]">
-          <div className="flex items-center justify-between">
-            {/* Station Selector Dropdown Button */}
-            <div className="relative flex-1 mr-3">
-              <button
-                type="button"
-                onClick={() => setShowStationPicker(!showStationPicker)}
-                className="w-full flex items-center justify-between gap-2 px-3.5 py-2 rounded-2xl bg-white border border-black/[0.08] shadow-2xs hover:border-black/20 transition-all text-left"
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="w-8 h-8 rounded-xl bg-[#111312] text-[#C8F369] flex items-center justify-center shrink-0">
-                    <Zap className="w-4 h-4" />
-                  </div>
-                  <div className="min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-bold text-[#111312] truncate block">
-                        {currentStation.name}
-                      </span>
-                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
-                    </div>
-                    <span className="text-[10px] text-black/50 block truncate">
-                      {currentStation.location}
-                    </span>
-                  </div>
+        {/* Inner OLED Glass Bezel */}
+        <div
+          className={
+            isFramed
+              ? 'w-full h-full rounded-[48px] bg-[#0A0C0B] p-[6px] flex flex-col relative overflow-hidden'
+              : 'w-full h-full flex flex-col'
+          }
+        >
+          {/* Inner Display Screen */}
+          <div className="w-full h-full bg-[#FAF9F6] rounded-[42px] flex flex-col relative overflow-hidden">
+            {/* iOS Dynamic Island & Status Bar */}
+            <div className="h-10 w-full flex items-center justify-between px-6 shrink-0 z-40 bg-[#FAF9F6] border-b border-black/[0.04] select-none">
+              <span className="text-[12px] font-semibold text-[#111312] font-mono tracking-tight">
+                9:41
+              </span>
+              <div className="h-5 w-28 bg-black rounded-full flex items-center justify-center gap-1.5 shadow-xs">
+                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="text-[9px] font-mono font-bold text-white tracking-wider uppercase">
+                  Live Hub
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-[11px] font-medium text-black/60">5G</span>
+                <div className="w-4 h-2 rounded-xs border border-black/40 flex items-center p-0.5">
+                  <div className="w-2.5 h-full bg-black rounded-2xs" />
                 </div>
-                <ChevronDown className={`w-4 h-4 text-black/40 shrink-0 transition-transform ${showStationPicker ? 'rotate-180' : ''}`} />
-              </button>
+              </div>
+            </div>
 
-              {/* Station Switcher Dropdown Modal */}
-              {showStationPicker && (
-                <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl p-2 shadow-xl border border-black/10 z-50 animate-in fade-in slide-in-from-top-2 duration-150">
-                  <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-black/40">
-                    Your Owned Stations ({OWNED_STATIONS.length})
+            {/* ── Sticky Header: Station Switcher ── */}
+            <header className="sticky top-0 z-30 bg-[#FAF9F6]/95 backdrop-blur-md px-3.5 pt-2.5 pb-2.5 border-b border-black/[0.06] shrink-0">
+              <div className="flex items-center justify-between">
+                {/* Station Selector Button */}
+                <div className="relative flex-1 mr-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setShowStationPicker(!showStationPicker)}
+                    className="w-full flex items-center justify-between gap-2 px-3 py-1.5 rounded-2xl bg-white border border-black/[0.08] shadow-2xs hover:border-black/20 transition-all text-left"
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="w-7 h-7 rounded-xl bg-[#111312] text-[#C8F369] flex items-center justify-center shrink-0">
+                        <Zap className="w-3.5 h-3.5" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs font-bold text-[#111312] truncate block">
+                            {currentStation.name}
+                          </span>
+                        </div>
+                        <span className="text-[9.5px] text-black/50 block truncate">
+                          {currentStation.location}
+                        </span>
+                      </div>
+                    </div>
+                    <ChevronDown
+                      className={`w-3.5 h-3.5 text-black/40 shrink-0 transition-transform ${
+                        showStationPicker ? 'rotate-180' : ''
+                      }`}
+                    />
+                  </button>
+
+                  {/* Dropdown Modal */}
+                  {showStationPicker && (
+                    <div className="absolute top-full left-0 right-0 mt-1.5 bg-white rounded-2xl p-2 shadow-xl border border-black/10 z-50 animate-in fade-in duration-150">
+                      <div className="px-2.5 py-1 text-[9px] font-bold uppercase tracking-wider text-black/40">
+                        Select Owned Station
+                      </div>
+                      <div className="space-y-1">
+                        {OWNED_STATIONS.map((st) => {
+                          const isSel = st.id === currentStation.id;
+                          return (
+                            <button
+                              key={st.id}
+                              type="button"
+                              onClick={() => {
+                                setSelectedStationId(st.id);
+                                setShowStationPicker(false);
+                              }}
+                              className={`w-full text-left p-2 rounded-xl flex items-center justify-between transition-colors ${
+                                isSel ? 'bg-[#111312] text-white' : 'hover:bg-black/[0.04] text-[#111312]'
+                              }`}
+                            >
+                              <div>
+                                <p className="text-xs font-semibold">{st.name}</p>
+                                <p className={`text-[10px] ${isSel ? 'text-white/70' : 'text-black/50'}`}>
+                                  {st.location} • {st.totalBays} Bays
+                                </p>
+                              </div>
+                              {isSel && <CheckCircle2 className="w-3.5 h-3.5 text-[#C8F369]" />}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Bay Status Badge */}
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-50 border border-emerald-200/60 text-emerald-800 text-[10px] font-bold shrink-0">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
+                  <span>{currentStation.activeBays}/{currentStation.totalBays} Busy</span>
+                </div>
+              </div>
+            </header>
+
+            {/* ── Scrollable Screen Body (Properly Contained) ── */}
+            <main className="flex-1 overflow-y-auto no-scrollbar px-3.5 py-3 pb-24 space-y-3.5">
+              {/* TAB 1: HUB (Hardware, Telemetry, Controls) */}
+              {activeTab === 'hub' && (
+                <div className="space-y-3 animate-in fade-in duration-200">
+                  {/* Daily Telemetry Cards */}
+                  <div className="grid grid-cols-3 gap-2">
+                    <div className="rounded-2xl bg-white p-2.5 border border-black/[0.06] shadow-2xs">
+                      <span className="text-[9px] text-black/50 font-medium block">Today Generated</span>
+                      <span className="text-sm font-bold text-[#111312] mt-0.5 block">{currentStation.todayRevenue}</span>
+                      <span className="text-[8.5px] text-emerald-600 font-semibold">+18% growth</span>
+                    </div>
+                    <div className="rounded-2xl bg-white p-2.5 border border-black/[0.06] shadow-2xs">
+                      <span className="text-[9px] text-black/50 font-medium block">Power Delivered</span>
+                      <span className="text-sm font-bold text-[#111312] mt-0.5 block">{currentStation.kwhDeliveredToday}</span>
+                      <span className="text-[8.5px] text-black/50">{currentStation.totalSessionsToday} Sessions</span>
+                    </div>
+                    <div className="rounded-2xl bg-white p-2.5 border border-black/[0.06] shadow-2xs">
+                      <span className="text-[9px] text-black/50 font-medium block">Driver Rating</span>
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <Star className="w-3 h-3 fill-[#111312] text-[#111312]" />
+                        <span className="text-sm font-bold text-[#111312]">{currentStation.rating}</span>
+                      </div>
+                      <span className="text-[8.5px] text-black/50">{currentStation.reviewCount} reviews</span>
+                    </div>
                   </div>
-                  <div className="space-y-1">
-                    {OWNED_STATIONS.map((station) => {
-                      const isSelected = station.id === currentStation.id;
-                      return (
+
+                  {/* Real Coded Image & Charger Hardware Presentation */}
+                  <CodedStationChargersLineup stationName={currentStation.name} />
+
+                  {/* Station Details & Tariff Card */}
+                  <div className="rounded-2xl bg-white p-3.5 border border-black/[0.06] shadow-2xs space-y-2.5">
+                    <div className="flex items-center justify-between pb-2 border-b border-black/[0.05]">
+                      <span className="text-xs font-bold text-[#111312]">Station Specs</span>
+                      <span className="text-[9.5px] text-black/50 font-mono">
+                        {currentStation.peakKw} kW Grid Peak
+                      </span>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-2 text-xs">
+                      <div>
+                        <span className="text-black/50 block text-[10px]">Charging Tariff</span>
+                        <span className="font-bold text-[#111312]">₹{currentStation.ratePerKwh.toFixed(2)} / kWh</span>
+                      </div>
+                      <div>
+                        <span className="text-black/50 block text-[10px]">Parking Hold Fee</span>
+                        <span className="font-bold text-[#111312]">₹{currentStation.parkingFeePerHour} / hr</span>
+                      </div>
+                    </div>
+
+                    <div className="pt-2 border-t border-black/[0.05] flex items-center gap-1.5 text-[10px] text-black/50">
+                      <MapPin className="w-3 h-3 text-black/40 shrink-0" />
+                      <span className="truncate">{currentStation.address}</span>
+                    </div>
+                  </div>
+
+                  {/* Smart Bay Operating Toggles */}
+                  <div className="rounded-2xl bg-white p-3.5 border border-black/[0.06] shadow-2xs space-y-2.5">
+                    <span className="text-xs font-bold text-[#111312] block">Station Automation</span>
+
+                    <div className="space-y-2 text-xs">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <p className="font-semibold text-[#111312]">Parking Spot Booking</p>
+                          <p className="text-[10px] text-black/50">Allow 30-min bay holds</p>
+                        </div>
                         <button
-                          key={station.id}
                           type="button"
-                          onClick={() => {
-                            setSelectedStationId(station.id);
-                            setShowStationPicker(false);
-                          }}
-                          className={`w-full text-left p-2.5 rounded-xl flex items-center justify-between transition-colors ${
-                            isSelected ? 'bg-[#111312] text-white' : 'hover:bg-black/[0.04] text-[#111312]'
+                          onClick={() => setParkingReservationsActive(!parkingReservationsActive)}
+                          className={`w-9 h-5 rounded-full transition-colors relative p-0.5 ${
+                            parkingReservationsActive ? 'bg-[#111312]' : 'bg-black/20'
                           }`}
                         >
-                          <div>
-                            <p className="text-xs font-semibold">{station.name}</p>
-                            <p className={`text-[10px] ${isSelected ? 'text-white/70' : 'text-black/50'}`}>
-                              {station.location} • {station.totalBays} Bays
-                            </p>
-                          </div>
-                          {isSelected && (
-                            <CheckCircle2 className="w-4 h-4 text-[#C8F369]" />
-                          )}
+                          <div
+                            className={`w-4 h-4 rounded-full bg-white transition-transform ${
+                              parkingReservationsActive ? 'translate-x-4' : 'translate-x-0'
+                            }`}
+                          />
                         </button>
-                      );
-                    })}
+                      </div>
+
+                      <div className="flex items-center justify-between pt-2 border-t border-black/[0.04]">
+                        <div>
+                          <p className="font-semibold text-[#111312]">Auto-Release Plug Lock</p>
+                          <p className="text-[10px] text-black/50">Unlock connector at 100% full</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setAutoReleaseEnabled(!autoReleaseEnabled)}
+                          className={`w-9 h-5 rounded-full transition-colors relative p-0.5 ${
+                            autoReleaseEnabled ? 'bg-[#111312]' : 'bg-black/20'
+                          }`}
+                        >
+                          <div
+                            className={`w-4 h-4 rounded-full bg-white transition-transform ${
+                              autoReleaseEnabled ? 'translate-x-4' : 'translate-x-0'
+                            }`}
+                          />
+                        </button>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-2 border-t border-black/[0.04]">
+                        <div>
+                          <p className="font-semibold text-[#111312]">Canopy Night LED</p>
+                          <p className="text-[10px] text-black/50">High-lumen evening illumination</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setNightIllumination(!nightIllumination)}
+                          className={`w-9 h-5 rounded-full transition-colors relative p-0.5 ${
+                            nightIllumination ? 'bg-[#111312]' : 'bg-black/20'
+                          }`}
+                        >
+                          <div
+                            className={`w-4 h-4 rounded-full bg-white transition-transform ${
+                              nightIllumination ? 'translate-x-4' : 'translate-x-0'
+                            }`}
+                          />
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
-            </div>
 
-            {/* Quick Status Pill */}
-            <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-full bg-emerald-50 border border-emerald-200/60 text-emerald-800 text-[11px] font-semibold">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-600 animate-pulse" />
-              <span>{currentStation.activeBays}/{currentStation.totalBays} Busy</span>
-            </div>
+              {/* TAB 2: EARNINGS & PAYOUTS CONSOLE */}
+              {activeTab === 'earnings' && (
+                <div className="animate-in fade-in duration-200">
+                  <StationOwnerPaymentsConsole />
+                </div>
+              )}
+
+              {/* TAB 3: DEMAND & LIVE OCCUPANCY PROFILE */}
+              {activeTab === 'demand' && (
+                <div className="animate-in fade-in duration-200">
+                  <StationOwnerDemandTab />
+                </div>
+              )}
+
+              {/* TAB 4: REVIEWS & DRIVER SATISFACTION */}
+              {activeTab === 'reviews' && (
+                <div className="animate-in fade-in duration-200">
+                  <StationOwnerReviewsTab
+                    stationName={currentStation.name}
+                    averageRating={currentStation.rating}
+                    totalReviews={currentStation.reviewCount}
+                  />
+                </div>
+              )}
+            </main>
+
+            {/* ── Fixed Bottom Navigation Bar (Ultra-clean, 4 tabs, zero emojis) ── */}
+            <nav className="absolute bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-black/[0.08] px-3 py-2 flex items-center justify-around">
+              <button
+                type="button"
+                onClick={() => setActiveTab('hub')}
+                className={`flex flex-col items-center gap-1 py-1 px-3 rounded-xl transition-all ${
+                  activeTab === 'hub' ? 'text-[#111312]' : 'text-black/40 hover:text-black/70'
+                }`}
+              >
+                <div className={`p-1 rounded-lg ${activeTab === 'hub' ? 'bg-[#111312] text-[#C8F369]' : ''}`}>
+                  <Building2 className="w-4 h-4" />
+                </div>
+                <span className="text-[10px] font-semibold tracking-tight">Hub</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab('earnings')}
+                className={`flex flex-col items-center gap-1 py-1 px-3 rounded-xl transition-all ${
+                  activeTab === 'earnings' ? 'text-[#111312]' : 'text-black/40 hover:text-black/70'
+                }`}
+              >
+                <div className={`p-1 rounded-lg ${activeTab === 'earnings' ? 'bg-[#111312] text-[#C8F369]' : ''}`}>
+                  <DollarSign className="w-4 h-4" />
+                </div>
+                <span className="text-[10px] font-semibold tracking-tight">Earnings</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab('demand')}
+                className={`flex flex-col items-center gap-1 py-1 px-3 rounded-xl transition-all ${
+                  activeTab === 'demand' ? 'text-[#111312]' : 'text-black/40 hover:text-black/70'
+                }`}
+              >
+                <div className={`p-1 rounded-lg ${activeTab === 'demand' ? 'bg-[#111312] text-[#C8F369]' : ''}`}>
+                  <TrendingUp className="w-4 h-4" />
+                </div>
+                <span className="text-[10px] font-semibold tracking-tight">Demand</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setActiveTab('reviews')}
+                className={`flex flex-col items-center gap-1 py-1 px-3 rounded-xl transition-all ${
+                  activeTab === 'reviews' ? 'text-[#111312]' : 'text-black/40 hover:text-black/70'
+                }`}
+              >
+                <div className={`p-1 rounded-lg ${activeTab === 'reviews' ? 'bg-[#111312] text-[#C8F369]' : ''}`}>
+                  <Star className="w-4 h-4" />
+                </div>
+                <span className="text-[10px] font-semibold tracking-tight">Reviews</span>
+              </button>
+            </nav>
           </div>
-        </header>
-
-        {/* ── Scrollable Tab Content ── */}
-        <main className="flex-1 overflow-y-auto px-4 py-4 pb-24 space-y-4">
-          {/* TAB 1: HUB (Hardware, Coded Image, Telemetry, Controls) */}
-          {activeTab === 'hub' && (
-            <div className="space-y-4 animate-in fade-in duration-200">
-              {/* Daily Telemetry Ribbon */}
-              <div className="grid grid-cols-3 gap-2">
-                <div className="rounded-2xl bg-white p-3 border border-black/[0.06] shadow-2xs">
-                  <span className="text-[10px] text-black/50 font-medium block">Today Generated</span>
-                  <span className="text-base font-bold text-[#111312] mt-0.5 block">{currentStation.todayRevenue}</span>
-                  <span className="text-[9px] text-emerald-600 font-semibold">+18% vs avg</span>
-                </div>
-                <div className="rounded-2xl bg-white p-3 border border-black/[0.06] shadow-2xs">
-                  <span className="text-[10px] text-black/50 font-medium block">Dispatched</span>
-                  <span className="text-base font-bold text-[#111312] mt-0.5 block">{currentStation.kwhDeliveredToday}</span>
-                  <span className="text-[9px] text-black/50">{currentStation.totalSessionsToday} Sessions</span>
-                </div>
-                <div className="rounded-2xl bg-white p-3 border border-black/[0.06] shadow-2xs">
-                  <span className="text-[10px] text-black/50 font-medium block">Driver Rating</span>
-                  <div className="flex items-center gap-1 mt-0.5">
-                    <Star className="w-3.5 h-3.5 fill-[#111312] text-[#111312]" />
-                    <span className="text-base font-bold text-[#111312]">{currentStation.rating}</span>
-                  </div>
-                  <span className="text-[9px] text-black/50">{currentStation.reviewCount} reviews</span>
-                </div>
-              </div>
-
-              {/* Real Coded Image & Charger Hardware Presentation */}
-              <CodedStationChargersLineup stationName={currentStation.name} />
-
-              {/* Station Details & Tariff Card */}
-              <div className="rounded-2xl bg-white p-4 border border-black/[0.06] shadow-2xs space-y-3">
-                <div className="flex items-center justify-between pb-2.5 border-b border-black/[0.06]">
-                  <span className="text-xs font-semibold text-[#111312]">Station Parameters</span>
-                  <span className="text-[11px] px-2 py-0.5 rounded-full bg-black/[0.04] text-black/60 font-mono">
-                    ID: {currentStation.id}
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3 text-xs">
-                  <div>
-                    <span className="text-black/50 block text-[11px]">Energy Tariff</span>
-                    <span className="font-bold text-[#111312] text-sm">₹{currentStation.ratePerKwh.toFixed(2)} / kWh</span>
-                  </div>
-                  <div>
-                    <span className="text-black/50 block text-[11px]">Parking Hold Rate</span>
-                    <span className="font-bold text-[#111312] text-sm">₹{currentStation.parkingFeePerHour} / hr</span>
-                  </div>
-                  <div>
-                    <span className="text-black/50 block text-[11px]">Operating Hours</span>
-                    <span className="font-medium text-[#111312]">24/7 Unrestricted</span>
-                  </div>
-                  <div>
-                    <span className="text-black/50 block text-[11px]">Peak Grid Capacity</span>
-                    <span className="font-medium text-[#111312]">{currentStation.peakKw} kW Available</span>
-                  </div>
-                </div>
-
-                <div className="pt-2 border-t border-black/[0.05] flex items-center gap-2 text-[11px] text-black/60">
-                  <MapPin className="w-3.5 h-3.5 text-black/40 shrink-0" />
-                  <span className="truncate">{currentStation.address}</span>
-                </div>
-              </div>
-
-              {/* Quick Station Operating Toggles */}
-              <div className="rounded-2xl bg-white p-4 border border-black/[0.06] shadow-2xs space-y-3">
-                <span className="text-xs font-semibold text-[#111312] block">Smart Station Controls</span>
-
-                <div className="space-y-2.5">
-                  <div className="flex items-center justify-between text-xs">
-                    <div>
-                      <p className="font-medium text-[#111312]">Driver Parking Reservations</p>
-                      <p className="text-[11px] text-black/50">Allow 30-min bay booking hold</p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setParkingReservationsActive(!parkingReservationsActive)}
-                      className={`w-11 h-6 rounded-full transition-colors relative p-0.5 ${
-                        parkingReservationsActive ? 'bg-[#111312]' : 'bg-black/20'
-                      }`}
-                    >
-                      <div
-                        className={`w-5 h-5 rounded-full bg-white transition-transform ${
-                          parkingReservationsActive ? 'translate-x-5' : 'translate-x-0'
-                        }`}
-                      />
-                    </button>
-                  </div>
-
-                  <div className="flex items-center justify-between text-xs pt-2 border-t border-black/[0.04]">
-                    <div>
-                      <p className="font-medium text-[#111312]">Auto-Release Plug Lock</p>
-                      <p className="text-[11px] text-black/50">Unlock connector when charge reaches 100%</p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setAutoReleaseEnabled(!autoReleaseEnabled)}
-                      className={`w-11 h-6 rounded-full transition-colors relative p-0.5 ${
-                        autoReleaseEnabled ? 'bg-[#111312]' : 'bg-black/20'
-                      }`}
-                    >
-                      <div
-                        className={`w-5 h-5 rounded-full bg-white transition-transform ${
-                          autoReleaseEnabled ? 'translate-x-5' : 'translate-x-0'
-                        }`}
-                      />
-                    </button>
-                  </div>
-
-                  <div className="flex items-center justify-between text-xs pt-2 border-t border-black/[0.04]">
-                    <div>
-                      <p className="font-medium text-[#111312]">Night Bay Lighting</p>
-                      <p className="text-[11px] text-black/50">Automatic high-lumen canopy LED sensor</p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => setNightIllumination(!nightIllumination)}
-                      className={`w-11 h-6 rounded-full transition-colors relative p-0.5 ${
-                        nightIllumination ? 'bg-[#111312]' : 'bg-black/20'
-                      }`}
-                    >
-                      <div
-                        className={`w-5 h-5 rounded-full bg-white transition-transform ${
-                          nightIllumination ? 'translate-x-5' : 'translate-x-0'
-                        }`}
-                      />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* TAB 2: EARNINGS & PAYOUTS CONSOLE */}
-          {activeTab === 'earnings' && (
-            <div className="animate-in fade-in duration-200">
-              <StationOwnerPaymentsConsole />
-            </div>
-          )}
-
-          {/* TAB 3: DEMAND & LIVE OCCUPANCY PROFILE */}
-          {activeTab === 'demand' && (
-            <div className="animate-in fade-in duration-200">
-              <StationOwnerDemandTab />
-            </div>
-          )}
-
-          {/* TAB 4: REVIEWS & DRIVER SATISFACTION */}
-          {activeTab === 'reviews' && (
-            <div className="animate-in fade-in duration-200">
-              <StationOwnerReviewsTab
-                stationName={currentStation.name}
-                averageRating={currentStation.rating}
-                totalReviews={currentStation.reviewCount}
-              />
-            </div>
-          )}
-        </main>
-
-        {/* ── Fixed Bottom Navigation Bar (4 clean tabs, zero emojis) ── */}
-        <nav className="absolute bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-black/[0.08] px-3 py-2 flex items-center justify-around">
-          <button
-            type="button"
-            onClick={() => setActiveTab('hub')}
-            className={`flex flex-col items-center gap-1 py-1 px-3 rounded-xl transition-all ${
-              activeTab === 'hub' ? 'text-[#111312]' : 'text-black/40 hover:text-black/70'
-            }`}
-          >
-            <div className={`p-1 rounded-lg ${activeTab === 'hub' ? 'bg-[#111312] text-[#C8F369]' : ''}`}>
-              <Building2 className="w-4 h-4" />
-            </div>
-            <span className="text-[10px] font-semibold tracking-tight">Hub</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('earnings')}
-            className={`flex flex-col items-center gap-1 py-1 px-3 rounded-xl transition-all ${
-              activeTab === 'earnings' ? 'text-[#111312]' : 'text-black/40 hover:text-black/70'
-            }`}
-          >
-            <div className={`p-1 rounded-lg ${activeTab === 'earnings' ? 'bg-[#111312] text-[#C8F369]' : ''}`}>
-              <DollarSign className="w-4 h-4" />
-            </div>
-            <span className="text-[10px] font-semibold tracking-tight">Earnings</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('demand')}
-            className={`flex flex-col items-center gap-1 py-1 px-3 rounded-xl transition-all ${
-              activeTab === 'demand' ? 'text-[#111312]' : 'text-black/40 hover:text-black/70'
-            }`}
-          >
-            <div className={`p-1 rounded-lg ${activeTab === 'demand' ? 'bg-[#111312] text-[#C8F369]' : ''}`}>
-              <TrendingUp className="w-4 h-4" />
-            </div>
-            <span className="text-[10px] font-semibold tracking-tight">Demand</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('reviews')}
-            className={`flex flex-col items-center gap-1 py-1 px-3 rounded-xl transition-all ${
-              activeTab === 'reviews' ? 'text-[#111312]' : 'text-black/40 hover:text-black/70'
-            }`}
-          >
-            <div className={`p-1 rounded-lg ${activeTab === 'reviews' ? 'bg-[#111312] text-[#C8F369]' : ''}`}>
-              <Star className="w-4 h-4" />
-            </div>
-            <span className="text-[10px] font-semibold tracking-tight">Reviews</span>
-          </button>
-        </nav>
+        </div>
       </div>
     </div>
   );
