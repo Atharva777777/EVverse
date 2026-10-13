@@ -37,7 +37,11 @@ type UIPhase = "idle" | "located" | "searching" | "result" | "error";
 
 export default function Page() {
   const pathname = usePathname();
-  const backHref = pathname?.includes("/government") ? "/government" : "/investor";
+  const backHref = pathname?.includes("/station-owners")
+    ? "/station-owners"
+    : pathname?.includes("/government")
+    ? "/station-owners"
+    : "/investor";
   
   const { state, run, reset, lastRunParams } = useOptimize();
   const mapRef = useRef<ChargingMapHandle>(null);

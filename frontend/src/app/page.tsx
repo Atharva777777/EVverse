@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import React, { useState } from "react";
 import { BrandLogo } from "@/components/BrandLogo";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, BookOpen } from "lucide-react";
 
 export default function EVverseEntryPage() {
   const [hoveredCard, setHoveredCard] = useState<number | null>(null);
@@ -61,7 +61,7 @@ export default function EVverseEntryPage() {
             onMouseEnter={(e) => { e.currentTarget.style.background = "#e5e5ea"; }}
             onMouseLeave={(e) => { e.currentTarget.style.background = "#f5f5f7"; }}
           >
-            <span>📖</span>
+            <BookOpen size={14} className="text-[#16A34A]" />
             <span>EV Knowledge Hub</span>
           </button>
         </Link>
@@ -211,8 +211,8 @@ export default function EVverseEntryPage() {
             </div>
           </Link>
 
-          {/* ── CARD 2: GOVERNMENT ───────────────────────── */}
-          <Link href="/government/map" style={{ textDecoration: "none" }}>
+          {/* ── CARD 2: EV STATION OWNERS ───────────────────────── */}
+          <Link href="/station-owners" style={{ textDecoration: "none" }}>
             <div
               onMouseEnter={() => setHoveredCard(2)}
               onMouseLeave={() => setHoveredCard(null)}
@@ -243,8 +243,8 @@ export default function EVverseEntryPage() {
                 }}
               >
                 <Image
-                  src="/images/card-government.png"
-                  alt="Government Digital Twin City Grid"
+                  src="/images/card-station-owners.png"
+                  alt="EV Station Owners Operations and Telemetry"
                   fill
                   sizes="(max-width: 768px) 100vw, 360px"
                   style={{
@@ -280,7 +280,7 @@ export default function EVverseEntryPage() {
                       margin: 0,
                     }}
                   >
-                    Government
+                    EV Station Owners
                   </h2>
                   <ArrowUpRight
                     size={18}
@@ -299,7 +299,7 @@ export default function EVverseEntryPage() {
                     margin: 0,
                   }}
                 >
-                  Ensure equitable coverage, analyze grid readiness, and generate municipal briefings.
+                  Manage charging hubs, monitor charger utilization, optimize tariffs, and track grid power uptime.
                 </p>
               </div>
             </div>
