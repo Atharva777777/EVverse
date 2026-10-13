@@ -23,6 +23,17 @@ import {
 } from "@/components/driver/StatusStates";
 import { StationDetailSheet } from "@/components/driver/StationDetailSheet";
 import { getPersistedFavourites, savePersistedFavourites } from "@/lib/stationAdapter";
+import {
+  VERIFIED_GARAGE_VEHICLES,
+  getStoredVehicles,
+  saveStoredVehicles,
+  getStoredActiveVehicleId,
+  saveStoredActiveVehicleId,
+  getStoredAutoCompatibility,
+  saveStoredAutoCompatibility,
+  loadGaragePreferences,
+  isStationCompatibleWithVehicle,
+} from "@/lib/vehicleStorage";
 
 import {
   Search,
@@ -57,100 +68,6 @@ const DriverMobileMap = dynamic(
 export interface DriverStation extends LiveStation {
   distanceKm?: number;
 }
-
-// ── Production EV Models Fleet ──────────────────────────────────────────────
-const GARAGE_VEHICLES: EVVehicle[] = [
-  {
-    id: "porsche",
-    make: "Porsche",
-    model: "Taycan GTS",
-    year: 2025,
-    image: "/images/car-porsche.png",
-    batteryKwh: 93.4,
-    usableKwh: 83.7,
-    currentBatteryPct: 68,
-    wltpRangeKm: 504,
-    efficiencyKwh100km: 20.3,
-    maxDcSpeedKw: 270,
-    maxAcSpeedKw: 22,
-    plugType: "CCS2 Combo",
-    plugImage: "/images/plug-ccs2.png",
-    vin: "WP0AA2Y15PSA92811",
-    sohPct: 98.4,
-  },
-  {
-    id: "bmw",
-    make: "BMW",
-    model: "i7 xDrive60",
-    year: 2025,
-    image: "/images/car-bmw.png",
-    batteryKwh: 105.7,
-    usableKwh: 101.7,
-    currentBatteryPct: 82,
-    wltpRangeKm: 625,
-    efficiencyKwh100km: 19.6,
-    maxDcSpeedKw: 195,
-    maxAcSpeedKw: 22,
-    plugType: "CCS2 Combo",
-    plugImage: "/images/plug-ccs2.png",
-    vin: "WBA53EJ04PCH18204",
-    sohPct: 99.1,
-  },
-  {
-    id: "mercedes",
-    make: "Mercedes-Benz",
-    model: "EQS 450+ Sedan",
-    year: 2025,
-    image: "/images/car-sclass.png",
-    batteryKwh: 118.0,
-    usableKwh: 108.4,
-    currentBatteryPct: 74,
-    wltpRangeKm: 750,
-    efficiencyKwh100km: 16.2,
-    maxDcSpeedKw: 200,
-    maxAcSpeedKw: 11,
-    plugType: "CCS2 Combo",
-    plugImage: "/images/plug-ccs2.png",
-    vin: "W1K2971241A049182",
-    sohPct: 97.9,
-  },
-  {
-    id: "rangerover",
-    make: "Range Rover",
-    model: "Electric Autobiography",
-    year: 2026,
-    image: "/images/car-rangerover.png",
-    batteryKwh: 118.5,
-    usableKwh: 110.0,
-    currentBatteryPct: 55,
-    wltpRangeKm: 510,
-    efficiencyKwh100km: 24.1,
-    maxDcSpeedKw: 350,
-    maxAcSpeedKw: 22,
-    plugType: "CCS2 Combo",
-    plugImage: "/images/plug-ccs2.png",
-    vin: "SALWR2V45RA091244",
-    sohPct: 98.8,
-  },
-  {
-    id: "lucid",
-    make: "Lucid",
-    model: "Air Grand Touring",
-    year: 2025,
-    image: "/images/car-model.png",
-    batteryKwh: 118.0,
-    usableKwh: 112.0,
-    currentBatteryPct: 70,
-    wltpRangeKm: 825,
-    efficiencyKwh100km: 14.8,
-    maxDcSpeedKw: 300,
-    maxAcSpeedKw: 22,
-    plugType: "CCS2 Combo",
-    plugImage: "/images/plug-ccs2.png",
-    vin: "7P1EA1E83PA004128",
-    sohPct: 99.2,
-  },
-];
 
 // Helper: Haversine distance in km
 function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
@@ -192,9 +109,18 @@ export default function EVVerseDriverPage() {
   const [selectedCity, setSelectedCity] = useState("Mumbai");
   const cityConfig = CITY_CONFIGS[selectedCity] || CITY_CONFIGS["Mumbai"];
 
-  // Active Vehicle & Driving Modes
-  const [activeVehicleId, setActiveVehicleId] = useState("porsche");
-  const activeVehicle = GARAGE_VEHICLES.find((v) => v.id === activeVehicleId) || GARAGE_VEHICLES[0];
+  // Active Vehicle & Fleet State (persisted with backend/storage adapter)
+  const [vehicles, setVehicles] = useState<EVVehicle[]>(VERIFIED_GARAGE_VEHICLES);
+  const [activeVehicleId, setActiveVehicleId] = useState<string>("porsche-taycan-gts");
+  const [autoCompatibility, setAutoCompatibility] = useState<boolean>(true);
+  const [isGarageLoading, setIsGarageLoading] = useState<boolean>(false);
+  const [garageErrorMessage, setGarageErrorMessage] = useState<string | null>(null);
+
+  // Active Vehicle derived object
+  const activeVehicle = useMemo(() => {
+    return vehicles.find((v) => v.id === activeVehicleId) || vehicles[0] || VERIFIED_GARAGE_VEHICLES[0];
+  }, [vehicles, activeVehicleId]);
+
   const [currentBatteryPct, setCurrentBatteryPct] = useState(activeVehicle.currentBatteryPct);
   const [driveMode, setDriveMode] = useState<"normal" | "eco" | "sport">("normal");
   const [hvacActive, setHvacActive] = useState(true);
@@ -270,6 +196,25 @@ export default function EVVerseDriverPage() {
     ];
   }, [selectedCity]);
 
+  // Hydrate vehicles & preferences from storage adapter on mount
+  useEffect(() => {
+    setIsGarageLoading(true);
+    loadGaragePreferences()
+      .then(({ vehicles: loadedVehicles, activeVehicleId: loadedActiveId, autoCompatibility: loadedAutoCompat }) => {
+        setVehicles(loadedVehicles);
+        setActiveVehicleId(loadedActiveId);
+        setAutoCompatibility(loadedAutoCompat);
+        setOnlyCompatible(loadedAutoCompat);
+      })
+      .catch((err) => {
+        console.warn("[QuantEV] Error hydrating garage preferences:", err);
+        setGarageErrorMessage("Could not load persisted vehicle preferences. Using verified defaults.");
+      })
+      .finally(() => {
+        setIsGarageLoading(false);
+      });
+  }, []);
+
   // Hydrate persisted favourites from localStorage
   useEffect(() => {
     setSavedStationIds(getPersistedFavourites());
@@ -328,10 +273,10 @@ export default function EVVerseDriverPage() {
         return false;
       }
 
-      // 5. Vehicle Compatibility Filter
-      if (onlyCompatible) {
-        const plugClean = activeVehicle.plugType.toLowerCase().split(" ")[0];
-        const isMatched = st.connector_types.some((c) => c.toLowerCase().includes(plugClean));
+      // 5. Vehicle Compatibility Filter (Auto-applied or manually toggled)
+      // Never silently substitute connector types
+      if (onlyCompatible || autoCompatibility) {
+        const isMatched = isStationCompatibleWithVehicle(st.connector_types, activeVehicle.plugType);
         if (!isMatched) return false;
       }
 
@@ -349,6 +294,7 @@ export default function EVVerseDriverPage() {
     connectorFilter,
     onlyAvailable,
     onlyCompatible,
+    autoCompatibility,
     onlySaved,
     savedStationIds,
     activeVehicle.plugType,
@@ -393,6 +339,59 @@ export default function EVVerseDriverPage() {
     const hvacFactor = hvacActive ? 0.92 : 1.0;
     return Math.round(baseKm * driveFactor * hvacFactor);
   }, [activeVehicle, currentBatteryPct, driveMode, hvacActive]);
+
+  // Garage Vehicle Management Handlers
+  const handleSelectVehicle = (id: string) => {
+    setActiveVehicleId(id);
+    saveStoredActiveVehicleId(id);
+  };
+
+  const handleAddVehicle = (newVehicle: EVVehicle) => {
+    try {
+      const updated = [newVehicle, ...vehicles];
+      setVehicles(updated);
+      saveStoredVehicles(updated);
+      setActiveVehicleId(newVehicle.id);
+      saveStoredActiveVehicleId(newVehicle.id);
+      setGarageErrorMessage(null);
+    } catch (err: any) {
+      setGarageErrorMessage(err?.message || "Failed to persist new vehicle.");
+    }
+  };
+
+  const handleUpdateVehicle = (updatedVehicle: EVVehicle) => {
+    try {
+      const updated = vehicles.map((v) => (v.id === updatedVehicle.id ? updatedVehicle : v));
+      setVehicles(updated);
+      saveStoredVehicles(updated);
+      setGarageErrorMessage(null);
+    } catch (err: any) {
+      setGarageErrorMessage(err?.message || "Failed to update vehicle.");
+    }
+  };
+
+  const handleRemoveVehicle = (id: string) => {
+    try {
+      if (vehicles.length <= 1) return;
+      const updated = vehicles.filter((v) => v.id !== id);
+      setVehicles(updated);
+      saveStoredVehicles(updated);
+      if (activeVehicleId === id) {
+        const nextActive = updated[0].id;
+        setActiveVehicleId(nextActive);
+        saveStoredActiveVehicleId(nextActive);
+      }
+      setGarageErrorMessage(null);
+    } catch (err: any) {
+      setGarageErrorMessage(err?.message || "Failed to remove vehicle.");
+    }
+  };
+
+  const handleToggleAutoCompatibility = (enabled: boolean) => {
+    setAutoCompatibility(enabled);
+    saveStoredAutoCompatibility(enabled);
+    setOnlyCompatible(enabled);
+  };
 
   // Toggle Save Station (persisted to localStorage)
   const toggleSaveStation = (stationId: string) => {
@@ -914,15 +913,21 @@ export default function EVVerseDriverPage() {
 
                     {/* Connector Match Toggle */}
                     <button
-                      onClick={() => setOnlyCompatible(!onlyCompatible)}
-                      aria-pressed={onlyCompatible}
+                      onClick={() => {
+                        const next = !(onlyCompatible || autoCompatibility);
+                        setOnlyCompatible(next);
+                        if (!next && autoCompatibility) {
+                          handleToggleAutoCompatibility(false);
+                        }
+                      }}
+                      aria-pressed={onlyCompatible || autoCompatibility}
                       className={`px-3.5 py-2 min-h-[38px] rounded-full text-[11px] font-semibold whitespace-nowrap transition-all shadow-2xs active:scale-95 cursor-pointer flex items-center justify-center focus-visible:outline-2 focus-visible:outline-[#111312] ${
-                        onlyCompatible
+                        onlyCompatible || autoCompatibility
                           ? "bg-[#111312] text-[#C8F369]"
                           : "bg-white/95 backdrop-blur-md text-[#525854] border border-[rgba(17,19,18,0.08)] hover:bg-[#F3F2ED]"
                       }`}
                     >
-                      🔌 Match {activeVehicle.make}
+                      🔌 Match {activeVehicle.plugType.split(" ")[0]} ({activeVehicle.make})
                     </button>
 
                     {/* Saved Bookmarks Filter */}
@@ -1113,11 +1118,17 @@ export default function EVVerseDriverPage() {
           {activeTab === "garage" && (
             <div className="p-4 flex-1">
               <GarageFleet
-                vehicles={GARAGE_VEHICLES}
+                vehicles={vehicles}
                 activeVehicleId={activeVehicleId}
-                onSelectVehicle={(id) => {
-                  setActiveVehicleId(id);
-                }}
+                onSelectVehicle={handleSelectVehicle}
+                onAddVehicle={handleAddVehicle}
+                onUpdateVehicle={handleUpdateVehicle}
+                onRemoveVehicle={handleRemoveVehicle}
+                autoCompatibility={autoCompatibility}
+                onToggleAutoCompatibility={handleToggleAutoCompatibility}
+                isLoading={isGarageLoading}
+                errorMessage={garageErrorMessage}
+                onClearError={() => setGarageErrorMessage(null)}
               />
             </div>
           )}
