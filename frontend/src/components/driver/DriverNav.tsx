@@ -32,15 +32,15 @@ export function DriverNav({
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-50 flex justify-center pb-safe"
+      className="sticky bottom-0 left-0 right-0 z-50 w-full flex justify-center pb-safe mt-auto shadow-xs"
       style={{
-        background: "rgba(250, 249, 246, 0.94)",
+        background: "rgba(250, 249, 246, 0.96)",
         backdropFilter: "blur(20px)",
         WebkitBackdropFilter: "blur(20px)",
         borderTop: "1px solid rgba(17, 19, 18, 0.08)",
       }}
     >
-      <div className="w-full max-w-[430px] flex items-center justify-around px-2 py-2.5">
+      <div className="w-full flex items-center justify-around px-2 py-2">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;

@@ -168,6 +168,10 @@ export default function EVVerseDriverPage() {
   // Navigation tabs: home, explore, journeys, charging, garage
   const [activeTab, setActiveTab] = useState<DriverTab>("home");
 
+  // Desktop Studio Frame Controls: "frame" (iPhone 16 Pro mockup), "fluid" (clean mobile column), "expanded" (wide responsive cockpit)
+  const [viewMode, setViewMode] = useState<"frame" | "fluid" | "expanded">("frame");
+  const [scale, setScale] = useState<number>(0.92);
+
   // Selected city & live data
   const [selectedCity, setSelectedCity] = useState("Mumbai");
   const cityConfig = CITY_CONFIGS[selectedCity] || CITY_CONFIGS["Mumbai"];
@@ -462,102 +466,208 @@ export default function EVVerseDriverPage() {
 
   return (
     <div
-      className="min-h-screen w-full flex justify-center selection:bg-[#111312] selection:text-white"
+      className={`min-h-screen w-full flex flex-col items-center selection:bg-[#111312] selection:text-white transition-colors duration-300 ${
+        viewMode === "frame"
+          ? "bg-[#0C0E0D] text-[#111312]"
+          : "bg-[#FAF9F6] text-[#111312]"
+      }`}
       style={{
-        backgroundColor: "#FAF9F6",
-        color: "#111312",
         fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", sans-serif',
       }}
     >
-      {/* ── Mobile Container Shell (Centered on desktop, edge-to-edge on mobile) ── */}
-      <div className="w-full max-w-[430px] min-h-screen flex flex-col relative bg-[#FAF9F6] shadow-2xl border-x border-[rgba(17,19,18,0.06)]">
-        
-        {/* ── Top Driver Status Header ─────────────────────────────────────── */}
-        <header
-          className="sticky top-0 z-40 px-4 py-3 border-b flex items-center justify-between"
-          style={{
-            background: "rgba(250, 249, 246, 0.96)",
-            backdropFilter: "blur(20px)",
-            WebkitBackdropFilter: "blur(20px)",
-            borderColor: "rgba(17, 19, 18, 0.07)",
-          }}
+      {/* ── Studio Toolbar (visible on desktop) ── */}
+      <div className="hidden md:flex w-full max-w-5xl items-center justify-between px-6 py-3 border-b border-[rgba(255,255,255,0.08)] text-xs text-[#8C938E] z-50">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <span className="w-2 h-2 rounded-full bg-[#C8F369]" />
+            <span className="font-bold text-white tracking-tight">EV VERSE MOBILE DRIVER APP</span>
+          </div>
+          <span className="text-[11px] bg-white/10 text-white/80 px-2 py-0.5 rounded-md font-mono">
+            Port 3001
+          </span>
+        </div>
+
+        {/* View Mode Switcher */}
+        <div className="flex items-center gap-1 bg-[#1A1D1B] p-1 rounded-xl border border-[rgba(255,255,255,0.08)]">
+          <button
+            onClick={() => setViewMode("frame")}
+            className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+              viewMode === "frame" ? "bg-[#C8F369] text-[#111312] shadow-xs" : "text-[#8C938E] hover:text-white"
+            }`}
+          >
+            <span>📱</span> iPhone 16 Pro Frame
+          </button>
+          <button
+            onClick={() => setViewMode("fluid")}
+            className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+              viewMode === "fluid" ? "bg-white text-[#111312] shadow-xs" : "text-[#8C938E] hover:text-white"
+            }`}
+          >
+            <span>↔️</span> Mobile Column
+          </button>
+          <button
+            onClick={() => setViewMode("expanded")}
+            className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+              viewMode === "expanded" ? "bg-white text-[#111312] shadow-xs" : "text-[#8C938E] hover:text-white"
+            }`}
+          >
+            <span>🖥️</span> Expanded View
+          </button>
+        </div>
+
+        {/* Scale Controls for iPhone Frame */}
+        {viewMode === "frame" && (
+          <div className="flex items-center gap-1 bg-[#1A1D1B] px-2 py-1 rounded-xl border border-[rgba(255,255,255,0.08)]">
+            <span className="text-[10px] text-[#8C938E] uppercase font-mono mr-1">Scale:</span>
+            {[1.0, 0.92, 0.82].map((s) => (
+              <button
+                key={s}
+                onClick={() => setScale(s)}
+                className={`px-2 py-0.5 rounded-md text-[11px] font-mono font-semibold transition-colors ${
+                  scale === s ? "bg-[#C8F369] text-[#111312]" : "text-[#8C938E] hover:text-white"
+                }`}
+              >
+                {Math.round(s * 100)}%
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ── Outer Mobile Container Shell ── */}
+      <div
+        className={`w-full flex-1 flex items-center justify-center ${
+          viewMode === "frame"
+            ? "py-6 px-4"
+            : viewMode === "expanded"
+            ? "py-4 px-4 max-w-5xl"
+            : "py-0 px-0 max-w-[430px]"
+        }`}
+        style={
+          viewMode === "frame"
+            ? {
+                transform: `scale(${scale})`,
+                transformOrigin: "top center",
+              }
+            : undefined
+        }
+      >
+        {/* Hardware Frame or Standard Container */}
+        <div
+          className={
+            viewMode === "frame"
+              ? "relative w-[420px] h-[860px] bg-[#0A0C0B] rounded-[54px] p-[10px] shadow-[0_30px_90px_rgba(0,0,0,0.8)] border-[4px] border-[#363A38] ring-1 ring-white/10 flex flex-col overflow-hidden"
+              : viewMode === "expanded"
+              ? "w-full max-w-5xl min-h-screen flex flex-col relative bg-[#FAF9F6] shadow-xl rounded-3xl border border-[rgba(17,19,18,0.08)] overflow-hidden"
+              : "w-full max-w-[430px] min-h-screen flex flex-col relative bg-[#FAF9F6] shadow-2xl border-x border-[rgba(17,19,18,0.06)]"
+          }
         >
-          {/* Brand Logo & Model */}
-          <div className="flex items-center gap-2.5">
-            <Link href="/" className="flex items-center gap-2 group">
-              <div className="w-7 h-7 rounded-lg bg-[#111312] flex items-center justify-center text-[#C8F369] font-bold text-xs">
-                EV
+          {/* iOS Dynamic Island & Status Bar (visible only in frame mode) */}
+          {viewMode === "frame" && (
+            <div className="h-10 w-full flex items-center justify-between px-7 shrink-0 text-white z-40 bg-[#FAF9F6] border-b border-[rgba(17,19,18,0.03)]">
+              <span className="text-xs font-semibold text-[#111312] font-mono">9:41</span>
+              {/* Dynamic Island pill */}
+              <div className="w-24 h-5 bg-[#000000] rounded-full mx-auto flex items-center justify-end px-2 gap-1.5 shadow-xs">
+                <span className="w-2 h-2 rounded-full bg-[#16A34A]" />
+                <span className="w-2.5 h-2.5 rounded-full bg-[#1A1A1A] border border-white/20" />
               </div>
-              <div>
-                <span className="text-xs font-bold tracking-tight text-[#111312] block leading-none">
-                  EV VERSE
-                </span>
-                <span className="text-[9.5px] font-mono text-[#8C938E] leading-none mt-0.5 block">
-                  {activeVehicle.make} {activeVehicle.model}
-                </span>
+              <div className="flex items-center gap-1.5 text-[#111312]">
+                <span className="text-[10px] font-mono font-bold">5G</span>
+                <div className="w-4 h-2 border border-[#111312] rounded-xs p-0.5 flex items-center">
+                  <div className="h-full bg-[#111312] w-3/4 rounded-2xs" />
+                </div>
               </div>
-            </Link>
-          </div>
-
-          {/* City Selector Dropdown */}
-          <div className="flex items-center gap-1.5">
-            <select
-              value={selectedCity}
-              onChange={(e) => setSelectedCity(e.target.value)}
-              className="text-xs font-semibold bg-white border border-[rgba(17,19,18,0.08)] text-[#111312] rounded-xl px-2.5 py-1.5 focus:outline-hidden cursor-pointer shadow-2xs hover:bg-[#F5F4EF] transition-colors"
-            >
-              {Object.keys(CITY_CONFIGS).map((cityName) => (
-                <option key={cityName} value={cityName}>
-                  {cityName}
-                </option>
-              ))}
-            </select>
-
-            {/* Offline / Live Status Indicator */}
-            <div
-              className={`w-2.5 h-2.5 rounded-full ${
-                isLive ? "bg-[#16A34A]" : "bg-[#EAB308]"
-              }`}
-              title={isLive ? "Open Charge Map Live" : "Verified Regional Baseline"}
-            />
-          </div>
-        </header>
-
-        {/* ── Main Viewport Content ────────────────────────────────────────── */}
-        <main className="flex-1 flex flex-col relative overflow-y-auto">
-          
-          {/* ═════════ TAB 1: HOME (Cockpit) ═════════ */}
-          {activeTab === "home" && (
-            <div className="p-4 flex-1">
-              <OfflineNotice source={source} />
-              <VehicleCockpit
-                vehicle={activeVehicle}
-                currentBatteryPct={currentBatteryPct}
-                calibratedRangeKm={calibratedRangeKm}
-                driveMode={driveMode}
-                setDriveMode={setDriveMode}
-                hvacActive={hvacActive}
-                setHvacActive={setHvacActive}
-                doorsLocked={doorsLocked}
-                setDoorsLocked={setDoorsLocked}
-                isPreconditioning={isPreconditioning}
-                setIsPreconditioning={setIsPreconditioning}
-                nearestUltraStation={nearestUltraStation}
-                onNavigateToNearest={() => {
-                  if (nearestUltraStation?.raw) {
-                    startNavigation(nearestUltraStation.raw);
-                  }
-                }}
-                onOpenGarage={() => setActiveTab("garage")}
-              />
             </div>
           )}
 
-          {/* ═════════ TAB 2: EXPLORE (Charging Map) ═════════ */}
-          {activeTab === "explore" && (
-            <div className="flex-1 flex flex-col relative w-full h-[calc(100vh-108px)]">
-              {/* Interactive Leaflet Map Viewport */}
-              <div className="flex-1 relative w-full h-full">
+          {/* ── Screen Wrapper ── */}
+          <div className="w-full flex-1 flex flex-col overflow-y-auto no-scrollbar bg-[#FAF9F6] relative">
+            {/* ── Top Driver Status Header ─────────────────────────────────────── */}
+            <header
+              className="sticky top-0 z-40 px-4 py-3 border-b flex items-center justify-between"
+              style={{
+                background: "rgba(250, 249, 246, 0.96)",
+                backdropFilter: "blur(20px)",
+                WebkitBackdropFilter: "blur(20px)",
+                borderColor: "rgba(17, 19, 18, 0.07)",
+              }}
+            >
+              {/* Brand Logo & Model */}
+              <div className="flex items-center gap-2.5">
+                <Link href="/" className="flex items-center gap-2 group">
+                  <div className="w-7 h-7 rounded-lg bg-[#111312] flex items-center justify-center text-[#C8F369] font-bold text-xs">
+                    EV
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold tracking-tight text-[#111312] block leading-none">
+                      EV VERSE
+                    </span>
+                    <span className="text-[9.5px] font-mono text-[#8C938E] leading-none mt-0.5 block">
+                      {activeVehicle.make} {activeVehicle.model}
+                    </span>
+                  </div>
+                </Link>
+              </div>
+
+              {/* City Selector Dropdown */}
+              <div className="flex items-center gap-1.5">
+                <select
+                  value={selectedCity}
+                  onChange={(e) => setSelectedCity(e.target.value)}
+                  className="text-xs font-semibold bg-white border border-[rgba(17,19,18,0.08)] text-[#111312] rounded-xl px-2.5 py-1.5 focus:outline-hidden cursor-pointer shadow-2xs hover:bg-[#F5F4EF] transition-colors"
+                >
+                  {Object.keys(CITY_CONFIGS).map((cityName) => (
+                    <option key={cityName} value={cityName}>
+                      {cityName}
+                    </option>
+                  ))}
+                </select>
+
+                {/* Offline / Live Status Indicator */}
+                <div
+                  className={`w-2.5 h-2.5 rounded-full ${
+                    isLive ? "bg-[#16A34A]" : "bg-[#EAB308]"
+                  }`}
+                  title={isLive ? "Open Charge Map Live" : "Verified Regional Baseline"}
+                />
+              </div>
+            </header>
+
+            {/* ── Main Viewport Content ────────────────────────────────────────── */}
+            <main className="flex-1 flex flex-col relative overflow-y-auto">
+              
+              {/* ═════════ TAB 1: HOME (Cockpit) ═════════ */}
+              {activeTab === "home" && (
+                <div className="p-4 flex-1">
+                  <OfflineNotice source={source} />
+                  <VehicleCockpit
+                    vehicle={activeVehicle}
+                    currentBatteryPct={currentBatteryPct}
+                    calibratedRangeKm={calibratedRangeKm}
+                    driveMode={driveMode}
+                    setDriveMode={setDriveMode}
+                    hvacActive={hvacActive}
+                    setHvacActive={setHvacActive}
+                    doorsLocked={doorsLocked}
+                    setDoorsLocked={setDoorsLocked}
+                    isPreconditioning={isPreconditioning}
+                    setIsPreconditioning={setIsPreconditioning}
+                    nearestUltraStation={nearestUltraStation}
+                    onNavigateToNearest={() => {
+                      if (nearestUltraStation?.raw) {
+                        startNavigation(nearestUltraStation.raw);
+                      }
+                    }}
+                    onOpenGarage={() => setActiveTab("garage")}
+                  />
+                </div>
+              )}
+
+              {/* ═════════ TAB 2: EXPLORE (Charging Map) ═════════ */}
+              {activeTab === "explore" && (
+                <div className="flex-1 flex flex-col relative w-full h-[620px] min-h-[500px]">
+                  {/* Interactive Leaflet Map Viewport */}
+                  <div className="flex-1 relative w-full h-full">
                 <DriverMobileMap
                   center={mapCenter}
                   zoom={mapZoom}
@@ -939,6 +1049,15 @@ export default function EVVerseDriverPage() {
           onTabChange={setActiveTab}
           isCharging={isCharging}
         />
+          </div>
+
+          {/* iOS Bottom Home Indicator (only in frame mode) */}
+          {viewMode === "frame" && (
+            <div className="h-5 w-full bg-[#FAF9F6] flex items-center justify-center shrink-0">
+              <div className="w-28 h-1 bg-[#111312]/20 rounded-full" />
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
