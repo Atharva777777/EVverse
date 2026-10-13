@@ -118,81 +118,97 @@ export function StationOwnerMobileApp() {
   const currentStation = OWNED_STATIONS.find((s) => s.id === selectedStationId) || OWNED_STATIONS[0];
 
   return (
-    <div className="min-h-screen bg-[#EDECE8] text-[#111312] flex flex-col items-center justify-start py-0 md:py-4 selection:bg-[#C8F369] selection:text-[#111312]">
+    <div
+      className={`min-h-screen w-full flex flex-col items-center selection:bg-[#111312] selection:text-white transition-colors duration-300 ${
+        isFramed
+          ? "bg-[#0C0E0D] text-[#111312]"
+          : "bg-[#FAF9F6] text-[#111312]"
+      }`}
+      style={{
+        fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", sans-serif',
+      }}
+    >
       {/* ── Top Desktop Studio Navigation Toolbar ── */}
-      <header className="w-full max-w-5xl px-4 py-2 mb-2 hidden md:flex items-center justify-between z-30">
-        <div className="flex items-center gap-4">
+      <div className="hidden md:flex w-full max-w-5xl items-center justify-between px-6 py-3 border-b border-[rgba(255,255,255,0.08)] text-xs text-[#8C938E] z-50">
+        <div className="flex items-center gap-3">
           <Link href="/" className="flex items-center gap-2 group">
-            <BrandLogo suffix="Owner Studio" />
+            <span className="w-2 h-2 rounded-full bg-[#C8F369]" />
+            <span className="font-bold text-white tracking-tight">EV VERSE STATION OWNER STUDIO</span>
           </Link>
-
-          <div className="h-4 w-px bg-black/10" />
-
-          {/* Role links */}
+          <span className="text-[11px] bg-white/10 text-white/80 px-2 py-0.5 rounded-md font-mono">
+            Port 3001
+          </span>
+          <div className="h-3 w-px bg-white/10" />
           <div className="flex items-center gap-2 text-xs">
             <Link
               href="/users/stations"
-              className="text-black/60 hover:text-black font-medium transition-colors"
+              className="text-[#8C938E] hover:text-white font-medium transition-colors"
             >
               Driver View
             </Link>
-            <span className="text-black/30">•</span>
-            <span className="font-semibold text-black px-2.5 py-0.5 rounded-full bg-white shadow-2xs">
+            <span className="text-white/20">•</span>
+            <span className="font-semibold text-[#111312] px-2 py-0.5 rounded-md bg-[#C8F369]">
               Station Owner
             </span>
-            <span className="text-black/30">•</span>
+            <span className="text-white/20">•</span>
             <Link
               href="/investor"
-              className="text-black/60 hover:text-black font-medium transition-colors"
+              className="text-[#8C938E] hover:text-white font-medium transition-colors"
             >
               Investor View
             </Link>
           </div>
         </div>
 
-        {/* Viewport Frame Toggle */}
-        <div className="flex items-center gap-1.5 bg-white/80 backdrop-blur-md p-1 rounded-full border border-black/[0.08] shadow-2xs">
+        {/* View Mode Switcher */}
+        <div className="flex items-center gap-1 bg-[#1A1D1B] p-1 rounded-xl border border-[rgba(255,255,255,0.08)]">
           <button
             type="button"
             onClick={() => setIsFramed(true)}
-            className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full transition-all ${
-              isFramed ? 'bg-[#111312] text-white shadow-xs' : 'text-black/60 hover:text-black'
+            className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+              isFramed ? "bg-[#C8F369] text-[#111312] shadow-xs" : "text-[#8C938E] hover:text-white"
             }`}
           >
             <Smartphone className="w-3.5 h-3.5" />
-            <span>Mobile Device</span>
+            <span>Phone Frame</span>
           </button>
           <button
             type="button"
             onClick={() => setIsFramed(false)}
-            className={`flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full transition-all ${
-              !isFramed ? 'bg-[#111312] text-white shadow-xs' : 'text-black/60 hover:text-black'
+            className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all flex items-center gap-1.5 ${
+              !isFramed ? "bg-white text-[#111312] shadow-xs" : "text-[#8C938E] hover:text-white"
             }`}
           >
             <Maximize2 className="w-3.5 h-3.5" />
-            <span>Fit Canvas</span>
+            <span>Mobile Column</span>
           </button>
         </div>
-      </header>
+      </div>
 
-      {/* ── Main Container: Authentically Proportioned Mobile Phone Frame ── */}
+      {/* ── Outer Mobile Container Shell ── */}
       <div
-        className={
-          isFramed
-            ? 'relative w-[424px] h-[866px] rounded-[56px] p-[10px] flex flex-col select-none transition-all my-auto'
-            : 'w-full max-w-[430px] h-screen flex flex-col relative bg-[#FAF9F6] shadow-2xl overflow-hidden'
-        }
-        style={
-          isFramed
-            ? {
-                background:
-                  'linear-gradient(145deg, #383B39 0%, #1D1F1E 30%, #303331 60%, #151716 100%)',
-                boxShadow:
-                  '0 35px 80px -15px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.12), inset 0 1px 2px rgba(255,255,255,0.25)',
-              }
-            : undefined
-        }
+        className={`w-full flex-1 flex items-center justify-center ${
+          isFramed ? "py-6 px-4" : "py-0 px-0 max-w-[430px]"
+        }`}
       >
+        {/* Main Container / Mobile Phone Shell */}
+        <div
+          className={
+            isFramed
+              ? "relative w-[424px] h-[866px] rounded-[56px] p-[10px] flex flex-col select-none transition-all my-auto"
+              : "w-full max-w-[430px] min-h-screen flex flex-col relative bg-[#FAF9F6] shadow-2xl border-x border-[rgba(17,19,18,0.06)]"
+          }
+          style={
+            isFramed
+              ? {
+                  background:
+                    "linear-gradient(145deg, #383B39 0%, #1D1F1E 30%, #303331 60%, #151716 100%)",
+                  boxShadow:
+                    "0 45px 120px -20px rgba(0,0,0,0.95), 0 25px 60px -15px rgba(0,0,0,0.85), 0 0 0 1px rgba(255,255,255,0.12), inset 0 1px 2px rgba(255,255,255,0.25)",
+                }
+              : undefined
+          }
+        >
         {/* Hardware Frame Buttons (in framed mode) */}
         {isFramed && (
           <>
@@ -541,5 +557,6 @@ export function StationOwnerMobileApp() {
         </div>
       </div>
     </div>
-  );
+  </div>
+);
 }
