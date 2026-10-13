@@ -1,16 +1,11 @@
 "use client";
 
-import React, { useState, useEffect, useId, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   MapPin,
   Navigation,
   ArrowRight,
   Zap,
-  Clock,
-  CheckCircle2,
-  AlertCircle,
-  SlidersHorizontal,
-  ChevronDown,
 } from "lucide-react";
 import type { EVVehicle } from "./VehicleCockpit";
 import type { LiveStation } from "@/types/api";
@@ -60,17 +55,12 @@ export function JourneyPlanner({
     setSelectedDestination(cityCorridors[0]);
   }, [cityCorridors]);
 
-  // Starting battery state
-  const [startingBatteryPct, setStartingBatteryPct] = useState<number>(currentBatteryPct);
-  const [showBatteryAdjust, setShowBatteryAdjust] = useState<boolean>(false);
-  const batterySliderId = useId();
-
-  // Selected charging stop
+  // Selected charging stop & plan result
   const [primaryStopId, setPrimaryStopId] = useState<string | undefined>(undefined);
   const [isComputing, setIsComputing] = useState<boolean>(false);
   const [planResult, setPlanResult] = useState<JourneyPlanResult | null>(null);
 
-  // Compute journey plan when destination, vehicle, or battery changes
+  // Compute journey plan using current battery and selected destination
   useEffect(() => {
     let isCancelled = false;
     setIsComputing(true);
@@ -79,7 +69,7 @@ export function JourneyPlanner({
       origin: userLocation,
       destination: selectedDestination,
       activeVehicle,
-      startingBatteryPct,
+      startingBatteryPct: currentBatteryPct,
       candidateStations,
       primaryStationId: primaryStopId,
     })
@@ -106,7 +96,7 @@ export function JourneyPlanner({
     userLocation,
     selectedDestination,
     activeVehicle,
-    startingBatteryPct,
+    currentBatteryPct,
     candidateStations,
     primaryStopId,
   ]);
@@ -115,8 +105,8 @@ export function JourneyPlanner({
     (s) => s.station.station_id === primaryStopId
   );
 
-  const arrivalPct = planResult?.arrivalBatteryPct ?? Math.max(10, startingBatteryPct - 25);
-  const isLowArrival = arrivalPct < 20;
+  const arrivalPct = planResult?.arrivalBatteryPct ?? Math.max(10, currentBatteryPct - 25);
+  const isLowArrival = arrivalPct < 15;
 
   return (
     <div className="space-y-4 pb-20 max-w-lg mx-auto">
@@ -126,7 +116,7 @@ export function JourneyPlanner({
           Plan Trip
         </h2>
         <p className="text-xs text-[#525854] mt-0.5">
-          Route and charging estimates for your {activeVehicle.make} {activeVehicle.model}.
+          {activeVehicle.make} {activeVehicle.model} • {currentBatteryPct}% Battery
         </p>
       </div>
 
@@ -186,7 +176,11 @@ export function JourneyPlanner({
           </div>
           <div className="text-right">
             <div className="text-sm font-bold text-[#111312]">
-              {planResult ? `~${planResult.routeDurationMins} min` : "Calculating..."}
+              {isComputing
+                ? "Calculating..."
+                : planResult
+                ? `~${planResult.routeDurationMins} min`
+                : "Estimating..."}
             </div>
             <div className="text-[10px] font-mono text-[#767D78]">
               {planResult?.routeDistanceKm || selectedDestination.distanceKm} km
@@ -215,8 +209,8 @@ export function JourneyPlanner({
           {/* Simple Before & After Visual */}
           <div className="flex items-center justify-between font-mono text-sm">
             <div>
-              <div className="text-[10px] text-[#767D78] uppercase">Start</div>
-              <div className="font-bold text-[#111312]">{startingBatteryPct}%</div>
+              <div className="text-[10px] text-[#767D78] uppercase">Current</div>
+              <div className="font-bold text-[#111312]">{currentBatteryPct}%</div>
             </div>
             <ArrowRight size={14} className="text-[#767D78]" />
             <div className="text-right">
@@ -240,47 +234,6 @@ export function JourneyPlanner({
               style={{ width: `${Math.min(100, Math.max(5, arrivalPct))}%` }}
             />
           </div>
-
-          {/* Optional Battery Adjustment Toggle */}
-          <div className="pt-1">
-            <button
-              type="button"
-              onClick={() => setShowBatteryAdjust(!showBatteryAdjust)}
-              className="text-[11px] text-[#525854] hover:text-[#111312] flex items-center gap-1 font-medium cursor-pointer"
-            >
-              <SlidersHorizontal size={11} />
-              <span>
-                {showBatteryAdjust
-                  ? "Hide battery slider"
-                  : "Adjust starting battery"}
-              </span>
-            </button>
-
-            {showBatteryAdjust && (
-              <div className="pt-2.5 pb-1 space-y-1.5 animate-in fade-in">
-                <div className="flex justify-between text-[11px] font-mono text-[#525854]">
-                  <span>Starting Battery: {startingBatteryPct}%</span>
-                  <button
-                    type="button"
-                    onClick={() => setStartingBatteryPct(currentBatteryPct)}
-                    className="text-[#16A34A] underline font-semibold cursor-pointer"
-                  >
-                    Reset ({currentBatteryPct}%)
-                  </button>
-                </div>
-                <input
-                  id={batterySliderId}
-                  type="range"
-                  min="15"
-                  max="100"
-                  step="5"
-                  value={startingBatteryPct}
-                  onChange={(e) => setStartingBatteryPct(Number(e.target.value))}
-                  className="w-full accent-[#111312] cursor-pointer"
-                />
-              </div>
-            )}
-          </div>
         </div>
 
         {/* Energy Note */}
@@ -296,20 +249,13 @@ export function JourneyPlanner({
 
       {/* ── Charging Stop Section ─────────────────────────────────── */}
       <div className="bg-white rounded-3xl p-5 border border-black/[0.08] shadow-sm space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="text-xs font-semibold text-[#111312] flex items-center gap-1.5">
-            <Zap size={14} className="text-[#16A34A]" />
-            <span>Recommended Charging Stop</span>
-          </div>
-          {planResult && planResult.candidateStops.length > 1 && (
-            <span className="text-[10px] font-mono text-[#767D78]">
-              {planResult.candidateStops.length} stops available
-            </span>
-          )}
+        <div className="text-xs font-semibold text-[#111312] flex items-center gap-1.5">
+          <Zap size={14} className="text-[#16A34A]" />
+          <span>Recommended Charging Stop</span>
         </div>
 
         {primaryStop ? (
-          <div className="p-4 rounded-2xl bg-[#F0FDF4] border border-[#BBF7D0] space-y-3">
+          <div className="p-4 rounded-2xl bg-[#F0FDF4] border border-[#BBF7D0] space-y-2.5">
             <div className="flex items-start justify-between gap-2">
               <div>
                 <span className="text-[9.5px] font-mono uppercase font-bold px-2 py-0.5 rounded-md bg-[#15803D] text-white">
@@ -336,29 +282,6 @@ export function JourneyPlanner({
               <span>{primaryStop.distanceAlongRouteKm} km along route</span>
               <span>Arrive at ~{primaryStop.arrivalBatteryPct}% battery</span>
             </div>
-
-            {/* If there are other candidate stops, allow switching */}
-            {planResult && planResult.candidateStops.length > 1 && (
-              <div className="pt-1">
-                <label className="text-[10px] text-[#525854] block mb-1">
-                  Choose a different stop along route:
-                </label>
-                <select
-                  value={primaryStopId || ""}
-                  onChange={(e) => setPrimaryStopId(e.target.value)}
-                  className="w-full text-xs p-2 rounded-xl border border-black/[0.1] bg-white text-[#111312] cursor-pointer"
-                >
-                  {planResult.candidateStops.map((stop) => (
-                    <option
-                      key={stop.station.station_id}
-                      value={stop.station.station_id}
-                    >
-                      {stop.station.name} ({stop.powerKw} kW • {stop.distanceAlongRouteKm} km)
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
           </div>
         ) : (
           <div className="p-4 rounded-2xl bg-[#FAF9F6] border border-black/[0.05] text-center space-y-1">
