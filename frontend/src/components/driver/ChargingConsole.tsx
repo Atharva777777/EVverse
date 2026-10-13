@@ -1,6 +1,7 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
+import Image from "next/image";
 import {
   Zap,
   Clock,
@@ -12,6 +13,9 @@ import {
   ShieldCheck,
   Power,
   RotateCcw,
+  Sparkles,
+  Layers,
+  Thermometer,
 } from "lucide-react";
 import type { EVVehicle } from "./VehicleCockpit";
 import type { DriverStation } from "@/app/users/stations/page";
@@ -59,60 +63,93 @@ export function ChargingConsole({
   const effectiveKw = isCharging ? currentKw : Math.min(vehicle.maxDcSpeedKw, chargeStation?.power_kw || 150);
   const estimatedMinsRemaining = Math.max(1, Math.round((remainingKwh / (effectiveKw || 100)) * 60));
 
+  // Compute live electrical telemetry
+  const busVoltage = 784; // 800V class architecture
+  const currentAmps = isCharging && currentKw > 0 ? Math.round((currentKw * 1000) / busVoltage) : 0;
+
   return (
-    <div className="space-y-4 pb-20">
-      {/* ── Main Charging Console Card ──────────────────────────────── */}
-      <div className="bg-white rounded-3xl p-6 border border-[rgba(17,19,18,0.07)] shadow-xs relative overflow-hidden text-center space-y-5">
-        {/* Top Header Badge */}
-        <div className="flex items-center justify-between">
+    <div className="space-y-3.5 pb-20">
+      {/* ── Main High-Voltage Console Card ─────────────────────────── */}
+      <div className="bg-white rounded-[28px] p-5 border border-black/[0.06] shadow-[0_2px_12px_rgba(0,0,0,0.03)] relative overflow-hidden text-center space-y-4">
+        {/* Subtle high voltage electric glow */}
+        {isCharging && (
+          <div
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 rounded-full pointer-events-none opacity-20 blur-3xl animate-pulse"
+            style={{ background: "#C8F369" }}
+          />
+        )}
+
+        {/* Top Header Row */}
+        <div className="flex items-center justify-between relative z-10">
           <div className="text-left">
-            <div className="text-[10px] font-mono uppercase tracking-widest text-[#8C938E] font-semibold">
-              Power Telemetry
+            <div className="flex items-center gap-1.5">
+              <span
+                className={`w-1.5 h-1.5 rounded-full ${
+                  isCharging ? "bg-[#16A34A] animate-pulse" : "bg-[#8C938E]"
+                }`}
+              />
+              <span className="text-[10px] font-mono uppercase tracking-widest text-[#767D78] font-medium">
+                High-Voltage Inverter Status
+              </span>
             </div>
             <div className="text-sm font-bold text-[#111312] mt-0.5">
-              {chargeStation?.name || "Connected Superhub"}
+              {chargeStation?.name || "Connected 800V Superhub"}
             </div>
           </div>
 
           <div
-            className={`px-3 py-1 rounded-full text-[11px] font-semibold flex items-center gap-1.5 ${
+            className={`px-3 py-1 rounded-full text-[10.5px] font-semibold flex items-center gap-1.5 transition-colors ${
               isCharging
                 ? "bg-[#111312] text-[#C8F369] border border-[#111312]"
-                : "bg-[#F4F3EE] text-[#525854] border border-[rgba(17,19,18,0.05)]"
+                : "bg-[#F4F3EE] text-[#525854] border border-black/[0.05]"
             }`}
           >
             <span
-              className={`w-2 h-2 rounded-full ${
-                isCharging ? "bg-[#C8F369] animate-pulse" : "bg-[#9CA3AF]"
+              className={`w-1.5 h-1.5 rounded-full ${
+                isCharging ? "bg-[#C8F369] animate-ping" : "bg-[#9CA3AF]"
               }`}
             />
             {isCharging ? "FAST CHARGING" : "STANDBY READY"}
           </div>
         </div>
 
-        {/* Pulsating Visual Gauge */}
-        <div className="relative w-48 h-48 mx-auto flex items-center justify-center my-2">
-          {/* Subtle Outer Glow */}
+        {/* Hyperrealistic Circular Energy Gauge */}
+        <div className="relative w-48 h-48 mx-auto flex items-center justify-center my-1 select-none">
+          {/* Subtle Ambient Ring Glow */}
           {isCharging && (
-            <div className="absolute inset-0 rounded-full bg-[rgba(200,243,105,0.2)] blur-xl animate-pulse" />
+            <div className="absolute inset-0 rounded-full bg-[rgba(200,243,105,0.25)] blur-xl animate-pulse" />
           )}
 
-          {/* Background SVG Circle */}
+          {/* Precision SVG Dial */}
           <svg className="w-44 h-44 transform -rotate-90" viewBox="0 0 120 120">
+            {/* Background Track */}
             <circle
               cx="60"
               cy="60"
               r="52"
-              className="text-[#F3F2ED]"
-              strokeWidth="7"
+              className="text-[#F2F1EC]"
+              strokeWidth="6"
               stroke="currentColor"
               fill="transparent"
             />
+            {/* Target Limit Marker Ring (Ghosted) */}
             <circle
               cx="60"
               cy="60"
               r="52"
-              strokeWidth="7"
+              strokeWidth="6"
+              strokeDasharray={2 * Math.PI * 52}
+              strokeDashoffset={2 * Math.PI * 52 * (1 - targetLimit / 100)}
+              strokeLinecap="round"
+              stroke="rgba(17,19,18,0.12)"
+              fill="transparent"
+            />
+            {/* Active Charge Arc */}
+            <circle
+              cx="60"
+              cy="60"
+              r="52"
+              strokeWidth="6"
               strokeDasharray={2 * Math.PI * 52}
               strokeDashoffset={2 * Math.PI * 52 * (1 - currentBatteryPct / 100)}
               strokeLinecap="round"
@@ -122,63 +159,63 @@ export function ChargingConsole({
             />
           </svg>
 
-          {/* Center Readout */}
+          {/* Dial Center Readout */}
           <div className="absolute flex flex-col items-center justify-center">
-            <div className="flex items-center gap-1">
+            <div className="flex items-baseline gap-0.5">
               <span className="text-4xl font-bold tracking-tight text-[#111312] font-mono">
                 {currentBatteryPct}
               </span>
-              <span className="text-lg font-bold text-[#525854] font-mono">%</span>
+              <span className="text-base font-bold text-[#525854] font-mono">%</span>
             </div>
-            <div className="text-[11px] font-mono text-[#8C938E] mt-0.5">
+            <div className="text-[10px] font-mono text-[#767D78] mt-0.5">
               Target: {targetLimit}%
             </div>
             {isCharging && (
-              <div className="text-[10.5px] font-bold text-[#16A34A] mt-1 bg-[#F0FDF4] px-2 py-0.5 rounded-full border border-[#DCFCE7]">
+              <div className="text-[10px] font-bold text-[#111312] mt-1 bg-[#C8F369] px-2 py-0.5 rounded-full shadow-2xs font-mono">
                 +{currentKw} kW DC
               </div>
             )}
           </div>
         </div>
 
-        {/* Live Metrics Grid */}
-        <div className="grid grid-cols-3 gap-2 pt-2 border-t border-[rgba(17,19,18,0.06)]">
-          <div className="bg-[#FAF9F6] p-2.5 rounded-2xl border border-[rgba(17,19,18,0.05)]">
-            <div className="text-[10px] font-mono uppercase tracking-wider text-[#8C938E]">
+        {/* Live Electrical Telemetry Readout Grid */}
+        <div className="grid grid-cols-3 gap-2 pt-1 border-t border-black/[0.06]">
+          <div className="bg-[#FAF9F6] p-2.5 rounded-2xl border border-black/[0.04]">
+            <div className="text-[9.5px] font-mono uppercase tracking-wider text-[#767D78]">
               Delivered
             </div>
             <div className="text-sm font-bold text-[#111312] font-mono mt-0.5">
               {kwhDelivered.toFixed(2)}
             </div>
-            <div className="text-[10px] text-[#525854]">kWh</div>
+            <div className="text-[9.5px] text-[#525854]">kWh</div>
           </div>
 
-          <div className="bg-[#FAF9F6] p-2.5 rounded-2xl border border-[rgba(17,19,18,0.05)]">
-            <div className="text-[10px] font-mono uppercase tracking-wider text-[#8C938E]">
-              Rate / Speed
+          <div className="bg-[#FAF9F6] p-2.5 rounded-2xl border border-black/[0.04]">
+            <div className="text-[9.5px] font-mono uppercase tracking-wider text-[#767D78]">
+              Volts / Amps
             </div>
             <div className="text-sm font-bold text-[#111312] font-mono mt-0.5">
-              {isCharging ? `${currentKw} kW` : "Ready"}
+              {isCharging ? `${currentAmps}A` : "784V"}
             </div>
-            <div className="text-[10px] text-[#525854]">DC Fast</div>
+            <div className="text-[9.5px] text-[#525854]">{isCharging ? "@ 784V DC" : "800V Bus"}</div>
           </div>
 
-          <div className="bg-[#FAF9F6] p-2.5 rounded-2xl border border-[rgba(17,19,18,0.05)]">
-            <div className="text-[10px] font-mono uppercase tracking-wider text-[#8C938E]">
-              Est. Session Cost
+          <div className="bg-[#FAF9F6] p-2.5 rounded-2xl border border-black/[0.04]">
+            <div className="text-[9.5px] font-mono uppercase tracking-wider text-[#767D78]">
+              Session Cost
             </div>
             <div className="text-sm font-bold text-[#111312] font-mono mt-0.5">
               ${chargeCost.toFixed(2)}
             </div>
-            <div className="text-[10px] text-[#525854]">@ $0.28/kWh</div>
+            <div className="text-[9.5px] text-[#525854]">@ $0.28/kWh</div>
           </div>
         </div>
 
-        {/* Target Battery Slider Control */}
-        <div className="bg-[#FAF9F6] rounded-2xl p-4 border border-[rgba(17,19,18,0.06)] text-left space-y-2">
+        {/* Tactile Target Limit Slider with Haptic Presets */}
+        <div className="bg-[#FAF9F6] rounded-2xl p-3.5 border border-black/[0.05] text-left space-y-2">
           <div className="flex items-center justify-between text-xs font-semibold text-[#111312]">
-            <span>Target SoC Limit</span>
-            <span className="font-mono text-sm bg-white px-2 py-0.5 rounded-lg border border-[rgba(17,19,18,0.08)]">
+            <span>Target Battery Level (SoC)</span>
+            <span className="font-mono text-[11px] text-[#111312] bg-white px-2 py-0.5 rounded-md border border-black/[0.06]">
               {targetLimit}%
             </span>
           </div>
@@ -193,79 +230,147 @@ export function ChargingConsole({
             className="w-full accent-[#111312] cursor-pointer"
           />
 
-          <div className="flex items-center justify-between text-[10.5px] text-[#8C938E]">
-            <span>50% Min</span>
-            <span>80% Recommended for cell health</span>
-            <span>100% Full Trip</span>
+          <div className="flex items-center justify-between text-[9.5px] font-mono text-[#767D78]">
+            <button
+              onClick={() => setTargetLimit(80)}
+              className={`hover:underline ${targetLimit === 80 ? "font-bold text-[#111312]" : ""}`}
+            >
+              80% (Daily Recommended)
+            </button>
+            <button
+              onClick={() => setTargetLimit(100)}
+              className={`hover:underline ${targetLimit === 100 ? "font-bold text-[#111312]" : ""}`}
+            >
+              100% (Trip Max)
+            </button>
           </div>
         </div>
 
-        {/* Primary Action Button */}
+        {/* Physical Connector Engagement Status */}
+        <div className="bg-[#FAF9F6] rounded-2xl p-3 border border-black/[0.05] flex items-center justify-between">
+          <div className="flex items-center gap-2.5 text-left">
+            <div className="relative w-8 h-8 rounded-xl bg-white border border-black/[0.06] p-1 flex items-center justify-center shrink-0">
+              <Image
+                src={vehicle.plugImage || "/images/plug-ccs2.png"}
+                alt="Plug"
+                fill
+                className="object-contain p-1"
+              />
+            </div>
+            <div>
+              <div className="text-[11px] font-bold text-[#111312]">
+                {vehicle.plugType} Liquid-Cooled
+              </div>
+              <div className="text-[9.5px] font-mono text-[#767D78]">
+                {isCharging ? "Motorized Pin Latched • Locked" : "Port Unlocked • Ready to Couple"}
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <ShieldCheck size={16} className={isCharging ? "text-[#16A34A]" : "text-[#8C938E]"} />
+          </div>
+        </div>
+
+        {/* Action Toggle CTA */}
         {isCharging ? (
           <button
             onClick={onStopCharge}
-            className="w-full py-4 bg-[#EF4444] text-white text-xs font-bold rounded-2xl hover:bg-[#DC2626] active:scale-98 transition-all shadow-xs flex items-center justify-center gap-2"
+            className="w-full py-3.5 bg-[#111312] text-[#C8F369] font-bold text-xs rounded-2xl hover:bg-[#252826] active:scale-98 transition-all flex items-center justify-center gap-2 shadow-xs"
           >
-            <Power size={15} />
-            Stop Session & View Receipt ({timeFormatted})
+            <Power size={14} />
+            Complete Session & Unlock Cable
           </button>
         ) : (
           <button
             onClick={onStartCharge}
-            className="w-full py-4 bg-[#111312] text-white text-xs font-bold rounded-2xl hover:bg-[#252826] active:scale-98 transition-all shadow-xs flex items-center justify-center gap-2"
+            className="w-full py-3.5 bg-[#111312] text-white font-bold text-xs rounded-2xl hover:bg-[#252826] active:scale-98 transition-all flex items-center justify-center gap-2 shadow-xs"
           >
-            <Zap size={15} className="text-[#C8F369]" />
-            Simulate Live Charging Session (Up to {vehicle.maxDcSpeedKw} kW)
+            <Zap size={14} className="text-[#C8F369]" />
+            Initiate High-Speed Session ({Math.min(vehicle.maxDcSpeedKw, chargeStation?.power_kw || 150)} kW)
           </button>
         )}
       </div>
 
-      {/* ── Itemized Receipt Summary Modal ──────────────────────────── */}
+      {/* ── Charging Speed Curve & Battery Health Advisory ─────────── */}
+      <div className="bg-white rounded-[24px] p-4 border border-black/[0.06] shadow-[0_2px_12px_rgba(0,0,0,0.02)] space-y-2.5">
+        <div className="flex items-center justify-between text-xs font-semibold text-[#111312]">
+          <span>800V DC Thermal Acceptance Curve</span>
+          <span className="text-[10px] font-mono text-[#767D78]">Peak 270 kW</span>
+        </div>
+
+        {/* Simplified Thermal Charging Curve Visual */}
+        <div className="h-10 w-full bg-[#FAF9F6] rounded-xl p-2 border border-black/[0.04] flex items-end gap-1">
+          {[95, 95, 95, 90, 85, 75, 60, 45, 30, 20].map((h, i) => (
+            <div
+              key={i}
+              className={`flex-1 rounded-xs transition-all ${
+                i <= Math.floor(currentBatteryPct / 10)
+                  ? "bg-[#111312]"
+                  : "bg-black/[0.08]"
+              }`}
+              style={{ height: `${h}%` }}
+              title={`SoC ${i * 10}%`}
+            />
+          ))}
+        </div>
+
+        <p className="text-[10.5px] text-[#525854] leading-relaxed">
+          Taper begins after 75% SoC to prevent lithium plating and ensure maximum long-term battery cell longevity.
+        </p>
+      </div>
+
+      {/* ── Itemized Session Receipt Modal ──────────────────────────── */}
       {showReceiptModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white rounded-3xl max-w-sm w-full p-6 border border-[rgba(17,19,18,0.1)] shadow-xl space-y-4">
-            <div className="flex items-center justify-between border-b border-[rgba(17,19,18,0.06)] pb-3">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-[#ECFDF5] flex items-center justify-center text-[#16A34A]">
-                  <CheckCircle2 size={18} />
-                </div>
-                <div>
-                  <h4 className="text-sm font-bold text-[#111312]">Charging Summary</h4>
-                  <div className="text-[10px] text-[#8C938E] font-mono">Invoice #EV-{Date.now().toString().slice(-6)}</div>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl max-w-sm w-full p-6 space-y-4 border border-black/[0.08] shadow-2xl relative text-left">
+            <button
+              onClick={onCloseReceiptModal}
+              className="absolute top-4 right-4 p-1.5 rounded-full hover:bg-[#F4F3EE] text-[#525854] transition-colors"
+            >
+              <X size={18} />
+            </button>
+
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 rounded-full bg-[#C8F369] flex items-center justify-center text-[#111312]">
+                <CheckCircle2 size={18} />
+              </div>
+              <div>
+                <h4 className="text-base font-bold text-[#111312]">Session Receipt</h4>
+                <div className="text-[10px] font-mono text-[#767D78]">
+                  Invoice #{Math.floor(100000 + Math.random() * 900000)}
                 </div>
               </div>
-              <button
-                onClick={onCloseReceiptModal}
-                className="w-8 h-8 rounded-full bg-[#F4F3EE] flex items-center justify-center text-[#525854] hover:bg-[#EAE8E2]"
-              >
-                <X size={16} />
-              </button>
             </div>
 
-            <div className="space-y-2.5 text-xs">
-              <div className="flex justify-between py-1 border-b border-[rgba(17,19,18,0.04)]">
-                <span className="text-[#525854]">Charging Hub</span>
-                <span className="font-semibold text-[#111312]">{chargeStation?.name || "QuantEV Fast Hub"}</span>
+            <div className="space-y-2 py-3 border-y border-black/[0.06] text-xs">
+              <div className="flex justify-between">
+                <span className="text-[#525854]">Vehicle</span>
+                <span className="font-semibold text-[#111312]">{vehicle.make} {vehicle.model}</span>
               </div>
-              <div className="flex justify-between py-1 border-b border-[rgba(17,19,18,0.04)]">
+              <div className="flex justify-between">
+                <span className="text-[#525854]">Station</span>
+                <span className="font-semibold text-[#111312]">{chargeStation?.name || "Superhub"}</span>
+              </div>
+              <div className="flex justify-between">
                 <span className="text-[#525854]">Energy Delivered</span>
                 <span className="font-mono font-bold text-[#111312]">{kwhDelivered.toFixed(2)} kWh</span>
               </div>
-              <div className="flex justify-between py-1 border-b border-[rgba(17,19,18,0.04)]">
-                <span className="text-[#525854]">Peak Inverter Rate</span>
-                <span className="font-mono font-semibold text-[#111312]">{currentKw} kW DC</span>
-              </div>
-              <div className="flex justify-between py-1 border-b border-[rgba(17,19,18,0.04)]">
+              <div className="flex justify-between">
                 <span className="text-[#525854]">Session Duration</span>
-                <span className="font-mono font-semibold text-[#111312]">{timeFormatted} mins</span>
+                <span className="font-mono font-bold text-[#111312]">{timeFormatted}</span>
               </div>
-              <div className="flex justify-between py-1 border-b border-[rgba(17,19,18,0.04)]">
-                <span className="text-[#525854]">Standard Energy Tariff</span>
-                <span className="text-[#525854]">$0.28 / kWh</span>
+              <div className="flex justify-between">
+                <span className="text-[#525854]">Tariff Rate</span>
+                <span className="font-mono text-[#111312]">$0.28 / kWh</span>
               </div>
-              <div className="flex justify-between py-2 pt-3 border-t border-[rgba(17,19,18,0.08)] text-sm font-bold">
-                <span className="text-[#111312]">Total Amount Charged</span>
-                <span className="font-mono text-[#111312]">${chargeCost.toFixed(2)}</span>
+              <div className="flex justify-between">
+                <span className="text-[#525854]">Clean Origin</span>
+                <span className="font-semibold text-[#16A34A]">100% Certified Hydro/Solar</span>
+              </div>
+              <div className="flex justify-between pt-2 border-t border-black/[0.06] text-sm">
+                <span className="font-bold text-[#111312]">Total Amount</span>
+                <span className="font-mono font-bold text-[#111312]">${chargeCost.toFixed(2)}</span>
               </div>
             </div>
 

@@ -32,15 +32,15 @@ export function DriverNav({
 
   return (
     <nav
-      className="sticky bottom-0 left-0 right-0 z-50 w-full flex justify-center pb-safe mt-auto shadow-xs"
+      className="sticky bottom-0 left-0 right-0 z-50 w-full flex flex-col items-center mt-auto select-none"
       style={{
-        background: "rgba(250, 249, 246, 0.96)",
-        backdropFilter: "blur(20px)",
-        WebkitBackdropFilter: "blur(20px)",
-        borderTop: "1px solid rgba(17, 19, 18, 0.08)",
+        background: "rgba(250, 249, 246, 0.94)",
+        backdropFilter: "blur(24px)",
+        WebkitBackdropFilter: "blur(24px)",
+        borderTop: "1px solid rgba(17, 19, 18, 0.06)",
       }}
     >
-      <div className="w-full flex items-center justify-around px-2 py-2">
+      <div className="w-full flex items-center justify-around px-2 pt-1.5 pb-1">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -50,14 +50,14 @@ export function DriverNav({
             <button
               key={tab.id}
               onClick={() => onTabChange(tab.id)}
-              className="relative flex flex-col items-center justify-center py-1 px-3 rounded-2xl transition-all duration-200 active:scale-92 group"
+              className="relative flex flex-col items-center justify-center py-1 px-3 rounded-2xl transition-all duration-200 active:scale-92 group cursor-pointer"
               style={{ minWidth: "56px" }}
               aria-label={tab.label}
             >
-              {/* Electric Lime Accent Indicator for Active Tab */}
+              {/* Electric Accent Indicator for Active Tab */}
               {isActive && (
                 <span
-                  className="absolute -top-1 w-5 h-[2.5px] rounded-full bg-[#111312]"
+                  className="absolute -top-1 w-4 h-[2px] rounded-full transition-all"
                   style={{
                     backgroundColor: isChargeTab && isCharging ? "#C8F369" : "#111312",
                   }}
@@ -70,9 +70,7 @@ export function DriverNav({
                   strokeWidth={isActive ? 2.3 : 1.7}
                   className="transition-colors duration-150"
                   style={{
-                    color: isActive
-                      ? "#111312"
-                      : "#8C938E",
+                    color: isActive ? "#111312" : "#8C938E",
                   }}
                 />
 
@@ -86,10 +84,10 @@ export function DriverNav({
               </div>
 
               <span
-                className="text-[10.5px] tracking-tight font-medium mt-0.5 transition-colors duration-150"
+                className="text-[10px] tracking-tight transition-colors duration-150 mt-0.5"
                 style={{
                   color: isActive ? "#111312" : "#8C938E",
-                  fontWeight: isActive ? 600 : 500,
+                  fontWeight: isActive ? 650 : 500,
                 }}
               >
                 {tab.label}
@@ -97,6 +95,11 @@ export function DriverNav({
             </button>
           );
         })}
+      </div>
+
+      {/* iOS Floating Home Indicator Bar */}
+      <div className="w-full pb-1 flex justify-center">
+        <div className="w-32 h-1 bg-[#111312]/20 rounded-full" />
       </div>
     </nav>
   );

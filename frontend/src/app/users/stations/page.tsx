@@ -556,32 +556,167 @@ export default function EVVerseDriverPage() {
         <div
           className={
             viewMode === "frame"
-              ? "relative w-[420px] h-[860px] bg-[#0A0C0B] rounded-[54px] p-[10px] shadow-[0_30px_90px_rgba(0,0,0,0.8)] border-[4px] border-[#363A38] ring-1 ring-white/10 flex flex-col overflow-hidden"
+              ? "relative w-[424px] h-[866px] rounded-[56px] p-[10px] flex flex-col select-none"
               : viewMode === "expanded"
               ? "w-full max-w-5xl min-h-screen flex flex-col relative bg-[#FAF9F6] shadow-xl rounded-3xl border border-[rgba(17,19,18,0.08)] overflow-hidden"
               : "w-full max-w-[430px] min-h-screen flex flex-col relative bg-[#FAF9F6] shadow-2xl border-x border-[rgba(17,19,18,0.06)]"
           }
+          style={
+            viewMode === "frame"
+              ? {
+                  background:
+                    "linear-gradient(145deg, #383B39 0%, #1D1F1E 30%, #303331 60%, #151716 100%)",
+                  boxShadow:
+                    "0 45px 120px -20px rgba(0,0,0,0.95), 0 25px 60px -15px rgba(0,0,0,0.85), 0 0 0 1px rgba(255,255,255,0.12), inset 0 1px 2px rgba(255,255,255,0.25)",
+                }
+              : undefined
+          }
         >
-          {/* iOS Dynamic Island & Status Bar (visible only in frame mode) */}
+          {/* Physical Hardware Buttons (Left & Right) */}
           {viewMode === "frame" && (
-            <div className="h-10 w-full flex items-center justify-between px-7 shrink-0 text-white z-40 bg-[#FAF9F6] border-b border-[rgba(17,19,18,0.03)]">
-              <span className="text-xs font-semibold text-[#111312] font-mono">9:41</span>
-              {/* Dynamic Island pill */}
-              <div className="w-24 h-5 bg-[#000000] rounded-full mx-auto flex items-center justify-end px-2 gap-1.5 shadow-xs">
-                <span className="w-2 h-2 rounded-full bg-[#16A34A]" />
-                <span className="w-2.5 h-2.5 rounded-full bg-[#1A1A1A] border border-white/20" />
-              </div>
-              <div className="flex items-center gap-1.5 text-[#111312]">
-                <span className="text-[10px] font-mono font-bold">5G</span>
-                <div className="w-4 h-2 border border-[#111312] rounded-xs p-0.5 flex items-center">
-                  <div className="h-full bg-[#111312] w-3/4 rounded-2xs" />
-                </div>
-              </div>
-            </div>
+            <>
+              {/* Left: Action Button */}
+              <div
+                className="absolute -left-[5px] top-28 w-[5px] h-8 rounded-l-xs"
+                style={{
+                  background: "linear-gradient(to right, #242625, #444845)",
+                  boxShadow: "inset 0 1px 1px rgba(255,255,255,0.2)",
+                }}
+              />
+              {/* Left: Volume Up */}
+              <div
+                className="absolute -left-[5px] top-40 w-[5px] h-12 rounded-l-xs"
+                style={{
+                  background: "linear-gradient(to right, #242625, #444845)",
+                  boxShadow: "inset 0 1px 1px rgba(255,255,255,0.2)",
+                }}
+              />
+              {/* Left: Volume Down */}
+              <div
+                className="absolute -left-[5px] top-56 w-[5px] h-12 rounded-l-xs"
+                style={{
+                  background: "linear-gradient(to right, #242625, #444845)",
+                  boxShadow: "inset 0 1px 1px rgba(255,255,255,0.2)",
+                }}
+              />
+              {/* Right: Power / Siri Button */}
+              <div
+                className="absolute -right-[5px] top-36 w-[5px] h-16 rounded-r-xs"
+                style={{
+                  background: "linear-gradient(to left, #242625, #444845)",
+                  boxShadow: "inset 0 1px 1px rgba(255,255,255,0.2)",
+                }}
+              />
+              {/* Right: Camera Control Touch Groove */}
+              <div
+                className="absolute -right-[4.5px] top-64 w-[4.5px] h-14 rounded-r-xs opacity-75"
+                style={{
+                  background: "linear-gradient(to left, #1A1C1B, #333634)",
+                  boxShadow: "inset 0 1px 1px rgba(255,255,255,0.1)",
+                }}
+              />
+            </>
           )}
 
-          {/* ── Screen Wrapper ── */}
-          <div className="w-full flex-1 flex flex-col overflow-y-auto no-scrollbar bg-[#FAF9F6] relative">
+          {/* Inner OLED Glass Bezel */}
+          <div
+            className={
+              viewMode === "frame"
+                ? "w-full h-full rounded-[48px] bg-[#0A0C0B] p-[8px] flex flex-col relative overflow-hidden"
+                : "w-full h-full flex flex-col"
+            }
+          >
+            {/* Specular Diagonal Glass Highlight Sheen */}
+            {viewMode === "frame" && (
+              <div
+                className="pointer-events-none absolute -top-32 -right-32 w-80 h-80 rounded-full z-50 opacity-40"
+                style={{
+                  background:
+                    "radial-gradient(circle, rgba(255, 255, 255, 0.18) 0%, rgba(255, 255, 255, 0) 70%)",
+                }}
+              />
+            )}
+
+            {/* iOS Dynamic Island & Status Bar (in frame mode) */}
+            {viewMode === "frame" && (
+              <div className="h-11 w-full flex items-center justify-between px-6 shrink-0 z-40 bg-[#FAF9F6] border-b border-black/[0.04] select-none">
+                {/* iOS Time */}
+                <span className="text-[13px] font-semibold text-[#111312] font-mono tracking-tight">
+                  9:41
+                </span>
+
+                {/* Hyperrealistic Dynamic Island with Live Activity Expansion */}
+                <div
+                  className={`transition-all duration-300 h-7 bg-black rounded-full flex items-center justify-between px-2.5 shadow-md ${
+                    isCharging
+                      ? "w-48 bg-black text-[#C8F369]"
+                      : isNavigating
+                      ? "w-44 bg-black text-white"
+                      : "w-24 bg-black"
+                  }`}
+                >
+                  {isCharging ? (
+                    <>
+                      <div className="flex items-center gap-1.5 text-[10px] font-mono font-bold">
+                        <Zap size={11} className="text-[#C8F369] animate-pulse" />
+                        <span>+{chargeCurrentKw} kW</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="text-[10px] font-mono font-bold text-white">
+                          {currentBatteryPct}%
+                        </span>
+                        <div className="w-2.5 h-2.5 rounded-full bg-[#16A34A] border border-black" />
+                      </div>
+                    </>
+                  ) : isNavigating && navStation ? (
+                    <>
+                      <div className="flex items-center gap-1.5 text-[10px] font-mono font-bold text-[#C8F369]">
+                        <Navigation size={11} />
+                        <span>{Math.round((1 - navProgress) * (navStation.distanceKm || 4.2) * 10) / 10} km</span>
+                      </div>
+                      <div className="w-2 h-2 rounded-full bg-[#C8F369] animate-pulse" />
+                    </>
+                  ) : (
+                    <>
+                      {/* True sapphire lens reflection & sensor */}
+                      <span className="w-2.5 h-2.5 rounded-full bg-[#0D1527] border border-[#233554] shadow-inner" />
+                      <span className="w-2.5 h-2.5 rounded-full bg-[#0A0E17] border border-[#162136]" />
+                    </>
+                  )}
+                </div>
+
+                {/* iOS Status Indicators (Cellular Bars, 5G, Wi-Fi, Battery) */}
+                <div className="flex items-center gap-1.5 text-[#111312]">
+                  {/* Cellular 4-Bars SVG */}
+                  <svg className="w-3.5 h-2.5 fill-current" viewBox="0 0 17 12">
+                    <rect x="0" y="9" width="2.5" height="3" rx="0.5" />
+                    <rect x="4.5" y="6" width="2.5" height="6" rx="0.5" />
+                    <rect x="9" y="3" width="2.5" height="9" rx="0.5" />
+                    <rect x="13.5" y="0" width="2.5" height="12" rx="0.5" />
+                  </svg>
+
+                  {/* 5G Badge */}
+                  <span className="text-[10.5px] font-mono font-bold">5G</span>
+
+                  {/* Wi-Fi Arcs SVG */}
+                  <svg className="w-3.5 h-2.5 fill-current" viewBox="0 0 16 12">
+                    <path d="M8 10.5a1.5 1.5 0 100 3 1.5 1.5 0 000-3zm-4.24-2.83a6 6 0 018.48 0l-1.06 1.06a4.5 4.5 0 00-6.36 0L3.76 7.67zm-2.83-2.83a10 10 0 0114.14 0l-1.06 1.06a8.5 8.5 0 00-12.02 0L.93 4.84z" />
+                  </svg>
+
+                  {/* iOS Battery Cylinder with Fill */}
+                  <div className="relative w-5 h-2.5 border-[1.5px] border-[#111312] rounded-[3px] p-[1px] flex items-center">
+                    <div
+                      className="h-full bg-[#111312] rounded-[1px] transition-all"
+                      style={{ width: `${Math.max(10, currentBatteryPct)}%` }}
+                    />
+                    <div className="absolute -right-[3px] top-[2px] w-[1.5px] h-1 bg-[#111312] rounded-r-[1px]" />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* ── Screen Wrapper ── */}
+            <div className="w-full flex-1 flex flex-col overflow-y-auto no-scrollbar bg-[#FAF9F6] relative rounded-b-[40px]">
             {/* ── Top Driver Status Header ─────────────────────────────────────── */}
             <header
               className="sticky top-0 z-40 px-4 py-3 border-b flex items-center justify-between"
@@ -1050,15 +1185,9 @@ export default function EVVerseDriverPage() {
           isCharging={isCharging}
         />
           </div>
-
-          {/* iOS Bottom Home Indicator (only in frame mode) */}
-          {viewMode === "frame" && (
-            <div className="h-5 w-full bg-[#FAF9F6] flex items-center justify-center shrink-0">
-              <div className="w-28 h-1 bg-[#111312]/20 rounded-full" />
-            </div>
-          )}
         </div>
       </div>
     </div>
-  );
+  </div>
+);
 }
