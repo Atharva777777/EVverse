@@ -56,7 +56,7 @@ export function HowItWorks({ data }: HowItWorksProps) {
             }}
           >
             QuantEV is an infrastructure planning platform that uses AI demand forecasting
-            and quantum optimisation to identify where new EV charging stations will
+            and GA Optimisation to identify where new EV charging stations will
             have the greatest impact.
           </p>
         </div>
@@ -81,7 +81,7 @@ export function HowItWorks({ data }: HowItWorksProps) {
             },
             {
               num: "04",
-              title: "Quantum Optimization (QAOA)",
+              title: "GA Optimisation",
               body: "A Quantum Approximate Optimization Algorithm (QAOA) circuit is executed on a quantum simulator. By evolving the quantum state over multiple layers, it converges toward the optimal infrastructure layout.",
             },
             {

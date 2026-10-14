@@ -179,7 +179,7 @@ export function ResultPanel({
               Top 3 Optimal Deployment Locations
             </div>
             <div style={{ fontFamily: "Times New Roman, serif", fontSize: "12px", color: "var(--color-ink-3)", marginTop: "2px" }}>
-              Selected by QAOA quantum optimization & classical solver to maximize coverage and grid stability.
+              Selected by GA Optimisation & classical solver to maximize coverage and grid stability.
             </div>
           </div>
 

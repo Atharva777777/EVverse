@@ -101,7 +101,7 @@ export default function Page() {
       // Smoothly navigate map to selected city
       mapRef.current?.setUserLocation(lat, lng);
 
-      // Immediately run quantum optimization analysis
+      // Immediately run GA optimisation analysis
       setPhase("searching");
       setSequenceStep(0);
       await run(finalCount, finalScen, city);
@@ -178,7 +178,7 @@ export default function Page() {
   const phaseLabel: Record<UIPhase, string> = {
     idle: `Global Infrastructure Planning · ${selectedCity}, ${selectedCountry}`,
     located: `Planning Area: ${selectedCity}, ${selectedCountry}`,
-    searching: "Running QAOA Quantum Optimization…",
+    searching: "Running GA Optimisation…",
     result: `Optimal Sites Identified · ${selectedCity}`,
     error: "Optimization failed",
   };
@@ -454,7 +454,7 @@ export default function Page() {
                     <br /><em style={{ color: "var(--color-navy-700)" }}>new charging infrastructure</em>
                   </h1>
                   <p style={{ fontFamily: "Times New Roman, serif", fontSize: "13px", color: "var(--color-ink-3)", lineHeight: 1.5, margin: "0 0 12px" }}>
-                    Select a planning area, set your station budget, and let AI and quantum optimisation identify the ideal sites.
+                    Select a planning area, set your station budget, and let AI and GA Optimisation identify the ideal sites.
                   </p>
 
                   {/* Story Presets for rapid presentation / judge demo */}
