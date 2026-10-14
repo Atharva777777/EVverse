@@ -72,37 +72,108 @@ const STAGES: StageData[] = [
 
 export function AbstractEditorialTimeline() {
   const containerRef = useRef<HTMLDivElement>(null);
+  const journeyArenaRef = useRef<HTMLDivElement>(null);
+
   const [scrollProgress, setScrollProgress] = useState(0); // 0 to 1
-  const [containerWidth, setContainerWidth] = useState(1000);
+  const [orbPosition, setOrbPosition] = useState<{
+    mode: 'top' | 'fixed' | 'bottom';
+    fixedLeft: number;
+    fixedTop: number;
+    absTop: number;
+    absLeftPct: number;
+    xOffset: number;
+  }>({
+    mode: 'top',
+    fixedLeft: 0,
+    fixedTop: 0,
+    absTop: 80,
+    absLeftPct: 75,
+    xOffset: 0,
+  });
 
   useEffect(() => {
-    const updateDimensions = () => {
-      if (containerRef.current) {
-        setContainerWidth(containerRef.current.clientWidth);
+    let animationFrameId: number;
+
+    const updateOrb = () => {
+      if (!journeyArenaRef.current) return;
+      const arenaRect = journeyArenaRef.current.getBoundingClientRect();
+      const windowHeight = window.innerHeight;
+      const windowWidth = window.innerWidth;
+
+      // Target eye-level Y on viewport
+      const targetEyeY = windowHeight * 0.44;
+
+      // Calculate progress through the journey arena
+      // Starts when arena top reaches targetEyeY, ends when arena bottom reaches targetEyeY
+      const totalScrollDistance = arenaRect.height - 240;
+      const currentScrollDistance = targetEyeY - arenaRect.top;
+      const rawProgress = Math.min(
+        Math.max(currentScrollDistance / Math.max(totalScrollDistance, 1), 0),
+        1
+      );
+      setScrollProgress(rawProgress);
+
+      // Max horizontal travel from center (scales with screen width)
+      const arenaWidth = arenaRect.width;
+      const maxAmplitude = Math.min(Math.max((arenaWidth / 2) * 0.52, 50), 280);
+
+      // Smooth cosine zigzag:
+      // at progress = 0: cos(0) = +1 -> Right
+      // at progress = 0.33: cos(pi) = -1 -> Left
+      // at progress = 0.66: cos(2pi) = +1 -> Right
+      // at progress = 1.0: cos(3pi) = -1 -> Left
+      const currentXOffset = Math.cos(rawProgress * Math.PI * 3) * maxAmplitude;
+
+      // Arena horizontal center in viewport coordinates
+      const arenaCenterViewportX = arenaRect.left + arenaWidth / 2;
+
+      // Determine positioning mode
+      if (arenaRect.top > targetEyeY) {
+        // User is above the arena -> dock at top-right
+        setOrbPosition({
+          mode: 'top',
+          fixedLeft: arenaCenterViewportX + maxAmplitude,
+          fixedTop: targetEyeY,
+          absTop: 80,
+          absLeftPct: 50 + (maxAmplitude / arenaWidth) * 100,
+          xOffset: maxAmplitude,
+        });
+      } else if (arenaRect.bottom < targetEyeY + 120) {
+        // User has scrolled below the arena -> dock at bottom-left
+        setOrbPosition({
+          mode: 'bottom',
+          fixedLeft: arenaCenterViewportX - maxAmplitude,
+          fixedTop: targetEyeY,
+          absTop: arenaRect.height - 180,
+          absLeftPct: 50 - (maxAmplitude / arenaWidth) * 100,
+          xOffset: -maxAmplitude,
+        });
+      } else {
+        // User is scrolling through the arena -> ACTIVE FIXED TRAVELING ORB
+        setOrbPosition({
+          mode: 'fixed',
+          fixedLeft: arenaCenterViewportX + currentXOffset,
+          fixedTop: targetEyeY,
+          absTop: 0,
+          absLeftPct: 50,
+          xOffset: currentXOffset,
+        });
       }
     };
-    updateDimensions();
-    window.addEventListener('resize', updateDimensions);
 
-    const handleScroll = () => {
-      if (!containerRef.current) return;
-      const rect = containerRef.current.getBoundingClientRect();
-      const windowHeight = window.innerHeight;
-
-      // Scroll progress tracking across the whole timeline
-      const totalScrollable = rect.height - windowHeight * 0.7;
-      const currentScroll = -rect.top + windowHeight * 0.15;
-      const rawProgress = Math.min(Math.max(currentScroll / Math.max(totalScrollable, 1), 0), 1);
-
-      setScrollProgress(rawProgress);
+    const onScrollOrResize = () => {
+      cancelAnimationFrame(animationFrameId);
+      animationFrameId = requestAnimationFrame(updateOrb);
     };
 
-    window.addEventListener('scroll', handleScroll, { passive: true });
-    handleScroll();
+    window.addEventListener('scroll', onScrollOrResize, { passive: true });
+    window.addEventListener('resize', onScrollOrResize);
+    updateOrb();
 
     return () => {
-      window.removeEventListener('scroll', handleScroll);
-      window.removeEventListener('resize', updateDimensions);
+      window.removeEventListener('scroll', onScrollOrResize);
+      window.removeEventListener('resize', onScrollOrResize);
+      cancelAnimationFrame(animationFrameId);
     };
   }, []);
 
@@ -114,22 +185,15 @@ export function AbstractEditorialTimeline() {
   const currentStageData = STAGES[activeStage];
   const CurrentIcon = currentStageData.icon;
 
-  // Single zone entity zigzag motion calculations:
-  // Starts on the RIGHT at Step 1 (progress 0)
-  // Glides to the LEFT at Step 2 (progress ~0.33)
-  // Glides to the RIGHT at Step 3 (progress ~0.66)
-  // Glides to the LEFT at Step 4 (progress 1.0)
-  const maxAmplitude = Math.min(Math.max((containerWidth / 2) * 0.52, 70), 280);
-  const xOffset = Math.cos(scrollProgress * Math.PI * 3) * maxAmplitude;
   const rotationAngle = scrollProgress * 540;
-  const pulseScale = 1 + Math.sin(scrollProgress * Math.PI * 6) * 0.05;
+  const pulseScale = 1 + Math.sin(scrollProgress * Math.PI * 6) * 0.04;
   const progressPercent = Math.round(scrollProgress * 100);
 
   return (
     <section
       id="how-it-works"
       ref={containerRef}
-      className="relative px-6 sm:px-12 md:px-16 py-28 sm:py-36 border-t border-black/[0.05] bg-gradient-to-b from-transparent via-white/25 to-transparent overflow-hidden"
+      className="relative px-6 sm:px-12 md:px-16 py-28 sm:py-36 border-t border-black/[0.05] bg-gradient-to-b from-transparent via-white/25 to-transparent"
     >
       <div className="max-w-6xl mx-auto">
 
@@ -148,18 +212,18 @@ export function AbstractEditorialTimeline() {
         </div>
 
         {/* ── Interactive Zigzag Journey Arena ── */}
-        <div className="relative">
+        <div ref={journeyArenaRef} className="relative">
 
           {/* ── ABSTRACT UNDULATING PATH GUIDE (Subtle visual spine) ── */}
           <div className="absolute inset-0 pointer-events-none hidden md:flex items-center justify-center overflow-hidden opacity-25">
             <svg
               className="w-full h-full"
-              viewBox="0 0 800 2000"
+              viewBox="0 0 800 2200"
               preserveAspectRatio="none"
               fill="none"
             >
               <path
-                d="M 680 150 C 680 400, 120 450, 120 750 C 120 1050, 680 1100, 680 1400 C 680 1700, 120 1750, 120 1950"
+                d="M 680 180 C 680 450, 120 500, 120 800 C 120 1100, 680 1150, 680 1450 C 680 1750, 120 1800, 120 2050"
                 stroke="#111312"
                 strokeWidth="1.5"
                 strokeDasharray="6 12"
@@ -167,124 +231,137 @@ export function AbstractEditorialTimeline() {
             </svg>
           </div>
 
-          {/* ── THE SINGLE INTERACTIVE ZONE COMPONENT (Moves Zigzag with Scroll) ── */}
-          <div className="sticky top-[26vh] z-30 pointer-events-none flex items-center justify-center h-0">
-            <div
-              className="pointer-events-auto transition-transform duration-150 ease-out select-none"
-              style={{
-                transform: `translateX(${xOffset}px) scale(${pulseScale})`,
-              }}
-            >
-              <div className="relative w-64 h-64 sm:w-72 sm:h-72 lg:w-80 lg:h-80 flex items-center justify-center">
-                
-                {/* Dynamic Ambient Volt-Green & Deep Charcoal Glow */}
-                <div
-                  className="absolute inset-0 rounded-full transition-all duration-500 pointer-events-none"
-                  style={{
-                    background: `radial-gradient(circle at center, rgba(200,243,105,0.3) 0%, rgba(17,19,18,0.06) 60%, transparent 80%)`,
-                  }}
+          {/* ── THE SINGLE INTERACTIVE TRAVELING ZONE BEACON ── */}
+          {/* Positioned dynamically: docked at top or bottom when out of bounds, FIXED at eye level when scrolling */}
+          <div
+            className={`z-30 pointer-events-none transition-opacity duration-300 ${
+              orbPosition.mode === 'fixed'
+                ? 'fixed'
+                : 'absolute'
+            }`}
+            style={
+              orbPosition.mode === 'fixed'
+                ? {
+                    left: `${orbPosition.fixedLeft}px`,
+                    top: `${orbPosition.fixedTop}px`,
+                    transform: `translate(-50%, -50%) scale(${pulseScale})`,
+                  }
+                : {
+                    top: `${orbPosition.absTop}px`,
+                    left: `${orbPosition.absLeftPct}%`,
+                    transform: `translate(-50%, -50%) scale(${pulseScale})`,
+                  }
+            }
+          >
+            <div className="relative w-64 h-64 sm:w-72 sm:h-72 lg:w-80 lg:h-80 flex items-center justify-center select-none pointer-events-auto">
+              
+              {/* Dynamic Ambient Volt-Green & Deep Charcoal Glow */}
+              <div
+                className="absolute inset-0 rounded-full transition-all duration-500 pointer-events-none"
+                style={{
+                  background: `radial-gradient(circle at center, rgba(200,243,105,0.32) 0%, rgba(17,19,18,0.06) 60%, transparent 80%)`,
+                }}
+              />
+
+              {/* Concentric Rotating Outer Kinetic Orbit */}
+              <svg
+                className="absolute inset-0 w-full h-full pointer-events-none transition-transform duration-200 ease-out"
+                viewBox="0 0 240 240"
+                style={{ transform: `rotate(${rotationAngle}deg)` }}
+              >
+                <circle
+                  cx="120"
+                  cy="120"
+                  r="105"
+                  fill="none"
+                  stroke="#111312"
+                  strokeWidth="1.2"
+                  strokeDasharray="4 10"
+                  strokeOpacity="0.32"
                 />
+                {/* Lead Satellite Waypoint Node */}
+                <circle cx="120" cy="15" r="4.5" fill="#111312" />
+                <circle
+                  cx="120"
+                  cy="15"
+                  r="9"
+                  fill="none"
+                  stroke="#111312"
+                  strokeWidth="1"
+                  strokeOpacity="0.3"
+                />
+                {/* Counter Satellite Node */}
+                <circle cx="120" cy="225" r="3" fill="#111312" fillOpacity="0.5" />
+              </svg>
 
-                {/* Concentric Rotating Outer Kinetic Orbit */}
-                <svg
-                  className="absolute inset-0 w-full h-full pointer-events-none transition-transform duration-200 ease-out"
-                  viewBox="0 0 240 240"
-                  style={{ transform: `rotate(${rotationAngle}deg)` }}
-                >
-                  <circle
-                    cx="120"
-                    cy="120"
-                    r="105"
-                    fill="none"
-                    stroke="#111312"
-                    strokeWidth="1.2"
-                    strokeDasharray="4 10"
-                    strokeOpacity="0.3"
-                  />
-                  {/* Lead Satellite Waypoint Node */}
-                  <circle cx="120" cy="15" r="4.5" fill="#111312" />
-                  <circle
-                    cx="120"
-                    cy="15"
-                    r="9"
-                    fill="none"
-                    stroke="#111312"
-                    strokeWidth="1"
-                    strokeOpacity="0.3"
-                  />
-                  {/* Counter Satellite Node */}
-                  <circle cx="120" cy="225" r="3" fill="#111312" fillOpacity="0.5" />
-                </svg>
+              {/* Concentric Counter-Rotating Orbit */}
+              <svg
+                className="absolute inset-0 w-full h-full pointer-events-none transition-transform duration-300 ease-out"
+                viewBox="0 0 240 240"
+                style={{ transform: `rotate(${-rotationAngle * 0.75}deg)` }}
+              >
+                <circle
+                  cx="120"
+                  cy="120"
+                  r="82"
+                  fill="none"
+                  stroke="#111312"
+                  strokeWidth="1.2"
+                  strokeDasharray="2 12"
+                  strokeOpacity="0.4"
+                />
+                <circle cx="202" cy="120" r="3.5" fill="#111312" />
+              </svg>
 
-                {/* Concentric Counter-Rotating Orbit */}
-                <svg
-                  className="absolute inset-0 w-full h-full pointer-events-none transition-transform duration-300 ease-out"
-                  viewBox="0 0 240 240"
-                  style={{ transform: `rotate(${-rotationAngle * 0.7}deg)` }}
-                >
-                  <circle
-                    cx="120"
-                    cy="120"
-                    r="82"
-                    fill="none"
-                    stroke="#111312"
-                    strokeWidth="1.2"
-                    strokeDasharray="2 12"
-                    strokeOpacity="0.4"
-                  />
-                  <circle cx="202" cy="120" r="3.5" fill="#111312" />
-                </svg>
+              {/* Progress Arc Ring */}
+              <svg className="absolute inset-0 w-full h-full pointer-events-none -rotate-90" viewBox="0 0 240 240">
+                <circle
+                  cx="120"
+                  cy="120"
+                  r="92"
+                  fill="none"
+                  stroke="#111312"
+                  strokeWidth="2"
+                  strokeOpacity="0.08"
+                />
+                <circle
+                  cx="120"
+                  cy="120"
+                  r="92"
+                  fill="none"
+                  stroke="#111312"
+                  strokeWidth="2.5"
+                  strokeDasharray={2 * Math.PI * 92}
+                  strokeDashoffset={2 * Math.PI * 92 * (1 - scrollProgress)}
+                  strokeLinecap="round"
+                  className="transition-all duration-150 ease-out"
+                />
+              </svg>
 
-                {/* Progress Arc Ring */}
-                <svg className="absolute inset-0 w-full h-full pointer-events-none -rotate-90" viewBox="0 0 240 240">
-                  <circle
-                    cx="120"
-                    cy="120"
-                    r="92"
-                    fill="none"
-                    stroke="#111312"
-                    strokeWidth="2"
-                    strokeOpacity="0.08"
-                  />
-                  <circle
-                    cx="120"
-                    cy="120"
-                    r="92"
-                    fill="none"
-                    stroke="#111312"
-                    strokeWidth="2.5"
-                    strokeDasharray={2 * Math.PI * 92}
-                    strokeDashoffset={2 * Math.PI * 92 * (1 - scrollProgress)}
-                    strokeLinecap="round"
-                    className="transition-all duration-150 ease-out"
-                  />
-                </svg>
-
-                {/* Central Kinetic Telemetry Orb */}
-                <div className="relative z-10 flex flex-col items-center justify-center text-center p-6 rounded-full bg-white/85 backdrop-blur-md border border-white/90 shadow-[0_25px_50px_rgba(0,0,0,0.1)] w-40 h-40 sm:w-44 sm:h-44 transition-all duration-300">
-                  <div className="w-8 h-8 rounded-full bg-[#111312] text-[#C8F369] flex items-center justify-center mb-1 shadow-xs">
-                    <CurrentIcon className="w-4 h-4" />
-                  </div>
-                  <span className="text-[10px] font-mono uppercase tracking-widest text-black/55 font-bold">
-                    {currentStageData.zoneTag}
-                  </span>
-                  <span className="text-2xl sm:text-3xl font-mono font-bold tracking-tight text-[#111312] leading-none my-1">
-                    {currentStageData.number}
-                  </span>
-                  <span className="text-[9px] font-mono uppercase tracking-wider text-black/70 font-semibold px-2 py-0.5 rounded-full bg-black/[0.04]">
-                    {currentStageData.zoneSub}
-                  </span>
-                  <span className="text-[8px] font-mono text-black/40 mt-1">
-                    {progressPercent}% SYNCED
-                  </span>
+              {/* Central Kinetic Telemetry Orb */}
+              <div className="relative z-10 flex flex-col items-center justify-center text-center p-6 rounded-full bg-white/90 backdrop-blur-md border border-white/95 shadow-[0_25px_50px_rgba(0,0,0,0.12)] w-40 h-40 sm:w-44 sm:h-44 transition-all duration-300">
+                <div className="w-8 h-8 rounded-full bg-[#111312] text-[#C8F369] flex items-center justify-center mb-1 shadow-xs">
+                  <CurrentIcon className="w-4 h-4" />
                 </div>
-
+                <span className="text-[10px] font-mono uppercase tracking-widest text-black/55 font-bold">
+                  {currentStageData.zoneTag}
+                </span>
+                <span className="text-2xl sm:text-3xl font-mono font-bold tracking-tight text-[#111312] leading-none my-1">
+                  {currentStageData.number}
+                </span>
+                <span className="text-[9px] font-mono uppercase tracking-wider text-black/70 font-semibold px-2 py-0.5 rounded-full bg-black/[0.04]">
+                  {currentStageData.zoneSub}
+                </span>
+                <span className="text-[8px] font-mono text-black/40 mt-1">
+                  {progressPercent}% SYNCED
+                </span>
               </div>
+
             </div>
           </div>
 
           {/* ── FOUR ALTERNATING STAGES (One Left, One Right) ── */}
-          <div className="space-y-48 sm:space-y-64 pt-8 pb-16">
+          <div className="space-y-48 sm:space-y-64 pt-8 pb-20">
             {STAGES.map((stage, index) => {
               const isEven = index % 2 === 0;
               const isStageActive = activeStage === index;
@@ -345,9 +422,9 @@ export function AbstractEditorialTimeline() {
                     </div>
                   </div>
 
-                  {/* EMPTY OPPOSITE COLUMN (Where the single floating Zone travels into) */}
+                  {/* EMPTY OPPOSITE COLUMN (Where the single floating Zone travels through) */}
                   <div
-                    className={`hidden md:block min-h-[220px] ${
+                    className={`hidden md:block min-h-[240px] ${
                       isEven ? 'md:col-start-2 md:col-end-3' : 'md:col-start-1 md:col-end-2'
                     }`}
                     aria-hidden="true"
