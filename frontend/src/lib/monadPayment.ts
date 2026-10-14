@@ -18,19 +18,15 @@ export interface MonadNetworkConfig {
   configuredRecipientAddress: string;
 }
 
-// Alchemy Monad RPC Sponsor Resolution
-const alchemyUrl = (process.env.NEXT_PUBLIC_MONAD_ALCHEMY_RPC_URL || "").trim();
-const alchemyKey = (process.env.NEXT_PUBLIC_ALCHEMY_API_KEY || "").trim();
-
+// Monad Network Configuration
+// Client-side interactions use the public Monad Testnet RPC endpoint.
+// Sensitive API keys (such as ALCHEMY_API_KEY) are maintained strictly server-side
+// in the FastAPI backend where authoritative transaction verification occurs.
 export const MONAD_CONFIG: MonadNetworkConfig & { providerName: string; isAlchemy: boolean } = {
   chainIdDecimal: 10143,
   chainIdHex: "0x279f",
   chainName: "Monad Testnet",
-  rpcUrl: alchemyUrl
-    ? alchemyUrl
-    : alchemyKey
-    ? `https://monad-testnet.g.alchemy.com/v2/${alchemyKey}`
-    : process.env.NEXT_PUBLIC_MONAD_RPC_URL || "https://testnet-rpc.monad.xyz",
+  rpcUrl: process.env.NEXT_PUBLIC_MONAD_RPC_URL || "https://testnet-rpc.monad.xyz",
   explorerUrl:
     process.env.NEXT_PUBLIC_MONAD_EXPLORER_URL ||
     "https://testnet.monadexplorer.com",
@@ -42,8 +38,8 @@ export const MONAD_CONFIG: MonadNetworkConfig & { providerName: string; isAlchem
   configuredRecipientAddress: (
     process.env.NEXT_PUBLIC_MONAD_PAYMENT_RECIPIENT_ADDRESS || ""
   ).trim(),
-  providerName: (alchemyUrl || alchemyKey) ? "Alchemy Monad Testnet RPC" : "Monad Public Testnet RPC",
-  isAlchemy: Boolean(alchemyUrl || alchemyKey),
+  providerName: "Monad Public Testnet RPC",
+  isAlchemy: false,
 };
 
 export interface RecipientConfigResult {

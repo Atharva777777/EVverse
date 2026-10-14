@@ -9,6 +9,17 @@ uvicorn backend.api.main:app --host 0.0.0.0 --port $PORT
 """
 
 from contextlib import asynccontextmanager
+from pathlib import Path
+
+try:
+    from dotenv import load_dotenv
+    _env_path = Path(__file__).resolve().parents[2] / ".env"
+    if _env_path.exists():
+        load_dotenv(dotenv_path=_env_path, override=False)
+    else:
+        load_dotenv(override=False)
+except ImportError:
+    pass
 
 import pandas as pd
 

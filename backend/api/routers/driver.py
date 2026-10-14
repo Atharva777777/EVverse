@@ -15,7 +15,18 @@ from __future__ import annotations
 import logging
 import os
 import re
+from pathlib import Path
 from typing import Any, Dict, List, Optional
+
+try:
+    from dotenv import load_dotenv
+    _env_file = Path(__file__).resolve().parents[3] / ".env"
+    if _env_file.exists():
+        load_dotenv(dotenv_path=_env_file, override=False)
+    else:
+        load_dotenv(override=False)
+except ImportError:
+    pass
 
 import httpx
 from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response, status
@@ -432,35 +443,50 @@ async def create_charging_session(
 
 # ── Driver Booking & Monad Testnet Payment Endpoints ──────────────────────────
 
+MONAD_CHAIN_ID = 10143
+MONAD_PUBLIC_RPC_URL = "https://testnet-rpc.monad.xyz"
+MONAD_FALLBACK_RPC_URL = (os.environ.get("MONAD_RPC_URL") or MONAD_PUBLIC_RPC_URL).strip() or MONAD_PUBLIC_RPC_URL
+MONAD_EXPLORER_URL = (os.environ.get("MONAD_EXPLORER_URL") or "https://testnet.monadexplorer.com").strip()
+MONAD_PAYMENT_RECIPIENT_ADDRESS = os.environ.get("MONAD_PAYMENT_RECIPIENT_ADDRESS", "").strip()
+
+
+def mask_rpc_url(url: str) -> str:
+    """Mask sensitive API keys or credentials in an RPC URL for safe logging and status responses."""
+    if not url:
+        return ""
+    return re.sub(r"(/v2/)[a-zA-Z0-9_\-]+", r"\1********", url)
+
+
+def get_alchemy_rpc_config() -> tuple[Optional[str], bool]:
+    """
+    Returns (alchemy_url, is_configured).
+    Sponsor Integration: Alchemy Monad Testnet RPC.
+    Uses backend-only environment variable ALCHEMY_API_KEY (or optional custom MONAD_ALCHEMY_RPC_URL).
+    Endpoint pattern: https://monad-testnet.g.alchemy.com/v2/<API_KEY>
+    Chain ID: 10143.
+    Never exposes API keys or relies on client-side NEXT_PUBLIC_ variables.
+    """
+    custom_url = os.environ.get("MONAD_ALCHEMY_RPC_URL", "").strip()
+    if custom_url:
+        return custom_url, True
+
+    alchemy_key = os.environ.get("ALCHEMY_API_KEY", "").strip()
+    if alchemy_key:
+        return f"https://monad-testnet.g.alchemy.com/v2/{alchemy_key}", True
+
+    return None, False
+
+
 def get_active_monad_rpc() -> tuple[str, str]:
     """
     Returns (rpc_url, provider_name).
-    Sponsor Integration: Alchemy Monad Testnet RPC.
-    If ALCHEMY_API_KEY is configured in the environment, routes JSON-RPC queries
-    via https://monad-testnet.g.alchemy.com/v2/<ALCHEMY_API_KEY>.
-    Otherwise falls back to MONAD_RPC_URL (default: https://testnet-rpc.monad.xyz).
+    Primary provider: Alchemy Monad Testnet RPC (if ALCHEMY_API_KEY is configured).
+    Fallback provider: Monad Public Testnet RPC (MONAD_FALLBACK_RPC_URL).
     """
-    alchemy_url = (os.environ.get("MONAD_ALCHEMY_RPC_URL") or os.environ.get("NEXT_PUBLIC_MONAD_ALCHEMY_RPC_URL") or "").strip()
-    if alchemy_url:
+    alchemy_url, is_configured = get_alchemy_rpc_config()
+    if is_configured and alchemy_url:
         return alchemy_url, "Alchemy Monad Testnet RPC"
-
-    alchemy_key = (os.environ.get("ALCHEMY_API_KEY") or os.environ.get("NEXT_PUBLIC_ALCHEMY_API_KEY") or "").strip()
-    if alchemy_key:
-        return f"https://monad-testnet.g.alchemy.com/v2/{alchemy_key}", "Alchemy Monad Testnet RPC"
-
-    custom_rpc = (os.environ.get("MONAD_RPC_URL") or os.environ.get("NEXT_PUBLIC_MONAD_RPC_URL") or "").strip()
-    if custom_rpc:
-        return custom_rpc, "Monad RPC"
-
-    return "https://testnet-rpc.monad.xyz", "Monad Public Testnet RPC"
-
-
-MONAD_RPC_URL = os.environ.get("MONAD_RPC_URL", "https://testnet-rpc.monad.xyz")
-MONAD_EXPLORER_URL = os.environ.get("MONAD_EXPLORER_URL", "https://testnet.monadexplorer.com")
-MONAD_PAYMENT_RECIPIENT_ADDRESS = os.environ.get(
-    "MONAD_PAYMENT_RECIPIENT_ADDRESS",
-    os.environ.get("NEXT_PUBLIC_MONAD_PAYMENT_RECIPIENT_ADDRESS", "")
-).strip()
+    return MONAD_FALLBACK_RPC_URL, "Monad Public Testnet RPC"
 
 
 def parse_mon_to_wei(mon_amount_str: str) -> int:
@@ -483,7 +509,15 @@ async def verify_monad_payment_onchain(
     """
     Independently query Monad Testnet JSON-RPC to verify transaction receipt.
     NEVER trusts frontend payment-success flags.
-    Enforces receipt status == 0x1, expected recipient address, and expected wei amount.
+    Enforces receipt status == 0x1, expected recipient address, expected wei amount,
+    and validates Chain ID is 10143.
+
+    Routing & Failover:
+    - Primary: Alchemy Monad Testnet RPC (when ALCHEMY_API_KEY is configured).
+    - Bounded Failover: If Alchemy is unreachable or experiences a transport error,
+      explicitly fails over to Monad Public Testnet RPC.
+    - Transparent Attribution: Accurately reports whether Alchemy or fallback verified the payment.
+    - Safe Logging: API keys are strictly masked; raw secret URLs are never logged.
     """
     tx_hash = tx_hash.strip()
     if not re.match(r"^0x[a-fA-F0-9]{64}$", tx_hash):
@@ -494,85 +528,142 @@ async def verify_monad_payment_onchain(
 
     expected_wei = parse_mon_to_wei(expected_mon_str)
     expected_recipient = (station_recipient_override or MONAD_PAYMENT_RECIPIENT_ADDRESS).strip().lower()
-    rpc_url, provider_name = get_active_monad_rpc()
-    log.info(f"Verifying payment {tx_hash} via {provider_name} ({rpc_url})")
 
-    async with httpx.AsyncClient(timeout=12.0) as client:
-        # 1. Fetch transaction receipt
+    # Determine candidate providers in priority order: (provider_name, rpc_url, is_alchemy, is_fallback)
+    alchemy_url, is_alchemy_configured = get_alchemy_rpc_config()
+    providers: List[tuple[str, str, bool, bool]] = []
+    if is_alchemy_configured and alchemy_url:
+        providers.append(("Alchemy Monad Testnet RPC", alchemy_url, True, False))
+        providers.append(("Monad Public Testnet RPC (Fallback)", MONAD_FALLBACK_RPC_URL, False, True))
+    else:
+        providers.append(("Monad Public Testnet RPC", MONAD_FALLBACK_RPC_URL, False, False))
+
+    last_network_error: Optional[Exception] = None
+
+    for provider_name, rpc_url, is_alchemy, is_fallback in providers:
+        masked_url = mask_rpc_url(rpc_url)
+        log.info(f"Attempting payment verification for {tx_hash} via {provider_name} ({masked_url})")
+
         try:
-            receipt_res = await client.post(
-                rpc_url,
-                json={"jsonrpc": "2.0", "id": 1, "method": "eth_getTransactionReceipt", "params": [tx_hash]},
-            )
-            receipt_json = receipt_res.json()
-        except Exception as e:
-            log.error(f"Error querying {provider_name} eth_getTransactionReceipt: {e}")
-            raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY,
-                detail=f"Failed to reach Monad Testnet RPC via {provider_name}: {e}"
-            )
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                # 1. Validate chain ID is 10143
+                try:
+                    chain_res = await client.post(
+                        rpc_url,
+                        json={"jsonrpc": "2.0", "id": 1, "method": "eth_chainId", "params": []},
+                    )
+                    c_status = getattr(chain_res, "status_code", 200)
+                    if isinstance(c_status, int) and c_status != 200:
+                        raise RuntimeError(f"RPC HTTP error {c_status}")
+                    chain_data = chain_res.json()
+                    if isinstance(chain_data, dict) and chain_data.get("error"):
+                        raise RuntimeError(f"RPC error from {provider_name}: {chain_data.get('error')}")
+                    chain_id_hex = chain_data.get("result")
+                    if isinstance(chain_id_hex, str):
+                        reported_chain_id = int(chain_id_hex, 16)
+                        if reported_chain_id != MONAD_CHAIN_ID:
+                            raise HTTPException(
+                                status_code=status.HTTP_502_BAD_GATEWAY,
+                                detail=f"Chain ID mismatch on {provider_name}: expected {MONAD_CHAIN_ID}, got {reported_chain_id}."
+                            )
+                except (HTTPException, RuntimeError):
+                    raise
+                except Exception as chain_err:
+                    log.warning(f"Failed to query eth_chainId on {provider_name}: {chain_err}")
 
-        receipt = receipt_json.get("result")
-        if not receipt or not receipt.get("blockNumber"):
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Transaction has not been included in a block on Monad Testnet yet (receipt pending)."
-            )
+                # 2. Fetch transaction receipt
+                receipt_res = await client.post(
+                    rpc_url,
+                    json={"jsonrpc": "2.0", "id": 2, "method": "eth_getTransactionReceipt", "params": [tx_hash]},
+                )
+                r_status = getattr(receipt_res, "status_code", 200)
+                if isinstance(r_status, int) and r_status != 200:
+                    raise RuntimeError(f"RPC HTTP error {r_status}")
+                receipt_json = receipt_res.json()
+                if isinstance(receipt_json, dict) and receipt_json.get("error"):
+                    raise RuntimeError(f"RPC error from {provider_name}: {receipt_json.get('error')}")
 
-        status_hex = receipt.get("status")
-        if status_hex != "0x1":
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Transaction reverted on-chain on Monad Testnet (status 0x0). Payment unverified."
-            )
+                receipt = receipt_json.get("result")
+                if not receipt or not receipt.get("blockNumber"):
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Transaction has not been included in a block on Monad Testnet yet (receipt pending)."
+                    )
 
-        # 2. Fetch full transaction to verify recipient and value
-        try:
-            tx_res = await client.post(
-                rpc_url,
-                json={"jsonrpc": "2.0", "id": 2, "method": "eth_getTransactionByHash", "params": [tx_hash]},
-            )
-            tx_json = tx_res.json()
-        except Exception as e:
-            log.error(f"Error querying {provider_name} eth_getTransactionByHash: {e}")
-            raise HTTPException(
-                status_code=status.HTTP_502_BAD_GATEWAY,
-                detail=f"Failed to fetch transaction details from {provider_name}: {e}"
-            )
+                status_hex = receipt.get("status")
+                if status_hex != "0x1":
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Transaction reverted on-chain on Monad Testnet (status 0x0). Payment unverified."
+                    )
 
-        tx_data = tx_json.get("result")
-        if not tx_data:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="Could not retrieve mined transaction parameters from Monad RPC."
+                # 3. Fetch full transaction to verify recipient and value
+                tx_res = await client.post(
+                    rpc_url,
+                    json={"jsonrpc": "2.0", "id": 3, "method": "eth_getTransactionByHash", "params": [tx_hash]},
+                )
+                t_status = getattr(tx_res, "status_code", 200)
+                if isinstance(t_status, int) and t_status != 200:
+                    raise RuntimeError(f"RPC HTTP error {t_status}")
+                tx_json = tx_res.json()
+                if isinstance(tx_json, dict) and tx_json.get("error"):
+                    raise RuntimeError(f"RPC error from {provider_name}: {tx_json.get('error')}")
+
+                tx_data = tx_json.get("result")
+                if not tx_data:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail="Could not retrieve mined transaction parameters from Monad RPC."
+                    )
+
+                actual_to = (tx_data.get("to") or receipt.get("to") or "").lower()
+                if expected_recipient and actual_to != expected_recipient:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Security verification failed: Mined recipient ({actual_to}) does not match expected payment address ({expected_recipient})."
+                    )
+
+                raw_val = tx_data.get("value", "0x0")
+                actual_wei = int(raw_val, 16)
+                if expected_wei > 0 and actual_wei < expected_wei:
+                    raise HTTPException(
+                        status_code=status.HTTP_400_BAD_REQUEST,
+                        detail=f"Security verification failed: Mined amount ({actual_wei} wei) is less than required fee ({expected_wei} wei)."
+                    )
+
+                block_num = int(receipt.get("blockNumber", "0x0"), 16)
+                gas_used = str(int(receipt.get("gasUsed", "0x0"), 16))
+
+                log.info(f"Payment {tx_hash} verified successfully on {provider_name} at block {block_num}")
+
+                return {
+                    "verified": True,
+                    "block_number": block_num,
+                    "from_address": tx_data.get("from", ""),
+                    "to_address": actual_to,
+                    "gas_used": gas_used,
+                    "value_wei": str(actual_wei),
+                    "provider": provider_name,
+                    "is_alchemy": is_alchemy,
+                    "fallback_used": is_fallback,
+                }
+
+        except HTTPException:
+            # Re-raise explicit HTTP errors (e.g. 400 Bad Request, reverted tx, pending, recipient/amount mismatch)
+            raise
+        except Exception as transport_err:
+            last_network_error = transport_err
+            log.warning(
+                f"Transport failure querying {provider_name} ({masked_url}): {type(transport_err).__name__}. "
+                f"{'Attempting fallback to Monad Public RPC...' if not is_fallback and len(providers) > 1 else 'No further fallbacks available.'}"
             )
+            continue
 
-        actual_to = (tx_data.get("to") or receipt.get("to") or "").lower()
-        if expected_recipient and actual_to != expected_recipient:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Security verification failed: Mined recipient ({actual_to}) does not match expected payment address ({expected_recipient})."
-            )
-
-        raw_val = tx_data.get("value", "0x0")
-        actual_wei = int(raw_val, 16)
-        if expected_wei > 0 and actual_wei < expected_wei:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail=f"Security verification failed: Mined amount ({actual_wei} wei) is less than required fee ({expected_wei} wei)."
-            )
-
-        block_num = int(receipt.get("blockNumber", "0x0"), 16)
-        gas_used = str(int(receipt.get("gasUsed", "0x0"), 16))
-
-        return {
-            "verified": True,
-            "block_number": block_num,
-            "from_address": tx_data.get("from", ""),
-            "to_address": actual_to,
-            "gas_used": gas_used,
-            "value_wei": str(actual_wei),
-        }
+    # If all providers failed due to transport errors
+    raise HTTPException(
+        status_code=status.HTTP_502_BAD_GATEWAY,
+        detail=f"Failed to reach Monad Testnet RPC providers for verification: {type(last_network_error).__name__}"
+    )
 
 
 class DriverBookingCreateRequest(BaseModel):
@@ -623,6 +714,7 @@ class DriverBookingResponse(BaseModel):
     target_kwh: Optional[float] = None
     target_battery_pct: Optional[int] = None
     physical_activation_triggered: bool = False
+    verification_provider: Optional[str] = None
     settlement_note: str = (
         "Testnet on-chain payment verified. Cryptographic reservation hold confirmed. "
         "Physical charging and hardware activation remain decoupled in testnet mode."
@@ -744,6 +836,7 @@ async def create_booking(
         session_type=record.get("session_type"),
         target_kwh=record.get("target_kwh"),
         target_battery_pct=record.get("target_battery_pct"),
+        verification_provider=verified_meta.get("provider"),
     )
 
 
@@ -797,32 +890,123 @@ async def get_station_owner_bookings(
     summary="Get Monad and Alchemy RPC connection status and latest block",
 )
 async def get_rpc_status():
-    rpc_url, provider_name = get_active_monad_rpc()
-    is_alchemy = "Alchemy" in provider_name
-    block_num = None
-    connected = False
-    error_msg = None
-    try:
-        async with httpx.AsyncClient(timeout=6.0) as client:
-            res = await client.post(
-                rpc_url,
-                json={"jsonrpc": "2.0", "id": 1, "method": "eth_blockNumber", "params": []},
+    """
+    Reports safe operational metadata for Monad Testnet RPC connectivity.
+    Attribution rules:
+    - If ALCHEMY_API_KEY is configured and responds successfully, reports provider as Alchemy.
+    - If Alchemy fails or is unconfigured, reports public Monad RPC (or fallback).
+    - Validates chain ID is 10143.
+    - Strictly masks API keys in output; never exposes secrets.
+    """
+    alchemy_url, is_alchemy_configured = get_alchemy_rpc_config()
+
+    active_provider: str = "None"
+    is_alchemy_active: bool = False
+    fallback_active: bool = False
+    connected: bool = False
+    block_num: Optional[int] = None
+    chain_id_reported: Optional[int] = None
+    masked_url: str = ""
+    error_msg: Optional[str] = None
+
+    # Step 1: If Alchemy is configured, attempt probe on Alchemy
+    if is_alchemy_configured and alchemy_url:
+        masked_url = mask_rpc_url(alchemy_url)
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                block_res = await client.post(
+                    alchemy_url,
+                    json={"jsonrpc": "2.0", "id": 1, "method": "eth_blockNumber", "params": []},
+                )
+                block_data = block_res.json()
+
+                chain_res = await client.post(
+                    alchemy_url,
+                    json={"jsonrpc": "2.0", "id": 2, "method": "eth_chainId", "params": []},
+                )
+                chain_data = chain_res.json()
+
+                b_status = getattr(block_res, "status_code", 200)
+                c_status = getattr(chain_res, "status_code", 200)
+                b_ok = (not isinstance(b_status, int)) or (b_status == 200)
+                c_ok = (not isinstance(c_status, int)) or (c_status == 200)
+
+                if (
+                    b_ok
+                    and c_ok
+                    and "result" in block_data
+                    and "result" in chain_data
+                    and not block_data.get("error")
+                    and not chain_data.get("error")
+                ):
+                    chain_id_reported = int(chain_data["result"], 16)
+                    if chain_id_reported != MONAD_CHAIN_ID:
+                        raise ValueError(f"Chain ID mismatch: expected {MONAD_CHAIN_ID}, got {chain_id_reported}")
+                    block_num = int(block_data["result"], 16)
+                    active_provider = "Alchemy Monad Testnet RPC"
+                    is_alchemy_active = True
+                    connected = True
+                    error_msg = None
+                else:
+                    err = block_data.get("error") or chain_data.get("error") or f"Invalid response: block_status={getattr(block_res, 'status_code', None)}, chain_status={getattr(chain_res, 'status_code', None)}"
+                    raise ValueError(str(err))
+
+        except Exception as alchemy_err:
+            log.warning(f"Alchemy RPC status probe failed ({type(alchemy_err).__name__}); testing fallback to public Monad RPC.")
+            fallback_active = True
+            error_msg = f"Alchemy primary probe failed: {type(alchemy_err).__name__}; failed over to fallback RPC."
+
+    # Step 2: If Alchemy was not configured OR failed, probe public fallback RPC
+    if not connected:
+        fallback_url = MONAD_FALLBACK_RPC_URL
+        masked_url = mask_rpc_url(fallback_url)
+        try:
+            async with httpx.AsyncClient(timeout=5.0) as client:
+                block_res = await client.post(
+                    fallback_url,
+                    json={"jsonrpc": "2.0", "id": 1, "method": "eth_blockNumber", "params": []},
+                )
+                block_data = block_res.json()
+
+                chain_res = await client.post(
+                    fallback_url,
+                    json={"jsonrpc": "2.0", "id": 2, "method": "eth_chainId", "params": []},
+                )
+                chain_data = chain_res.json()
+
+                if "result" in block_data and "result" in chain_data:
+                    chain_id_reported = int(chain_data["result"], 16)
+                    block_num = int(block_data["result"], 16)
+                    active_provider = (
+                        "Monad Public Testnet RPC (Fallback)"
+                        if is_alchemy_configured
+                        else "Monad Public Testnet RPC"
+                    )
+                    connected = True
+                    is_alchemy_active = False
+                else:
+                    err = block_data.get("error") or chain_data.get("error") or "Invalid JSON-RPC response"
+                    raise ValueError(str(err))
+
+        except Exception as fallback_err:
+            connected = False
+            active_provider = "None"
+            error_msg = (
+                f"Both Alchemy primary and Monad public fallback RPC probes failed: {type(fallback_err).__name__}"
+                if is_alchemy_configured
+                else f"Public Monad RPC probe failed: {type(fallback_err).__name__}"
             )
-            data = res.json()
-            if "result" in data:
-                block_num = int(data["result"], 16)
-                connected = True
-    except Exception as e:
-        error_msg = str(e)
 
     return {
-        "provider": provider_name,
-        "is_alchemy": is_alchemy,
-        "chain_id": 10143,
+        "provider": active_provider,
+        "is_alchemy": is_alchemy_active,
+        "alchemy_configured": is_alchemy_configured,
+        "fallback_active": fallback_active,
+        "chain_id": chain_id_reported or MONAD_CHAIN_ID,
         "chain_name": "Monad Testnet",
         "connected": connected,
         "latest_block": block_num,
-        "rpc_configured": bool(rpc_url),
+        "rpc_endpoint_masked": masked_url,
         "error": error_msg,
     }
 

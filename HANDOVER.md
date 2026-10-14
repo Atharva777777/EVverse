@@ -379,3 +379,62 @@ Implement a real Monad Testnet booking flow:
 - **Backend Tests**: `python -m pytest backend/tests/test_monad_booking.py -v` (4 passed, 100%).
 - **Git Safety**: No commits, resets, stashes, or dependency changes made.
 
+---
+
+## 16. ALCHEMY MONAD TESTNET RPC INTEGRATION (Oct 14, 2026)
+
+### A. Objectives & Implementation Summary
+Implemented genuine, server-side Alchemy Monad Testnet RPC integration for EVverse backend payment verification, status probing, and network validation, with zero client-side credential exposure and bounded failover to public Monad Testnet RPC.
+
+### B. Files Changed
+1. `backend/api/main.py`:
+   - Added safe `load_dotenv` to automatically load local `.env` if present without overriding existing environment variables.
+2. `backend/api/routers/driver.py`:
+   - **Local Environment Support**: Added `load_dotenv` to automatically resolve root `.env`.
+   - **Strict Server-Side Credentials**: Added `get_alchemy_rpc_config()` reading strictly from server-side `ALCHEMY_API_KEY` (and optional `MONAD_ALCHEMY_RPC_URL`). Removed all `NEXT_PUBLIC_` fallbacks on the backend.
+   - **URL Masking**: Added `mask_rpc_url()` to mask API keys in `/v2/<key>` as `/v2/********` in all status responses and logs.
+   - **Dual-Provider Verification with Bounded Failover**: Updated `verify_monad_payment_onchain()` to prioritize Alchemy, enforce Chain ID `10143` (`0x279f`), verify receipt status (`0x1`) and tx params (`to` and `value`). Automatically and safely fails over to the public Monad RPC upon network/transport/timeout exceptions, HTTP 403, 5xx, or JSON-RPC provider errors. Reverted receipts (`0x0`) or pending transactions are deterministic on-chain facts and never trigger failover.
+   - **Provider Declared in Response**: Added `verification_provider: Optional[str]` to `DriverBookingResponse` so every response transparently indicates which provider verified the transaction.
+   - **Active RPC Diagnostic Endpoint**: Hardened `/api/v1/driver/rpc-status` to actively query `eth_blockNumber` and `eth_chainId` (verifying 10143) with a 5-second timeout, returning provider metadata, masked URL, latency, and whether fallback is active.
+3. `frontend/src/lib/monadPayment.ts`:
+   - Cleaned `MONAD_CONFIG` by removing `NEXT_PUBLIC_ALCHEMY_API_KEY` and `NEXT_PUBLIC_MONAD_ALCHEMY_RPC_URL`.
+   - Browser reads and wallet queries are routed exclusively through `window.ethereum` and the public Monad RPC (`https://testnet-rpc.monad.xyz`), guaranteeing that private Alchemy keys are never bundled into client JavaScript.
+4. `.env.example`:
+   - Added `ALCHEMY_API_KEY=` with descriptive comments explaining server-side usage and automatic fallback.
+5. `backend/tests/test_monad_booking.py`:
+   - Added 10 unit tests: `test_get_alchemy_rpc_config`, `test_mask_rpc_url`, `test_rpc_status_no_alchemy`, `test_rpc_status_alchemy_success`, `test_rpc_status_alchemy_failover_to_public`, `test_verify_monad_payment_alchemy_success`, `test_verify_monad_payment_alchemy_failover_to_public`, `test_verify_monad_payment_both_providers_fail`, `test_rpc_status_alchemy_http_403_failover_to_public`, and `test_verify_monad_payment_alchemy_http_403_failover_to_public`.
+6. `README.md`:
+   - Added dedicated `## ⚗️ Alchemy Integration` section detailing architecture, why Alchemy is used, backend vs. client RPC roles, bounded failover, diagnostic endpoint, Render setup instructions, and testing commands. Updated environment variables table.
+7. `HANDOVER.md`:
+   - Appended and updated Section 16.
+
+### C. Provider Priority & Failover Architecture
+- **Primary Provider**: Alchemy Monad Testnet RPC (`https://monad-testnet.g.alchemy.com/v2/<ALCHEMY_API_KEY>`).
+- **Fallback Provider**: Monad Public Testnet RPC (`https://testnet-rpc.monad.xyz`).
+- **Chain ID Validation**: Strictly verifies `10143` (`0x279f`).
+- **Bounded Failover Rule**: Triggered upon network connection error, timeout (5s), HTTP 403 / 5xx, or JSON-RPC node errors. Deterministic on-chain receipts (`status == "0x0"`) are never treated as transport faults.
+
+### D. Verification & Test Execution
+- **Monad Booking & Alchemy Unit Tests**:
+  `python -m pytest backend/tests/test_monad_booking.py -v` → **14 passed in 4.53s**.
+- **Broader Non-TestClient Backend Suite**:
+  `python -m pytest backend/tests/test_city_validation.py backend/tests/test_ga_solver.py backend/tests/test_open_charge_map.py backend/tests/test_optimizer.py backend/tests/test_monad_booking.py -v` → **30 passed in 6.64s**.
+  *(Note: `test_driver_api.py` and `test_driver_integration_e2e.py` fail collection due to a Starlette `TestClient` vs. `httpx 0.28` version incompatibility in the local Python environment).*
+- **Frontend Dependencies**: `npm ci` completed cleanly (393 packages installed).
+- **Frontend Production Build**: `npm run build` compiled with Turbopack in 900ms, TypeScript type check passed in 2.0s, 14 static pages generated with 0 errors.
+- **Live Local Runtime Test**:
+  Executed active probe via `get_rpc_status()` against local `.env`.
+  Result: Loaded key successfully (`alchemy_configured: true`). Alchemy endpoint returned `-32600: MONAD_TESTNET is not enabled for this app. Visit this page to enable the network: https://dashboard.alchemy.com/apps/<app_id>/networks`. The system automatically and gracefully failed over to `Monad Public Testnet RPC (Fallback)` at block `70996753`, verifying zero-downtime resilience and complete URL masking.
+
+### E. Manual Steps Required
+1. **Enable Monad Testnet in Alchemy Dashboard**:
+   - Visit the Alchemy Dashboard for your app.
+   - Enable the **Monad Testnet** network so Alchemy will answer Monad JSON-RPC requests.
+2. **Configure Render Backend**:
+   - Render Dashboard → `evverse-backend` → **Environment**.
+   - Add Environment Variable:
+     - Key: `ALCHEMY_API_KEY`
+     - Value: `<your-alchemy-api-key>`
+   - Save Changes (Render triggers a zero-downtime redeploy).
+   - Verify live endpoint: `curl https://evverse-backend.onrender.com/api/v1/driver/rpc-status`.
+

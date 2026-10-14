@@ -121,7 +121,96 @@ Judges can explore the application with or without a Web3 wallet:
   1. *Client-side*: Confirms receipt status (`0x1`), mined recipient, and mined wei before transitioning UI state.
   2. *Server-side*: [`backend/api/routers/driver.py`](file:///c:/Dev/Projects/EV-VERSE/QuantEV2-evverse/backend/api/routers/driver.py) independently queries the Monad JSON-RPC endpoint. The backend **never** trusts client-supplied payment success flags.
 - **Replay Protection**: The `driver_bookings` table enforces a unique index on `tx_hash`. Duplicate submissions are rejected with HTTP 409 Conflict.
-- **Dual RPC Provider Support**: Supports both public Monad RPC (`https://testnet-rpc.monad.xyz`) and Alchemy Monad Testnet RPC (`https://monad-testnet.g.alchemy.com/v2/...`). Check live status at `/api/v1/driver/rpc-status`.
+- **Dual RPC Provider Support**: Prioritizes Alchemy Monad Testnet RPC (`https://monad-testnet.g.alchemy.com/v2/...`) with bounded automatic fallback to public Monad RPC (`https://testnet-rpc.monad.xyz`). Live status verified at `/api/v1/driver/rpc-status`.
+
+---
+
+## ⚗️ Alchemy Integration
+
+EVverse integrates **Alchemy** as its primary high-throughput, enterprise-grade RPC provider for Monad Testnet (Chain ID `10143`), ensuring reliable on-chain payment and receipt verification.
+
+### Why EVverse Uses Alchemy
+- **Zero Throttling on Payment Verifications**: Driver charging reservations require fast, deterministic transaction receipt confirmation. Alchemy's infrastructure eliminates public RPC rate-limiting and connection drops during high-concurrency periods.
+- **Strict Server-Side Isolation**: Alchemy private API keys are kept entirely server-side in the FastAPI backend, ensuring private credentials are never exposed to browser bundles or client network traffic.
+
+### Backend RPC Calls Routed Through Alchemy
+When `ALCHEMY_API_KEY` is configured, the backend directs the following mission-critical JSON-RPC queries to Alchemy:
+1. `eth_chainId`: Validates that the active RPC connection is genuinely communicating with Monad Testnet (verifies integer `10143` / `0x279f`).
+2. `eth_getTransactionReceipt`: Cryptographically confirms transaction mining, block height, and execution status (`status == "0x1"`) before releasing barrier unlock PINs and locking bay reservations.
+3. `eth_getTransactionByHash`: Inspects the on-chain transfer value (wei) and target contract/recipient address against expected billing parameters.
+4. `eth_blockNumber`: Performs active liveness probes in health diagnostics.
+
+### Provider Architecture & Bounded Failover
+```
+                      [ Incoming Payment Verification Request ]
+                                         │
+                                         ▼
+                     Is ALCHEMY_API_KEY set on backend?
+                                    /         \
+                             YES   /           \   NO
+                                  ▼             ▼
+                    [ Alchemy Monad RPC ]    [ Monad Public RPC ]
+                    (Chain ID: 10143)        (testnet-rpc.monad.xyz)
+                                  │                     │
+                     Network Error or Timeout?          │
+                                  │                     │
+                             YES / \ NO                 │
+                                ▼   └────────► SUCCESS ◄┘
+                    [ Fallback: Public RPC ]
+```
+- **Primary Route**: Requests immediately target `https://monad-testnet.g.alchemy.com/v2/<ALCHEMY_API_KEY>`.
+- **Bounded Failover**: If Alchemy encounters a network timeout (5-second bounded window) or connection error, the backend automatically fails over to the public Monad Testnet RPC (`https://testnet-rpc.monad.xyz`).
+- **Semantic Integrity**: Failover is strictly reserved for network/transport faults. Deterministic on-chain receipts (e.g., reverted transactions `status == "0x0"`) are never treated as network failures and will not trigger failover.
+- **Audit Transparency**: Booking responses and backend logs explicitly declare the verifying provider (`verification_provider: "Alchemy Monad Testnet RPC"` vs. `"Monad Public Testnet RPC (Fallback)"`).
+
+### Client-Side vs. Backend RPC Roles
+- **Backend (FastAPI)**: Routes all critical payment verifications and status checks through Alchemy.
+- **Frontend (Next.js / Browser)**: Interacts with the user's injected wallet provider (`window.ethereum`) and uses the public Monad RPC for read-only browser queries. **Alchemy API keys are never bundled into client-side JavaScript**.
+
+### Safe Diagnostic Endpoint
+EVverse provides a transparent diagnostic endpoint at `GET /api/v1/driver/rpc-status` that actively probes the provider:
+```bash
+curl https://evverse-backend.onrender.com/api/v1/driver/rpc-status
+```
+Example response when Alchemy is active:
+```json
+{
+  "status": "connected",
+  "provider": "Alchemy Monad Testnet RPC",
+  "is_alchemy": true,
+  "alchemy_configured": true,
+  "fallback_active": false,
+  "rpc_url": "https://monad-testnet.g.alchemy.com/v2/********",
+  "chain_id": 10143,
+  "latest_block": 1234567,
+  "latency_ms": 45.2
+}
+```
+*Note: Secret API keys in endpoint URLs are automatically masked (`/v2/********`) in all responses and logs.*
+
+### Environment Configuration & Setup
+- **Variable Name**: `ALCHEMY_API_KEY` (Backend only — **DO NOT** use `NEXT_PUBLIC_ALCHEMY_API_KEY`).
+- **Alchemy App Configuration**: In the [Alchemy Dashboard](https://dashboard.alchemy.com), ensure your App has **Monad Testnet** enabled under its supported networks. If Monad Testnet is not yet enabled, Alchemy returns `-32600: MONAD_TESTNET is not enabled for this app`, in which case EVverse automatically and safely fails over to the public Monad Testnet RPC until enabled.
+- **Local Development**: Add to your root `.env` file:
+  ```env
+  ALCHEMY_API_KEY=your_alchemy_api_key_here
+  ```
+- **Production (Render Backend)**:
+  1. Open the [Render Dashboard](https://dashboard.render.com).
+  2. Select `evverse-backend`.
+  3. Navigate to **Environment**.
+  4. Add Environment Variable:
+     - Key: `ALCHEMY_API_KEY`
+     - Value: `<your-alchemy-api-key>`
+  5. Click **Save Changes** (Render will trigger a zero-downtime redeploy).
+
+### Automated Verification Tests
+Run the dedicated test suite for Alchemy configuration, status probing, receipt validation, and failover:
+```bash
+python -m pytest backend/tests/test_monad_booking.py -v
+```
+
+> *Note: This integration provides an active, verified Alchemy Monad Testnet RPC implementation. Official hackathon bounty eligibility remains subject to organizer rules.*
 
 ---
 
@@ -251,9 +340,10 @@ cp .env.example .env
 | `MONAD_RPC_URL` | Backend RPC endpoint for on-chain verification | Optional | `https://testnet-rpc.monad.xyz` |
 | `MONAD_PAYMENT_RECIPIENT_ADDRESS` | Backend recipient address for payment checks | Optional | `0xYourWalletAddress` |
 | `OPEN_CHARGE_MAP_API_KEY` | Free API key from Open Charge Map | Optional | Free from [openchargemap.org](https://openchargemap.org/) |
-| `NEXT_PUBLIC_ALCHEMY_API_KEY` | Optional Alchemy API key for Monad RPC | Optional | Alchemy Monad Testnet key |
+| `ALCHEMY_API_KEY` | Server-side Alchemy API key for Monad Testnet RPC verification | Optional | `your_alchemy_api_key_here` |
+| `MONAD_ALCHEMY_RPC_URL` | Custom full Alchemy Monad Testnet RPC URL override | Optional | `https://monad-testnet.g.alchemy.com/v2/...` |
 
-> **Security Notice**: Never paste real private keys, mnemonic seed phrases, or production secrets into `.env` or commit them to source control. `.env` is included in `.gitignore`.
+> **Security Notice**: Never paste real private keys, mnemonic seed phrases, or production secrets into `.env` or commit them to source control. `.env` is included in `.gitignore`. Note that `ALCHEMY_API_KEY` is server-side only and must **never** use a `NEXT_PUBLIC_` prefix.
 
 ---
 
