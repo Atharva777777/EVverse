@@ -443,7 +443,7 @@ export function QuantumAdvantageModal({ isOpen, onClose }: QuantumAdvantageModal
           }}
         >
           <span style={{ fontFamily: "Times New Roman, serif", fontSize: "12px", color: "var(--color-ink-4)" }}>
-            QuantEV Mathematical Decision Intelligence · Qiskit 2.x & Aer 0.17
+            EVverse Mathematical Decision Intelligence · Qiskit 2.x & Aer 0.17
           </span>
           <button
             onClick={onClose}

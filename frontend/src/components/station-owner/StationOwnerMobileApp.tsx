@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import {
   Zap,
   Building2,
@@ -141,8 +142,16 @@ export function StationOwnerMobileApp() {
             <span>Back to EVverse</span>
           </Link>
           <div className="flex items-center gap-2 group">
-            <span className="w-2 h-2 rounded-full bg-[#C8F369]" />
-            <span className="font-bold text-white tracking-tight">EV VERSE STATION OWNER STUDIO</span>
+            <div className="relative w-5 h-5 shrink-0">
+              <Image
+                src="/images/evverse-logo.png"
+                alt="EVverse Logo"
+                width={20}
+                height={20}
+                className="object-contain"
+              />
+            </div>
+            <span className="font-bold text-white tracking-tight">EVverse Station Owner</span>
           </div>
           <span className="text-[11px] bg-white/10 text-white/80 px-2 py-0.5 rounded-md font-mono">
             Port 3001

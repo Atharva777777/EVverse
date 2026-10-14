@@ -915,8 +915,14 @@ export default function EVVerseDriverPage() {
                 </Link>
                 <div className="w-px h-5 bg-[rgba(17,19,18,0.08)] shrink-0" />
                 <div className="flex items-center gap-2 min-w-0">
-                  <div className="w-7 h-7 rounded-lg bg-[#111312] flex items-center justify-center text-[#C8F369] font-bold text-xs shrink-0">
-                    EV
+                  <div className="relative w-7 h-7 shrink-0 flex items-center justify-center">
+                    <Image
+                      src="/images/evverse-logo.png"
+                      alt="EVverse Logo"
+                      width={28}
+                      height={28}
+                      className="object-contain"
+                    />
                   </div>
                   <div className="min-w-0">
                     <span className="text-xs font-bold tracking-tight text-[#111312] block leading-none">
@@ -1377,7 +1383,7 @@ export default function EVVerseDriverPage() {
                         latitude,
                         longitude,
                         address: `${name} Transit Corridor, ${selectedCity}`,
-                        operator: "QuantEV Fast Charging",
+                        operator: "EVverse Fast Charging",
                         status: "Operational",
                         is_operational: true,
                         power_kw: 250,

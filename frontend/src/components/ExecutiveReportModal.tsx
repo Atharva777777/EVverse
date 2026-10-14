@@ -166,7 +166,7 @@ export function ExecutiveReportModal({
                   Municipal Transportation Commission · EV Infrastructure Taskforce
                 </div>
                 <h1 style={{ fontSize: "24px", fontWeight: 600, margin: "0 0 4px", letterSpacing: "-0.02em" }}>
-                  QuantEV Municipal Infrastructure Investment Brief
+                  EVverse Municipal Infrastructure Investment Brief
                 </h1>
                 <div style={{ fontSize: "13px", color: "#4a5166" }}>
                   Planning Zone: <strong>{locationName}</strong> · Scenario: <strong>{scenarioTitle}</strong>
@@ -188,7 +188,7 @@ export function ExecutiveReportModal({
               1. Executive Summary & Recommendation
             </h2>
             <p style={{ fontSize: "13px", lineHeight: 1.6, color: "#333849", margin: 0 }}>
-              Using high-resolution spatiotemporal charging station and grid telemetry across {locationName}, the QuantEV decision intelligence pipeline evaluated candidate deployment sites. Formulation as a Quadratic Unconstrained Binary Optimization (QUBO) problem identified the optimal <strong>{k}-station deployment layout</strong> that maximizes direct EV demand capture while preventing localized distribution grid overload through 3km proximity dispersion.
+              Using high-resolution spatiotemporal charging station and grid telemetry across {locationName}, the EVverse decision intelligence pipeline evaluated candidate deployment sites. Formulation as a Quadratic Unconstrained Binary Optimization (QUBO) problem identified the optimal <strong>{k}-station deployment layout</strong> that maximizes direct EV demand capture while preventing localized distribution grid overload through 3km proximity dispersion.
             </p>
           </div>
 
@@ -306,7 +306,7 @@ export function ExecutiveReportModal({
 
           {/* Signature line */}
           <div style={{ marginTop: "32px", display: "flex", justifyContent: "space-between", fontSize: "11px", color: "#6b7282" }}>
-            <div>Prepared by: QuantEV Decision Intelligence System</div>
+            <div>Prepared by: EVverse Decision Intelligence System</div>
             <div>Approved for municipal tender review · Page 1 of 1</div>
           </div>
         </div>

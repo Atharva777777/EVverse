@@ -44,7 +44,7 @@ export function HowItWorks({ data }: HowItWorksProps) {
               lineHeight: 1.2,
             }}
           >
-            How QuantEV works
+            How EVverse works
           </h2>
           <p
             style={{
@@ -55,7 +55,7 @@ export function HowItWorks({ data }: HowItWorksProps) {
               maxWidth: "520px",
             }}
           >
-            QuantEV is an infrastructure planning platform that uses AI demand forecasting
+            EVverse is an infrastructure planning platform that uses AI demand forecasting
             and GA Optimisation to identify where new EV charging stations will
             have the greatest impact.
           </p>
