@@ -8,6 +8,7 @@ import {
   ChevronDown,
   BookOpen
 } from 'lucide-react';
+import { AbstractEditorialTimeline } from '@/components/AbstractEditorialTimeline';
 
 export function EditorialLandingPage() {
   const [scrollY, setScrollY] = useState(0);
@@ -76,6 +77,9 @@ export function EditorialLandingPage() {
           <nav className="flex items-center gap-6 sm:gap-8 text-xs tracking-wider uppercase font-medium text-black/60">
             <a href="#hero" className="hover:text-black transition-colors">
               Home
+            </a>
+            <a href="#how-it-works" className="hover:text-black transition-colors">
+              How It Works
             </a>
             <a href="#roles" className="hover:text-black transition-colors">
               Roles
@@ -182,8 +186,8 @@ export function EditorialLandingPage() {
           <div className="absolute bottom-0 inset-x-0 flex justify-center z-30 pointer-events-none">
             <div className="w-32 h-9 bg-[#D8DCDE] rounded-t-full flex items-center justify-center shadow-inner">
               <a
-                href="#roles"
-                aria-label="Scroll down to roles"
+                href="#how-it-works"
+                aria-label="Scroll down to how it works"
                 className="pointer-events-auto p-1.5 text-black/40 hover:text-black transition-colors"
               >
                 <ChevronDown className="w-4 h-4 animate-bounce" />
@@ -193,7 +197,12 @@ export function EditorialLandingPage() {
         </section>
 
         {/* ══════════════════════════════════════════════════════════════ */}
-        {/* ── SECTION 2: THE 3 USERS (EXACTLY AS IT WAS BEFORE) ───────── */}
+        {/* ── SECTION 2: ABSTRACT SCROLL TIMELINE (HOW IT WORKS) ──────── */}
+        {/* ══════════════════════════════════════════════════════════════ */}
+        <AbstractEditorialTimeline />
+
+        {/* ══════════════════════════════════════════════════════════════ */}
+        {/* ── SECTION 3: THE 3 USERS (EXACTLY AS IT WAS BEFORE) ───────── */}
         {/* ══════════════════════════════════════════════════════════════ */}
         <section
           id="roles"
