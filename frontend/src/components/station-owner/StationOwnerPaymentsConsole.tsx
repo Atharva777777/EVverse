@@ -397,13 +397,13 @@ export function StationOwnerPaymentsConsole() {
         </div>
       </div>
 
-      {/* ── Confirmed Monad Testnet Bookings & Settlement Ledger ── */}
+      {/* ── Recent Driver Bookings ── */}
       <div className="rounded-2xl bg-white p-4 border border-black/[0.06] shadow-2xs space-y-3">
         <div className="flex items-center justify-between pb-2 border-b border-black/[0.06]">
           <div className="flex items-center gap-1.5">
             <Coins className="w-4 h-4 text-[#2563EB]" />
             <h3 className="text-xs font-bold text-[#111312]">
-              Live Monad Testnet Receipts
+              Driver Parking Reservations
             </h3>
           </div>
           <div className="flex items-center gap-1.5">
@@ -411,56 +411,42 @@ export function StationOwnerPaymentsConsole() {
               type="button"
               onClick={fetchBookings}
               disabled={isLoadingBookings}
-              title="Refresh on-chain receipts"
-              aria-label="Refresh on-chain receipts"
+              title="Refresh reservations"
+              aria-label="Refresh reservations"
               className="p-1 rounded-md text-[#767D78] hover:text-[#111312] hover:bg-black/[0.05] transition-colors cursor-pointer disabled:opacity-40"
             >
               <RefreshCw size={12} className={isLoadingBookings ? "animate-spin" : ""} />
             </button>
             <span className="text-[10px] font-mono text-[#2563EB] bg-[#EFF6FF] px-2 py-0.5 rounded-full border border-[#BFDBFE] font-semibold">
-              Chain ID 10143
+              Live
             </span>
           </div>
         </div>
 
-        {/* Clear Testnet vs Physical Charger Activation Distinction Notice */}
-        <div className="p-3 bg-[#EFF6FF] border border-[#BFDBFE] rounded-xl text-[10.5px] text-[#1E40AF] space-y-1">
-          <div className="font-bold flex items-center gap-1.5 text-[#1D4ED8]">
-            <ShieldCheck size={13} />
-            <span>Testnet Settlement Verification</span>
-          </div>
-          <p className="leading-relaxed">
-            All records below are confirmed via on-chain Monad Testnet receipts.
-            <strong> Note:</strong> Testnet transactions represent cryptographic reservation holds; physical charging and barrier hardware activation remain decoupled in testnet mode.
-          </p>
-        </div>
-
         {/* Bookings List */}
         {isLoadingBookings ? (
-          <div className="py-6 flex items-center justify-center gap-2 text-xs text-[#767D78]">
+          <div className="py-5 flex items-center justify-center gap-2 text-xs text-[#767D78]">
             <Loader2 className="w-4 h-4 animate-spin text-[#2563EB]" />
-            <span>Syncing Monad Testnet receipts from database...</span>
+            <span>Loading reservations...</span>
           </div>
         ) : loadError ? (
-          <div className="p-4 bg-[#FEF2F2] rounded-xl border border-[#FECACA] text-center space-y-2">
-            <AlertCircle className="w-5 h-5 text-[#DC2626] mx-auto" />
-            <p className="text-xs font-semibold text-[#991B1B]">Unable to Load On-Chain Ledger</p>
-            <p className="text-[10.5px] text-[#7F1D1D]">{loadError}</p>
+          <div className="p-3 bg-[#FEF2F2] rounded-xl border border-[#FECACA] text-center space-y-1.5">
+            <p className="text-xs font-semibold text-[#991B1B]">Could not load bookings</p>
             <button
               type="button"
               onClick={fetchBookings}
-              className="inline-flex items-center gap-1 px-3 py-1 bg-[#111312] text-white rounded-lg text-xs font-semibold hover:bg-[#252826] cursor-pointer"
+              className="inline-flex items-center gap-1 px-2.5 py-1 bg-[#111312] text-white rounded-lg text-[11px] font-semibold hover:bg-[#252826] cursor-pointer"
             >
-              <RefreshCw size={11} />
-              <span>Retry Sync</span>
+              <RefreshCw size={10} />
+              <span>Retry</span>
             </button>
           </div>
         ) : onChainBookings.length === 0 ? (
           <div className="p-4 bg-[#FAF9F6] rounded-xl border border-dashed border-black/[0.1] text-center space-y-1">
             <Coins className="w-5 h-5 text-[#767D78] mx-auto opacity-50" />
-            <p className="text-xs font-semibold text-[#111312]">No On-Chain Bookings Yet</p>
+            <p className="text-xs font-semibold text-[#111312]">No Reservations Yet</p>
             <p className="text-[10px] text-[#767D78]">
-              Stall reservations submitted with verified Monad Testnet payments will appear here with on-chain transaction links.
+              Driver parking spot holds will appear here automatically.
             </p>
           </div>
         ) : (

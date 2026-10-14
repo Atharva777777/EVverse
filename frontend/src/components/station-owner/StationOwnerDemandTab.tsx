@@ -8,9 +8,6 @@ import {
   Users,
   Activity,
   ArrowUpRight,
-  ShieldCheck,
-  ChevronRight,
-  Info
 } from 'lucide-react';
 
 interface HourlyDataPoint {
@@ -20,91 +17,91 @@ interface HourlyDataPoint {
 }
 
 const hourlyDemand: HourlyDataPoint[] = [
-  { hour: '06:00', loadPct: 24 },
-  { hour: '08:00', loadPct: 78, isPeak: true },
-  { hour: '10:00', loadPct: 62 },
-  { hour: '12:00', loadPct: 54 },
-  { hour: '14:00', loadPct: 48 },
-  { hour: '16:00', loadPct: 70 },
-  { hour: '18:00', loadPct: 94, isPeak: true },
-  { hour: '20:00', loadPct: 86, isPeak: true },
-  { hour: '22:00', loadPct: 42 },
+  { hour: '6am', loadPct: 24 },
+  { hour: '8am', loadPct: 78, isPeak: true },
+  { hour: '10am', loadPct: 62 },
+  { hour: '12pm', loadPct: 54 },
+  { hour: '2pm', loadPct: 48 },
+  { hour: '4pm', loadPct: 70 },
+  { hour: '6pm', loadPct: 94, isPeak: true },
+  { hour: '8pm', loadPct: 86, isPeak: true },
+  { hour: '10pm', loadPct: 42 },
 ];
 
 export function StationOwnerDemandTab() {
   const [selectedRange, setSelectedRange] = useState<'today' | 'week'>('today');
 
   return (
-    <div className="space-y-4">
-      {/* Live Occupancy Hero Card */}
-      <div className="rounded-2xl bg-white p-5 shadow-sm border border-black/[0.06]">
-        <div className="flex items-center justify-between pb-3 border-b border-black/[0.05]">
-          <div className="flex items-center gap-2">
+    <div className="space-y-3.5">
+      {/* Live Bay Occupancy */}
+      <div className="rounded-2xl bg-white p-4 shadow-2xs border border-black/[0.06] space-y-3">
+        <div className="flex items-center justify-between pb-2 border-b border-black/[0.05]">
+          <div className="flex items-center gap-1.5">
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
             </span>
-            <span className="text-xs font-semibold tracking-wide uppercase text-black/60">Live Bay Occupancy</span>
+            <span className="text-xs font-bold text-[#111312]">Live Occupancy</span>
           </div>
-          <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-[#111312] text-[#C8F369]">
-            Active
+          <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/50">
+            1 Bay Open
           </span>
         </div>
 
-        <div className="pt-4 flex items-baseline justify-between">
+        <div className="flex items-baseline justify-between pt-1">
           <div>
-            <div className="flex items-baseline gap-1.5">
-              <span className="text-3xl font-bold tracking-tight text-[#111312]">5</span>
-              <span className="text-sm text-black/40 font-medium">/ 6 bays occupied</span>
+            <div className="flex items-baseline gap-1">
+              <span className="text-2xl font-bold tracking-tight text-[#111312]">5</span>
+              <span className="text-xs text-black/40 font-medium">/ 6 bays in use</span>
             </div>
-            <p className="text-xs text-black/60 mt-1">1 CCS2 Fast bay open right now</p>
+            <p className="text-[11px] text-black/50 mt-0.5">Average session: 32 min</p>
           </div>
           <div className="text-right">
-            <span className="text-2xl font-bold text-emerald-600">83%</span>
-            <p className="text-[11px] text-black/40">Utilization</p>
+            <span className="text-xl font-bold text-emerald-600">83%</span>
+            <p className="text-[10px] text-black/40">Occupancy</p>
           </div>
         </div>
 
         {/* Bays Visual Bar */}
-        <div className="grid grid-cols-6 gap-1.5 mt-4">
+        <div className="grid grid-cols-6 gap-1.5 pt-1">
           {[
-            { id: 1, type: 'CCS2 180kW', status: 'charging' },
-            { id: 2, type: 'CCS2 180kW', status: 'charging' },
-            { id: 3, type: 'Type 2 22kW', status: 'charging' },
-            { id: 4, type: 'Type 2 22kW', status: 'charging' },
-            { id: 5, type: 'CCS2 120kW', status: 'charging' },
-            { id: 6, type: 'CCS2 120kW', status: 'available' },
+            { id: 1, type: '180kW', status: 'busy' },
+            { id: 2, type: '180kW', status: 'busy' },
+            { id: 3, type: '22kW', status: 'busy' },
+            { id: 4, type: '22kW', status: 'busy' },
+            { id: 5, type: '120kW', status: 'busy' },
+            { id: 6, type: '120kW', status: 'free' },
           ].map((bay) => (
             <div
               key={bay.id}
-              className={`h-9 rounded-lg flex flex-col items-center justify-center border text-[10px] font-semibold transition-all ${
-                bay.status === 'charging'
+              className={`h-8 rounded-lg flex flex-col items-center justify-center border text-[9.5px] font-semibold transition-all ${
+                bay.status === 'busy'
                   ? 'bg-[#111312] text-white border-black'
                   : 'bg-[#C8F369]/30 text-black border-[#C8F369]'
               }`}
             >
               <span>Bay {bay.id}</span>
-              <span className={`text-[8px] font-medium ${bay.status === 'charging' ? 'text-white/60' : 'text-black/70'}`}>
-                {bay.status === 'charging' ? 'Busy' : 'Free'}
+              <span className={`text-[8px] ${bay.status === 'busy' ? 'text-white/60' : 'text-black/70'}`}>
+                {bay.status === 'busy' ? 'Busy' : 'Open'}
               </span>
             </div>
           ))}
         </div>
       </div>
 
-      {/* Demand Curve Chart */}
-      <div className="rounded-2xl bg-white p-5 shadow-sm border border-black/[0.06]">
-        <div className="flex items-center justify-between mb-4">
+      {/* Hourly Activity Profile */}
+      <div className="rounded-2xl bg-white p-4 shadow-2xs border border-black/[0.06] space-y-3">
+        <div className="flex items-center justify-between pb-2 border-b border-black/[0.05]">
           <div>
-            <h3 className="text-sm font-semibold text-[#111312]">Daily Demand Profile</h3>
-            <p className="text-xs text-black/50">Driver arrival volume across 24h</p>
+            <h3 className="text-xs font-bold text-[#111312]">Peak Hours</h3>
+            <p className="text-[10px] text-black/40">Busier in evening (6 PM – 9 PM)</p>
           </div>
-          <div className="flex items-center gap-1 bg-black/[0.04] p-1 rounded-xl">
+          <div className="flex items-center gap-1 bg-black/[0.04] p-0.5 rounded-lg">
             <button
               type="button"
               onClick={() => setSelectedRange('today')}
-              className={`px-2.5 py-1 text-[11px] font-medium rounded-lg transition-all ${
-                selectedRange === 'today' ? 'bg-white text-black shadow-sm' : 'text-black/50 hover:text-black'
+              className={`px-2 py-0.5 text-[10px] font-semibold rounded-md transition-all ${
+                selectedRange === 'today' ? 'bg-white text-black shadow-2xs' : 'text-black/50'
               }`}
             >
               Today
@@ -112,8 +109,8 @@ export function StationOwnerDemandTab() {
             <button
               type="button"
               onClick={() => setSelectedRange('week')}
-              className={`px-2.5 py-1 text-[11px] font-medium rounded-lg transition-all ${
-                selectedRange === 'week' ? 'bg-white text-black shadow-sm' : 'text-black/50 hover:text-black'
+              className={`px-2 py-0.5 text-[10px] font-semibold rounded-md transition-all ${
+                selectedRange === 'week' ? 'bg-white text-black shadow-2xs' : 'text-black/50'
               }`}
             >
               7 Days
@@ -122,84 +119,67 @@ export function StationOwnerDemandTab() {
         </div>
 
         {/* Minimal Bar Chart */}
-        <div className="h-36 flex items-end justify-between gap-1 pt-6 px-1 border-b border-black/[0.06] pb-2">
+        <div className="h-28 flex items-end justify-between gap-1 pt-2 pb-1 border-b border-black/[0.05]">
           {hourlyDemand.map((item) => (
-            <div key={item.hour} className="flex-1 flex flex-col items-center gap-1 group">
-              <span className="text-[9px] font-mono font-medium text-black/40 group-hover:text-black transition-colors">
-                {item.loadPct}%
-              </span>
-              <div className="w-full max-w-[22px] bg-black/[0.06] rounded-t-md h-24 flex items-end">
+            <div key={item.hour} className="flex-1 flex flex-col items-center gap-1">
+              <div className="w-full max-w-[18px] bg-black/[0.05] rounded-t-sm h-18 flex items-end">
                 <div
                   style={{ height: `${item.loadPct}%` }}
-                  className={`w-full rounded-t-md transition-all duration-300 ${
-                    item.isPeak ? 'bg-[#111312]' : 'bg-[#111312]/30 group-hover:bg-[#111312]/60'
+                  className={`w-full rounded-t-sm transition-all ${
+                    item.isPeak ? 'bg-[#111312]' : 'bg-[#111312]/30'
                   }`}
                 />
               </div>
-              <span className="text-[9px] text-black/50 font-mono mt-1">{item.hour}</span>
+              <span className="text-[8.5px] text-black/50 font-mono">{item.hour}</span>
             </div>
           ))}
         </div>
 
-        <div className="flex items-center justify-between mt-3 text-xs text-black/60">
+        <div className="flex items-center justify-between text-[10px] text-black/50">
           <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-sm bg-[#111312]" />
-            <span>Peak slots (6 PM – 9 PM)</span>
+            <span className="w-2 h-2 rounded-xs bg-[#111312]" />
+            <span>Evening Peak (6 PM – 9 PM)</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-sm bg-[#111312]/30" />
-            <span>Standard load</span>
+            <span className="w-2 h-2 rounded-xs bg-[#111312]/30" />
+            <span>Regular</span>
           </div>
         </div>
       </div>
 
-      {/* Surrounding Corridor Deficit / Market Opportunity */}
-      <div className="rounded-2xl bg-gradient-to-br from-[#111312] to-[#202521] text-white p-5 shadow-sm">
-        <div className="flex items-center justify-between mb-2">
-          <span className="text-xs uppercase tracking-wider text-[#C8F369] font-semibold flex items-center gap-1.5">
-            <Activity className="w-3.5 h-3.5 text-[#C8F369]" />
-            Regional Deficit Signal
+      {/* Simplified Growth Opportunity Card */}
+      <div className="rounded-2xl bg-[#111312] text-white p-4 shadow-sm space-y-2">
+        <div className="flex items-center justify-between">
+          <span className="text-[10px] uppercase tracking-wider text-[#C8F369] font-bold flex items-center gap-1">
+            <TrendingUp className="w-3 h-3 text-[#C8F369]" />
+            High Area Demand
           </span>
-          <span className="text-[11px] px-2 py-0.5 rounded-full bg-white/10 text-white/80">
-            5 km Corridor
+          <span className="text-[10px] px-2 py-0.5 rounded-full bg-white/10 text-white/80">
+            Nearby Traffic
           </span>
         </div>
 
-        <div className="mt-3 flex items-baseline gap-2">
-          <span className="text-2xl font-bold text-white">+38%</span>
-          <span className="text-xs text-white/70">unmet driver charging demand</span>
+        <div className="flex items-baseline gap-2 pt-1">
+          <span className="text-xl font-bold text-white">+38%</span>
+          <span className="text-xs text-white/70">driver search volume</span>
         </div>
-        <p className="text-xs text-white/60 mt-1 leading-relaxed">
-          Over 42 EV drivers searched for charging near this corridor during peak evening hours while all nearby plugs were fully booked.
+        <p className="text-[11px] text-white/60 leading-relaxed">
+          Drivers are regularly searching for fast chargers in this area while bays are full. Adding 1 more bay could increase daily revenue.
         </p>
-
-        <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between text-xs">
-          <span className="text-white/80 font-medium">Suggested Expansion</span>
-          <span className="text-[#C8F369] font-semibold flex items-center gap-1">
-            Add 1x 120kW Bay
-            <ArrowUpRight className="w-3 h-3" />
-          </span>
-        </div>
       </div>
 
-      {/* Driver Queue & Wait Metrics */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="rounded-2xl bg-white p-4 border border-black/[0.06] shadow-sm">
-          <div className="flex items-center gap-2 text-black/50 text-xs">
-            <Clock className="w-3.5 h-3.5" />
-            <span>Avg Wait Time</span>
-          </div>
-          <p className="text-xl font-bold text-[#111312] mt-1.5">0 min</p>
-          <p className="text-[11px] text-emerald-600 font-medium mt-0.5">Smooth flow</p>
+      {/* Wait Time & Total Visits */}
+      <div className="grid grid-cols-2 gap-2.5">
+        <div className="rounded-2xl bg-white p-3 border border-black/[0.06] shadow-2xs">
+          <span className="text-[10px] text-black/40 block">Current Wait Time</span>
+          <p className="text-lg font-bold text-[#111312] mt-0.5">0 min</p>
+          <p className="text-[10px] text-emerald-600 font-medium">No queue</p>
         </div>
 
-        <div className="rounded-2xl bg-white p-4 border border-black/[0.06] shadow-sm">
-          <div className="flex items-center gap-2 text-black/50 text-xs">
-            <Users className="w-3.5 h-3.5" />
-            <span>Daily Visits</span>
-          </div>
-          <p className="text-xl font-bold text-[#111312] mt-1.5">38 EVs</p>
-          <p className="text-[11px] text-black/50 font-medium mt-0.5">+14% vs yesterday</p>
+        <div className="rounded-2xl bg-white p-3 border border-black/[0.06] shadow-2xs">
+          <span className="text-[10px] text-black/40 block">Today's Visits</span>
+          <p className="text-lg font-bold text-[#111312] mt-0.5">38 EVs</p>
+          <p className="text-[10px] text-emerald-600 font-medium">+14% vs avg</p>
         </div>
       </div>
     </div>

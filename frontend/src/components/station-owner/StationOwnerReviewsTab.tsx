@@ -100,15 +100,11 @@ export function StationOwnerReviewsTab({
       <div className="bg-white p-4 sm:p-5 rounded-3xl border border-black/[0.08] shadow-xs space-y-3">
         <div className="flex items-center justify-between">
           <div>
-            <div className="text-[10px] font-mono uppercase tracking-wider text-[#767D78]">
-              Driver Satisfaction Score
-            </div>
-            <h3 className="text-sm font-bold text-[#111312]">
-              {stationName} Reviews
-            </h3>
+            <h3 className="text-xs font-bold text-[#111312]">Driver Feedback</h3>
+            <p className="text-[10px] text-black/50">Verified visits</p>
           </div>
-          <span className="text-[10px] font-mono text-[#15803D] bg-[#F0FDF4] px-2 py-0.5 rounded-full font-bold border border-[#BBF7D0]">
-            Top Rated Hub
+          <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200/50">
+            {averageRating} Stars
           </span>
         </div>
 
