@@ -34,11 +34,20 @@ export function EditorialLandingPage() {
     setMousePos({ x: 0, y: 0 });
   };
 
-  // 3D parallax tilt values
+  // 3D parallax tilt values & camera push transitions
   const tiltX = mousePos.y * -6;
   const tiltY = mousePos.x * 10;
-  const heroParallax = Math.min(scrollY * 0.18, 90);
-  const textParallax = Math.min(scrollY * 0.1, 50);
+  
+  // Dynamic camera depth and smooth scroll handover
+  const heroProgress = Math.min(Math.max(scrollY / 650, 0), 1);
+  const heroParallax = Math.min(scrollY * 0.22, 120);
+  const monolithScale = 1 - heroProgress * 0.08;
+  const monolithOpacity = Math.max(0.65, 1 - heroProgress * 0.4);
+  const textParallax = scrollY * 0.16;
+  const chargingTextScale = 1 + heroProgress * 0.06;
+  const chargingTextOpacity = Math.max(0.18, 0.85 - heroProgress * 0.7);
+  const leaderLineOpacity = Math.max(0, 1 - scrollY / 180);
+  const energyBeamHeight = Math.min(Math.max((scrollY - 50) * 0.7, 0), 150);
 
   return (
     <div className="min-h-screen bg-[#D8DCDE] p-2 sm:p-4 md:p-6 text-[#111312] selection:bg-[#111312] selection:text-white font-sans antialiased">
@@ -110,12 +119,12 @@ export function EditorialLandingPage() {
           onMouseLeave={handleMouseLeave}
           className="relative min-h-[720px] sm:min-h-[800px] md:min-h-[860px] w-full flex items-center justify-center px-6 sm:px-12 py-10 overflow-hidden select-none"
         >
-          {/* ── GIANT TYPOGRAPHY: CHARGING ── */}
+          {/* ── GIANT TYPOGRAPHY: CHARGING with 3D Depth Dispersal ── */}
           <div
-            className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex items-center justify-between px-2 sm:px-8 pointer-events-none z-0"
+            className="absolute inset-x-0 top-1/2 -translate-y-1/2 flex items-center justify-between px-2 sm:px-8 pointer-events-none z-0 transition-transform duration-100 ease-out"
             style={{
-              transform: `translateY(calc(-50% - ${textParallax}px))`,
-              transition: 'transform 0.15s ease-out',
+              transform: `translateY(calc(-50% - ${textParallax}px)) scale(${chargingTextScale})`,
+              opacity: chargingTextOpacity,
             }}
           >
             <span className="text-[17vw] font-black tracking-tighter text-white/85 leading-none select-none drop-shadow-xs">
@@ -127,7 +136,10 @@ export function EditorialLandingPage() {
           </div>
 
           {/* ── Top-Left Callout ── */}
-          <div className="absolute top-10 left-6 sm:left-12 z-20 space-y-1 max-w-[200px] sm:max-w-xs">
+          <div
+            className="absolute top-10 left-6 sm:left-12 z-20 space-y-1 max-w-[200px] sm:max-w-xs transition-opacity duration-200"
+            style={{ opacity: Math.max(0.2, 1 - scrollY / 260) }}
+          >
             <span className="text-xs font-mono uppercase tracking-widest text-black/45 block">
               Fast and Secure
             </span>
@@ -139,11 +151,12 @@ export function EditorialLandingPage() {
             </p>
           </div>
 
-          {/* ── Central 3D Monolith Render with Mouse Parallax Tilt ── */}
+          {/* ── Central 3D Monolith Render with Mouse Parallax Tilt & Scroll Handover ── */}
           <div
-            className="relative z-10 w-full max-w-[380px] sm:max-w-[460px] md:max-w-[500px] flex items-center justify-center transition-transform duration-200 ease-out"
+            className="relative z-10 w-full max-w-[380px] sm:max-w-[460px] md:max-w-[500px] flex items-center justify-center transition-all duration-200 ease-out"
             style={{
-              transform: `translateY(${heroParallax}px) perspective(1000px) rotateX(${tiltX}deg) rotateY(${tiltY}deg)`,
+              transform: `translateY(${heroParallax}px) perspective(1000px) rotateX(${tiltX}deg) rotateY(${tiltY}deg) scale(${monolithScale})`,
+              opacity: monolithOpacity,
             }}
           >
             <div className="relative w-full aspect-[4/5] drop-shadow-[0_45px_70px_rgba(0,0,0,0.18)]">
@@ -157,8 +170,11 @@ export function EditorialLandingPage() {
               />
             </div>
 
-            {/* Spec Pointer Dot and Leader Line */}
-            <div className="absolute -left-6 sm:left-0 bottom-16 z-20 hidden sm:flex items-center gap-3">
+            {/* Spec Pointer Dot and Leader Line (Fades smoothly on scroll) */}
+            <div
+              className="absolute -left-6 sm:left-0 bottom-16 z-20 hidden sm:flex items-center gap-3 transition-opacity duration-200"
+              style={{ opacity: leaderLineOpacity }}
+            >
               <div className="relative flex items-center">
                 <div className="w-2.5 h-2.5 rounded-full bg-[#111312]" />
                 <div className="w-14 h-px bg-black/30" />
@@ -173,7 +189,10 @@ export function EditorialLandingPage() {
           </div>
 
           {/* ── Bottom-Right Manifesto Text ── */}
-          <div className="absolute bottom-12 right-6 sm:right-12 z-20 max-w-[220px] sm:max-w-xs text-right space-y-2">
+          <div
+            className="absolute bottom-12 right-6 sm:right-12 z-20 max-w-[220px] sm:max-w-xs text-right space-y-2 transition-opacity duration-200"
+            style={{ opacity: Math.max(0.2, 1 - scrollY / 260) }}
+          >
             <p className="text-xs sm:text-sm text-black/65 leading-relaxed">
               Be part of the transformation in electric vehicles via intelligent network planning for public fast-charging stations.
             </p>
@@ -182,15 +201,36 @@ export function EditorialLandingPage() {
             </p>
           </div>
 
-          {/* ── Bottom Notch with Scroll Arrow (Matching Reference) ── */}
+          {/* ── Seamless Energy Conduit Beam (Flows downwards through notch into timeline) ── */}
+          <div
+            className="absolute left-1/2 -translate-x-1/2 bottom-0 w-px pointer-events-none transition-all duration-150 ease-out z-20"
+            style={{
+              height: `${energyBeamHeight}px`,
+              background: 'linear-gradient(to bottom, rgba(200,243,105,0.95), rgba(17,19,18,0.4), transparent)',
+              boxShadow: '0 0 14px rgba(200,243,105,0.6)',
+            }}
+          />
+
+          {/* ── Bottom Notch with Scroll Arrow & Seamless Energy Handover ── */}
           <div className="absolute bottom-0 inset-x-0 flex justify-center z-30 pointer-events-none">
-            <div className="w-32 h-9 bg-[#D8DCDE] rounded-t-full flex items-center justify-center shadow-inner">
+            <div className="relative w-36 h-10 bg-[#D8DCDE] rounded-t-full flex items-center justify-center shadow-inner overflow-hidden">
+              {/* Luminous Energy Fill */}
+              <div
+                className="absolute inset-0 pointer-events-none transition-opacity duration-300"
+                style={{
+                  background: 'radial-gradient(circle at 50% 100%, rgba(200,243,105,0.45) 0%, transparent 70%)',
+                  opacity: Math.min(scrollY / 100, 1),
+                }}
+              />
               <a
                 href="#how-it-works"
                 aria-label="Scroll down to how it works"
-                className="pointer-events-auto p-1.5 text-black/40 hover:text-black transition-colors"
+                className="pointer-events-auto p-2 text-black/50 hover:text-black transition-all flex flex-col items-center gap-0.5 group"
               >
-                <ChevronDown className="w-4 h-4 animate-bounce" />
+                <span className="text-[8px] font-mono uppercase tracking-widest text-black/45 font-bold group-hover:text-black transition-colors">
+                  EXPLORE
+                </span>
+                <ChevronDown className="w-3.5 h-3.5 animate-bounce text-black/70 group-hover:text-black transition-colors" />
               </a>
             </div>
           </div>

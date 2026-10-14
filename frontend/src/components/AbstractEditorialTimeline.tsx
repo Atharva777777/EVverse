@@ -2,7 +2,6 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { ArrowRight, Sparkles, CheckCircle2, ShieldCheck, Zap, Users } from 'lucide-react';
-import { HyperrealisticChargingCable3D } from './HyperrealisticChargingCable3D';
 
 interface StageData {
   number: string;
@@ -20,7 +19,7 @@ const STAGES: StageData[] = [
   {
     number: '01',
     badge: 'ACCESSIBLE CLEAN ENERGY',
-    zoneTag: 'PHASE 01',
+    zoneTag: 'ZONE 01',
     zoneSub: 'CITIZEN ACCESS',
     title: 'Bringing Fast Charging Directly to Real Neighborhoods',
     howItWorks:
@@ -33,7 +32,7 @@ const STAGES: StageData[] = [
   {
     number: '02',
     badge: 'ZERO QUEUES & DELAYS',
-    zoneTag: 'PHASE 02',
+    zoneTag: 'ZONE 02',
     zoneSub: 'ZERO BOTTLENECKS',
     title: 'Ending Long Charging Lines Before They Ever Form',
     howItWorks:
@@ -46,7 +45,7 @@ const STAGES: StageData[] = [
   {
     number: '03',
     badge: 'COMMUNITY GRID PROTECTION',
-    zoneTag: 'PHASE 03',
+    zoneTag: 'ZONE 03',
     zoneSub: 'GRID STABILITY',
     title: 'Protecting City Power and Preventing Blackouts',
     howItWorks:
@@ -59,7 +58,7 @@ const STAGES: StageData[] = [
   {
     number: '04',
     badge: 'SHARED ECONOMIC PROSPERITY',
-    zoneTag: 'PHASE 04',
+    zoneTag: 'ZONE 04',
     zoneSub: 'LOCAL GROWTH',
     title: 'Creating Steady Income for Local Businesses and Hosts',
     howItWorks:
@@ -82,20 +81,18 @@ export function AbstractEditorialTimeline() {
     fixedTop: number;
     absTop: number;
     absLeftPct: number;
-    tiltAngle: number;
   }>({
     mode: 'top',
     fixedLeft: 0,
     fixedTop: 0,
     absTop: 40,
     absLeftPct: 75,
-    tiltAngle: 0,
   });
 
   useEffect(() => {
     let animationFrameId: number;
 
-    const updatePosition = () => {
+    const updateOrb = () => {
       if (!journeyArenaRef.current) return;
       const arenaRect = journeyArenaRef.current.getBoundingClientRect();
       const windowHeight = window.innerHeight;
@@ -114,63 +111,59 @@ export function AbstractEditorialTimeline() {
 
       const arenaWidth = arenaRect.width;
 
-      // Exact center of the opposite column (so it NEVER overlaps text)
+      // Calculate the exact center of the opposite column (so it NEVER overlaps text)
+      // In a 2-column grid, column center is approximately 25% away from center
       const columnCenterOffset = Math.min(Math.max(arenaWidth * 0.25, 120), 280);
 
       // Smooth cosine zigzag:
-      // at progress = 0: cos(0) = +1 -> Right Column (opposite Step 1 text on Left)
-      // at progress = 0.33: cos(pi) = -1 -> Left Column (opposite Step 2 text on Right)
-      // at progress = 0.66: cos(2pi) = +1 -> Right Column (opposite Step 3 text on Left)
-      // at progress = 1.0: cos(3pi) = -1 -> Left Column (opposite Step 4 text on Right)
+      // at progress = 0: cos(0) = +1 -> Center of Right Column
+      // at progress = 0.33: cos(pi) = -1 -> Center of Left Column
+      // at progress = 0.66: cos(2pi) = +1 -> Center of Right Column
+      // at progress = 1.0: cos(3pi) = -1 -> Center of Left Column
       const currentXOffset = Math.cos(rawProgress * Math.PI * 3) * columnCenterOffset;
-
-      // Kinetic tilt as the heavy cable handle sways across
-      const tiltAngle = Math.sin(rawProgress * Math.PI * 3) * -12;
 
       // Arena horizontal center in viewport coordinates
       const arenaCenterViewportX = arenaRect.left + arenaWidth / 2;
 
+      // Determine positioning mode
       if (arenaRect.top > targetEyeY) {
-        // Above arena -> dock neatly at top of right column
+        // User is above arena -> dock neatly at top of right column
         setOrbPosition({
           mode: 'top',
           fixedLeft: arenaCenterViewportX + columnCenterOffset,
           fixedTop: targetEyeY,
           absTop: 40,
           absLeftPct: 75,
-          tiltAngle: 0,
         });
       } else if (arenaRect.bottom < targetEyeY + 100) {
-        // Below arena -> dock neatly at bottom of left column
+        // User has scrolled below arena -> dock neatly at bottom of left column
         setOrbPosition({
           mode: 'bottom',
           fixedLeft: arenaCenterViewportX - columnCenterOffset,
           fixedTop: targetEyeY,
           absTop: arenaRect.height - 140,
           absLeftPct: 25,
-          tiltAngle: 0,
         });
       } else {
-        // Active fixed traveling cable handle
+        // Active fixed traveling orb
         setOrbPosition({
           mode: 'fixed',
           fixedLeft: arenaCenterViewportX + currentXOffset,
           fixedTop: targetEyeY,
           absTop: 0,
           absLeftPct: 50,
-          tiltAngle,
         });
       }
     };
 
     const onScrollOrResize = () => {
       cancelAnimationFrame(animationFrameId);
-      animationFrameId = requestAnimationFrame(updatePosition);
+      animationFrameId = requestAnimationFrame(updateOrb);
     };
 
     window.addEventListener('scroll', onScrollOrResize, { passive: true });
     window.addEventListener('resize', onScrollOrResize);
-    updatePosition();
+    updateOrb();
 
     return () => {
       window.removeEventListener('scroll', onScrollOrResize);
@@ -185,17 +178,28 @@ export function AbstractEditorialTimeline() {
     STAGES.length - 1
   );
   const currentStageData = STAGES[activeStage];
+  const CurrentIcon = currentStageData.icon;
+
+  const rotationAngle = scrollProgress * 540;
   const progressPercent = Math.round(scrollProgress * 100);
 
   return (
     <section
       id="how-it-works"
       ref={containerRef}
-      className="relative px-6 sm:px-12 md:px-16 py-16 sm:py-20 border-t border-black/[0.05] bg-gradient-to-b from-transparent via-white/20 to-transparent"
+      className="relative px-6 sm:px-12 md:px-16 py-16 sm:py-20 bg-gradient-to-b from-transparent via-white/20 to-transparent"
     >
+      {/* ── Seamless Energy Handover Receiver Node from Hero Bottom Notch ── */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none flex flex-col items-center">
+        <div className="w-3.5 h-3.5 rounded-full bg-[#111312] border-2 border-[#C8F369] shadow-[0_0_14px_rgba(200,243,105,0.7)] flex items-center justify-center">
+          <div className="w-1 h-1 rounded-full bg-[#C8F369] animate-ping" />
+        </div>
+        <div className="w-px h-8 bg-gradient-to-b from-[#C8F369] to-black/20" />
+      </div>
+
       <div className="max-w-6xl mx-auto">
 
-        {/* ── Section Header (Editorial, Jargon-Free) ── */}
+        {/* ── Section Header (Tighter Margins, Clean Editorial Flow) ── */}
         <div className="max-w-3xl space-y-3 mb-14 sm:mb-18">
           <div className="inline-flex items-center gap-2 text-[11px] font-mono uppercase tracking-widest text-black/60 font-bold">
             <Sparkles className="w-3.5 h-3.5 text-black" />
@@ -212,56 +216,34 @@ export function AbstractEditorialTimeline() {
         {/* ── Interactive Zigzag Journey Arena ── */}
         <div ref={journeyArenaRef} className="relative">
 
-          {/* ── HYPERREALISTIC CHARGING CABLE SPINE (Snakes down through the stages) ── */}
-          <div className="absolute inset-0 pointer-events-none hidden md:flex items-center justify-center overflow-hidden">
+          {/* ── ABSTRACT UNDULATING PATH GUIDE (Seamless from Hero to Timeline) ── */}
+          <div className="absolute inset-0 pointer-events-none hidden md:flex items-center justify-center overflow-hidden opacity-25">
             <svg
               className="w-full h-full"
               viewBox="0 0 800 1200"
               preserveAspectRatio="none"
               fill="none"
             >
-              {/* Layer 1: Ambient Drop Shadow for Cable Depth */}
+              <defs>
+                <linearGradient id="energySpline" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stopColor="#C8F369" stopOpacity="0.8" />
+                  <stop offset="25%" stopColor="#111312" stopOpacity="0.6" />
+                  <stop offset="75%" stopColor="#111312" stopOpacity="0.6" />
+                  <stop offset="100%" stopColor="#C8F369" stopOpacity="0.4" />
+                </linearGradient>
+              </defs>
               <path
-                d="M 600 120 C 600 300, 200 320, 200 480 C 200 660, 600 680, 600 840 C 600 1020, 200 1040, 200 1150"
-                stroke="rgba(0,0,0,0.08)"
-                strokeWidth="20"
-                strokeLinecap="round"
-                className="blur-sm"
-              />
-
-              {/* Layer 2: Main Heavy High-Voltage Rubber Cable Body */}
-              <path
-                d="M 600 120 C 600 300, 200 320, 200 480 C 200 660, 600 680, 600 840 C 600 1020, 200 1040, 200 1150"
-                stroke="#1A1C1B"
-                strokeWidth="11"
-                strokeLinecap="round"
-              />
-
-              {/* Layer 3: Cable Specular Highlight Ridge (3D Rubber Sheen) */}
-              <path
-                d="M 600 120 C 600 300, 200 320, 200 480 C 200 660, 600 680, 600 840 C 600 1020, 200 1040, 200 1150"
-                stroke="rgba(255,255,255,0.18)"
-                strokeWidth="2"
-                strokeLinecap="round"
-              />
-
-              {/* Layer 4: Animated Internal Cyan High-Power Photon Pulse */}
-              <path
-                d="M 600 120 C 600 300, 200 320, 200 480 C 200 660, 600 680, 600 840 C 600 1020, 200 1040, 200 1150"
-                stroke="#00E5FF"
-                strokeWidth="2.5"
-                strokeDasharray="16 32"
-                strokeDashoffset={-scrollProgress * 240}
-                strokeLinecap="round"
-                strokeOpacity="0.8"
-                className="transition-all duration-75"
+                d="M 400 -60 C 400 40, 600 50, 600 120 C 600 300, 200 320, 200 480 C 200 660, 600 680, 600 840 C 600 1020, 200 1040, 200 1150"
+                stroke="url(#energySpline)"
+                strokeWidth="1.5"
+                strokeDasharray="4 8"
               />
             </svg>
           </div>
 
-          {/* ── THE HYPERREALISTIC CHARGING CABLE HANDLE GUN (Glides smoothly along the path) ── */}
+          {/* ── THE SINGLE COMPACT INTERACTIVE TRAVELING ZONE BEACON (Desktop Only) ── */}
           <div
-            className={`hidden md:block z-30 pointer-events-none transition-opacity duration-300 ${
+            className={`hidden md:block z-20 pointer-events-none transition-opacity duration-300 ${
               orbPosition.mode === 'fixed'
                 ? 'fixed'
                 : 'absolute'
@@ -271,22 +253,119 @@ export function AbstractEditorialTimeline() {
                 ? {
                     left: `${orbPosition.fixedLeft}px`,
                     top: `${orbPosition.fixedTop}px`,
-                    transform: `translate(-50%, -50%) rotate(${orbPosition.tiltAngle}deg)`,
+                    transform: 'translate(-50%, -50%)',
                   }
                 : {
                     top: `${orbPosition.absTop}px`,
                     left: `${orbPosition.absLeftPct}%`,
-                    transform: `translate(-50%, -50%) rotate(${orbPosition.tiltAngle}deg)`,
+                    transform: 'translate(-50%, -50%)',
                   }
             }
           >
-            <div className="pointer-events-auto">
-              <HyperrealisticChargingCable3D
-                stageNumber={currentStageData.zoneTag}
-                stageName={currentStageData.zoneSub}
-                scrollProgress={scrollProgress}
-                isEvenStage={activeStage % 2 === 0}
+            {/* Downscaled, compact 200px orbital container (Will NOT overlap text) */}
+            <div className="relative w-48 h-48 lg:w-52 lg:h-52 flex items-center justify-center select-none pointer-events-auto">
+              
+              {/* Soft Ambient Glow */}
+              <div
+                className="absolute inset-0 rounded-full transition-all duration-500 pointer-events-none"
+                style={{
+                  background: 'radial-gradient(circle at center, rgba(200,243,105,0.28) 0%, rgba(17,19,18,0.04) 60%, transparent 80%)',
+                }}
               />
+
+              {/* Concentric Rotating Outer Kinetic Orbit */}
+              <svg
+                className="absolute inset-0 w-full h-full pointer-events-none transition-transform duration-200 ease-out"
+                viewBox="0 0 200 200"
+                style={{ transform: `rotate(${rotationAngle}deg)` }}
+              >
+                <circle
+                  cx="100"
+                  cy="100"
+                  r="88"
+                  fill="none"
+                  stroke="#111312"
+                  strokeWidth="1"
+                  strokeDasharray="3 8"
+                  strokeOpacity="0.25"
+                />
+                {/* Lead Satellite Waypoint Node */}
+                <circle cx="100" cy="12" r="3.5" fill="#111312" />
+                <circle
+                  cx="100"
+                  cy="12"
+                  r="7"
+                  fill="none"
+                  stroke="#111312"
+                  strokeWidth="0.8"
+                  strokeOpacity="0.3"
+                />
+                <circle cx="100" cy="188" r="2.5" fill="#111312" fillOpacity="0.5" />
+              </svg>
+
+              {/* Concentric Counter-Rotating Orbit */}
+              <svg
+                className="absolute inset-0 w-full h-full pointer-events-none transition-transform duration-300 ease-out"
+                viewBox="0 0 200 200"
+                style={{ transform: `rotate(${-rotationAngle * 0.75}deg)` }}
+              >
+                <circle
+                  cx="100"
+                  cy="100"
+                  r="70"
+                  fill="none"
+                  stroke="#111312"
+                  strokeWidth="1"
+                  strokeDasharray="2 10"
+                  strokeOpacity="0.3"
+                />
+                <circle cx="170" cy="100" r="3" fill="#111312" />
+              </svg>
+
+              {/* Progress Arc Ring */}
+              <svg className="absolute inset-0 w-full h-full pointer-events-none -rotate-90" viewBox="0 0 200 200">
+                <circle
+                  cx="100"
+                  cy="100"
+                  r="78"
+                  fill="none"
+                  stroke="#111312"
+                  strokeWidth="2"
+                  strokeOpacity="0.08"
+                />
+                <circle
+                  cx="100"
+                  cy="100"
+                  r="78"
+                  fill="none"
+                  stroke="#111312"
+                  strokeWidth="2"
+                  strokeDasharray={2 * Math.PI * 78}
+                  strokeDashoffset={2 * Math.PI * 78 * (1 - scrollProgress)}
+                  strokeLinecap="round"
+                  className="transition-all duration-150 ease-out"
+                />
+              </svg>
+
+              {/* Compact Central Telemetry Core (120px) */}
+              <div className="relative z-10 flex flex-col items-center justify-center text-center p-3 rounded-full bg-white/90 backdrop-blur-md border border-white/95 shadow-[0_15px_35px_rgba(0,0,0,0.08)] w-28 h-28 lg:w-32 lg:h-32 transition-all duration-300">
+                <div className="w-6 h-6 rounded-full bg-[#111312] text-[#C8F369] flex items-center justify-center mb-1 shadow-xs">
+                  <CurrentIcon className="w-3 h-3" />
+                </div>
+                <span className="text-[9px] font-mono uppercase tracking-widest text-black/50 font-bold">
+                  {currentStageData.zoneTag}
+                </span>
+                <span className="text-xl sm:text-2xl font-mono font-bold tracking-tight text-[#111312] leading-none my-0.5">
+                  {currentStageData.number}
+                </span>
+                <span className="text-[8px] font-mono uppercase tracking-wider text-black/70 font-semibold px-2 py-0.5 rounded-full bg-black/[0.04]">
+                  {currentStageData.zoneSub}
+                </span>
+                <span className="text-[7.5px] font-mono text-black/40 mt-0.5">
+                  {progressPercent}% SYNCED
+                </span>
+              </div>
+
             </div>
           </div>
 
@@ -352,10 +431,10 @@ export function AbstractEditorialTimeline() {
                       <span>{stage.impactMetric}</span>
                     </div>
 
-                    {/* Mobile-Only Compact Connector Badge */}
+                    {/* Mobile-Only Compact Orbital Badge (Since fixed orb is on desktop) */}
                     <div className="flex md:hidden items-center gap-2 pt-2">
-                      <div className="w-6 h-6 rounded-full bg-[#111312] text-[#00E5FF] flex items-center justify-center">
-                        <Zap className="w-3 h-3" />
+                      <div className="w-6 h-6 rounded-full bg-[#111312] text-[#C8F369] flex items-center justify-center">
+                        <Icon className="w-3 h-3" />
                       </div>
                       <span className="text-[10px] font-mono font-semibold text-black/60 uppercase">
                         {stage.zoneTag} • {stage.zoneSub}
@@ -364,7 +443,7 @@ export function AbstractEditorialTimeline() {
 
                   </div>
 
-                  {/* EMPTY OPPOSITE COLUMN (Reserved strictly for the traveling Cable Handle) */}
+                  {/* EMPTY OPPOSITE COLUMN (Reserved strictly for the traveling Zone) */}
                   <div
                     className={`hidden md:block min-h-[160px] ${
                       isEven ? 'md:col-start-2 md:col-end-3' : 'md:col-start-1 md:col-end-2'
