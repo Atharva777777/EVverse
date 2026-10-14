@@ -2,7 +2,7 @@
 
 import React, { useEffect, useRef, useState } from 'react';
 import { ArrowRight, Sparkles, CheckCircle2, ShieldCheck, Zap, Users } from 'lucide-react';
-import { InteractiveChargingCableHandle } from './InteractiveChargingCableHandle';
+import { HyperrealisticChargingCable3D } from './HyperrealisticChargingCable3D';
 
 interface StageData {
   number: string;
@@ -281,7 +281,7 @@ export function AbstractEditorialTimeline() {
             }
           >
             <div className="pointer-events-auto">
-              <InteractiveChargingCableHandle
+              <HyperrealisticChargingCable3D
                 stageNumber={currentStageData.zoneTag}
                 stageName={currentStageData.zoneSub}
                 scrollProgress={scrollProgress}
