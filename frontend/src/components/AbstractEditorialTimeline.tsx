@@ -1,80 +1,93 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { ArrowRight, Sparkles } from 'lucide-react';
+import { ArrowRight, Sparkles, CheckCircle2, ShieldCheck, Zap, Users } from 'lucide-react';
 
-interface TimelineStep {
+interface StageData {
   number: string;
-  tag: string;
+  badge: string;
+  zoneCode: string;
   title: string;
-  description: string;
-  highlight: string;
-  coordinates: string;
+  howItWorks: string;
+  communityBenefit: string;
+  impactMetric: string;
+  icon: React.ComponentType<{ className?: string }>;
 }
 
-const TIMELINE_STEPS: TimelineStep[] = [
+const STAGES: StageData[] = [
   {
     number: '01',
-    tag: 'URBAN PULSE',
-    title: "Reading the City's Rhythm",
-    description:
-      'We observe real-world traffic patterns, commuter habits, and local electrical grids to understand where electric vehicles travel, pause, and need power most.',
-    highlight: 'Real-time metropolitan traffic & grid telemetry',
-    coordinates: 'ZONE 01 // TELEMETRY',
+    badge: 'ACCESSIBLE CLEAN ENERGY',
+    zoneCode: 'ZONE 01 // CITIZEN ACCESS',
+    title: 'Bringing Fast Charging Directly to Real Neighborhoods',
+    howItWorks:
+      'EVverse maps real daily traffic flows, commuter corridors, and residential habits to pinpoint where electric vehicles actually travel and park.',
+    communityBenefit:
+      'No more charging deserts. Fast chargers are placed right where families live, work, and grocery shop—making clean electric transportation accessible to every single neighborhood, not just luxury areas.',
+    impactMetric: '100% Equal Access · Eliminates regional charging deserts',
+    icon: Users,
   },
   {
     number: '02',
-    tag: 'PREDICTIVE FORECASTING',
-    title: 'Anticipating Demand Before Queues Form',
-    description:
-      'Smart prediction engines calculate future charging demand hours and seasons ahead, uncovering high-need charging deserts before driver lines ever start forming.',
-    highlight: 'Proactive neighborhood demand anticipation',
-    coordinates: 'ZONE 02 // INFERENCE',
+    badge: 'ZERO QUEUES & DELAYS',
+    zoneCode: 'ZONE 02 // ZERO BOTTLENECKS',
+    title: 'Ending Long Charging Lines Before They Ever Form',
+    howItWorks:
+      'Our smart predictive system anticipates morning rush hours, weekend getaways, and sudden weather shifts days ahead to balance charging demand city-wide.',
+    communityBenefit:
+      'Drivers pull up to an open, ultra-fast charger with zero waiting. No lost work hours, no missed appointments, and total peace of mind that your family will never be stranded with a dead battery.',
+    impactMetric: 'Guaranteed Open Bays · Saves 45+ minutes per charge trip',
+    icon: Zap,
   },
   {
     number: '03',
-    tag: 'LOCATION SYNTHESIS',
-    title: 'Pinpointing the Perfect Coordinates',
-    description:
-      'Our solvers simulate millions of layout combinations to choose the ideal locations—maximizing driver convenience while preventing grid strain and station overlap.',
-    highlight: 'Zero cannibalization & balanced power distribution',
-    coordinates: 'ZONE 03 // OPTIMIZATION',
+    badge: 'COMMUNITY GRID PROTECTION',
+    zoneCode: 'ZONE 03 // GRID STABILITY',
+    title: 'Protecting City Power and Preventing Blackouts',
+    howItWorks:
+      'EVverse balances electricity demand intelligently with local substations, guaranteeing high-voltage chargers never overload neighborhood power transformers.',
+    communityBenefit:
+      'Neighborhood power stays stable and reliable without brownouts or voltage dips. Electricity bills stay low, and our communities breathe fresh, smog-free air every day.',
+    impactMetric: 'Zero Transformer Overload · Clean air & protected home power',
+    icon: ShieldCheck,
   },
   {
     number: '04',
-    tag: 'CONNECTED ECOSYSTEM',
-    title: 'Empowering Everyone in the Network',
-    description:
-      'Drivers enjoy effortless charging with zero wait times, station owners maximize daily utilization and revenue, and investors deploy capital with total certainty.',
-    highlight: 'Seamless harmony for drivers, owners & investors',
-    coordinates: 'ZONE 04 // ECOSYSTEM',
+    badge: 'SHARED ECONOMIC PROSPERITY',
+    zoneCode: 'ZONE 04 // LOCAL GROWTH',
+    title: 'Creating Steady Income for Local Businesses and Hosts',
+    howItWorks:
+      'We connect local property owners, retail hubs, and drivers into one shared system with fair, automated transparent earnings.',
+    communityBenefit:
+      'Local coffee shops, supermarkets, and mom-and-pop stores gain regular customer foot traffic while drivers charge. The entire community retains wealth locally and creates high-quality green jobs.',
+    impactMetric: 'Direct Local Commerce · Sustainable green wealth for communities',
+    icon: CheckCircle2,
   },
 ];
 
 export function AbstractEditorialTimeline() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scrollProgress, setScrollProgress] = useState(0); // 0 to 1
-  const [activeStep, setActiveStep] = useState(0);
+  const [activeStage, setActiveStage] = useState(0);
 
   useEffect(() => {
     const handleScroll = () => {
       if (!containerRef.current) return;
       const rect = containerRef.current.getBoundingClientRect();
       const windowHeight = window.innerHeight;
-      
-      // Compute progress through the container
-      const totalDist = rect.height - windowHeight * 0.4;
-      const currentDist = -rect.top + windowHeight * 0.3;
-      const rawProgress = Math.min(Math.max(currentDist / totalDist, 0), 1);
-      
+
+      // Track scroll progress within this specific timeline section
+      const totalDist = rect.height - windowHeight * 0.5;
+      const currentDist = -rect.top + windowHeight * 0.25;
+      const rawProgress = Math.min(Math.max(currentDist / Math.max(totalDist, 1), 0), 1);
+
       setScrollProgress(rawProgress);
 
-      // Determine active step based on progress
-      const stepIndex = Math.min(
-        Math.floor(rawProgress * TIMELINE_STEPS.length),
-        TIMELINE_STEPS.length - 1
+      const computedStage = Math.min(
+        Math.floor(rawProgress * STAGES.length),
+        STAGES.length - 1
       );
-      setActiveStep(stepIndex);
+      setActiveStage(computedStage);
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
@@ -82,243 +95,204 @@ export function AbstractEditorialTimeline() {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
-  // Geometry calculations for abstract kinetic orbital
-  const rotationAngle = scrollProgress * 360;
-  const pulseScale = 1 + Math.sin(scrollProgress * Math.PI * 4) * 0.08;
-  const progressPercent = Math.round(scrollProgress * 100);
-
-  const scrollToStep = (idx: number) => {
-    if (!containerRef.current) return;
-    const stepElements = containerRef.current.querySelectorAll('[data-timeline-step]');
-    if (stepElements[idx]) {
-      stepElements[idx].scrollIntoView({ behavior: 'smooth', block: 'center' });
-    }
-  };
-
   return (
     <section
       id="how-it-works"
       ref={containerRef}
-      className="relative px-6 sm:px-12 md:px-16 py-24 sm:py-32 border-t border-black/[0.05] bg-gradient-to-b from-transparent via-white/30 to-transparent"
+      className="relative px-6 sm:px-12 md:px-16 py-28 sm:py-36 border-t border-black/[0.05] bg-gradient-to-b from-transparent via-white/20 to-transparent overflow-hidden"
     >
-      <div className="max-w-6xl mx-auto">
-        
-        {/* ── Section Header (No Cards, Pure Clean Editorial Typography) ── */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-16 sm:mb-24 pb-8 border-b border-black/[0.06]">
-          <div className="space-y-3 max-w-xl">
-            <div className="inline-flex items-center gap-2 text-[11px] font-mono uppercase tracking-widest text-black/50 font-bold">
-              <Sparkles className="w-3.5 h-3.5 text-black" />
-              <span>How EVverse Works</span>
-            </div>
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-normal tracking-tight text-[#111312]">
-              From Raw City Movement to Guaranteed Energy.
-            </h2>
+      <div className="max-w-6xl mx-auto space-y-24 sm:space-y-36">
+
+        {/* ── Section Header (Clean, Editorial, Zero Cards) ── */}
+        <div className="max-w-3xl space-y-4">
+          <div className="inline-flex items-center gap-2 text-[11px] font-mono uppercase tracking-widest text-black/60 font-bold">
+            <Sparkles className="w-3.5 h-3.5 text-black" />
+            <span>How EVverse Works & How It Helps Us All</span>
           </div>
-          
-          <p className="text-sm sm:text-base text-black/60 max-w-sm leading-relaxed font-light">
-            An intelligent pipeline designed to eliminate charging anxiety, balance the electrical grid, and turn every EV journey into a seamless experience.
+          <h2 className="text-3xl sm:text-5xl md:text-6xl font-normal tracking-tight text-[#111312] leading-[1.08]">
+            Clean energy should be effortless, reliable, and shared by everyone.
+          </h2>
+          <p className="text-base sm:text-xl text-black/65 font-light leading-relaxed pt-2">
+            Here is how EVverse transforms public charging from a guessing game into a reliable community utility that protects our electrical grid and powers our local economy.
           </p>
         </div>
 
-        {/* ── Main Layout: Abstract Kinetic Timeline Dial + Pure Typography Steps ── */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-start">
-          
-          {/* ── LEFT COLUMN: Abstract Orbital Kinetic Dial (Sticky on Desktop) ── */}
-          <div className="lg:col-span-5 lg:sticky lg:top-28 z-20 flex flex-col items-center select-none py-4">
-            
-            <div className="relative w-64 h-64 sm:w-72 sm:h-72 md:w-80 md:h-80 flex items-center justify-center">
-              
-              {/* Outer Ambient Glow Aura */}
+        {/* ── Zigzag Stages Layout (Text Left / Zone Right, then Zone Left / Text Right) ── */}
+        <div className="space-y-32 sm:space-y-44">
+          {STAGES.map((stage, index) => {
+            const isEven = index % 2 === 0;
+            const isStageActive = activeStage === index;
+            const Icon = stage.icon;
+
+            // Compute dynamic kinetic values based on scroll
+            const localProgress = Math.min(
+              Math.max((scrollProgress - index / STAGES.length) * STAGES.length, 0),
+              1
+            );
+            const rotationDeg = (index + 1) * 90 + scrollProgress * 180 * (isEven ? 1 : -1);
+            const zigzagOffset = (localProgress - 0.5) * (isEven ? 24 : -24);
+
+            return (
               <div
-                className="absolute inset-0 rounded-full transition-all duration-700 pointer-events-none"
-                style={{
-                  background: `radial-gradient(circle at center, rgba(17,19,18,0.06) 0%, rgba(200,243,105,${0.1 + scrollProgress * 0.15}) 60%, transparent 80%)`,
-                  transform: `scale(${pulseScale})`,
-                }}
-              />
-
-              {/* Kinetic Orbital Ring 1: Continuous SVG Dashed Orbit */}
-              <svg
-                className="absolute inset-0 w-full h-full pointer-events-none transition-transform duration-200 ease-out"
-                viewBox="0 0 200 200"
-                style={{ transform: `rotate(${rotationAngle}deg)` }}
+                key={stage.number}
+                className={`relative flex flex-col md:flex-row items-center gap-12 lg:gap-20 transition-all duration-700 ease-out ${
+                  isEven ? 'md:flex-row' : 'md:flex-row-reverse'
+                } ${isStageActive ? 'opacity-100' : 'opacity-40 hover:opacity-75'}`}
               >
-                <circle
-                  cx="100"
-                  cy="100"
-                  r="88"
-                  fill="none"
-                  stroke="#111312"
-                  strokeWidth="1"
-                  strokeDasharray="4 8"
-                  strokeOpacity="0.25"
-                />
-                {/* Orbital Waypoint Node 1 */}
-                <circle cx="100" cy="12" r="3.5" fill="#111312" />
-                <circle cx="100" cy="12" r="7" fill="none" stroke="#111312" strokeWidth="0.8" strokeOpacity="0.3" />
+                {/* ── COLUMN A: Clear, Powerful Community Narrative (No Cards) ── */}
+                <div className="w-full md:w-1/2 space-y-6">
+                  
+                  {/* Stage Number & Badge */}
+                  <div className="flex items-center gap-4">
+                    <span className="text-4xl sm:text-6xl font-mono font-light tracking-tighter text-[#111312]">
+                      {stage.number}
+                    </span>
+                    <div className="h-6 w-px bg-black/15" />
+                    <span className="text-[11px] font-mono uppercase tracking-widest font-bold text-black/70">
+                      {stage.badge}
+                    </span>
+                  </div>
 
-                {/* Orbital Waypoint Node 2 (Opposite) */}
-                <circle cx="100" cy="188" r="2.5" fill="#111312" fillOpacity="0.6" />
-              </svg>
+                  {/* Clear Headline */}
+                  <h3 className="text-2xl sm:text-3xl lg:text-4xl font-normal tracking-tight text-[#111312] leading-snug">
+                    {stage.title}
+                  </h3>
 
-              {/* Kinetic Orbital Ring 2: Counter-Rotating Ring */}
-              <svg
-                className="absolute inset-0 w-full h-full pointer-events-none transition-transform duration-300 ease-out"
-                viewBox="0 0 200 200"
-                style={{ transform: `rotate(${-rotationAngle * 0.6}deg)` }}
-              >
-                <circle
-                  cx="100"
-                  cy="100"
-                  r="66"
-                  fill="none"
-                  stroke="#111312"
-                  strokeWidth="1.2"
-                  strokeDasharray="2 12"
-                  strokeOpacity="0.35"
-                />
-                <circle cx="166" cy="100" r="3" fill="#111312" />
-              </svg>
+                  {/* Part 1: How It Works */}
+                  <div className="space-y-1.5 pt-1">
+                    <span className="text-[10px] font-mono uppercase tracking-widest text-black/45 font-bold block">
+                      How EVverse Works
+                    </span>
+                    <p className="text-sm sm:text-base text-black/75 leading-relaxed font-light">
+                      {stage.howItWorks}
+                    </p>
+                  </div>
 
-              {/* Progress Arc Track */}
-              <svg className="absolute inset-0 w-full h-full pointer-events-none -rotate-90" viewBox="0 0 200 200">
-                <circle
-                  cx="100"
-                  cy="100"
-                  r="78"
-                  fill="none"
-                  stroke="#111312"
-                  strokeWidth="2.5"
-                  strokeOpacity="0.08"
-                />
-                <circle
-                  cx="100"
-                  cy="100"
-                  r="78"
-                  fill="none"
-                  stroke="#111312"
-                  strokeWidth="2.5"
-                  strokeDasharray={2 * Math.PI * 78}
-                  strokeDashoffset={2 * Math.PI * 78 * (1 - scrollProgress)}
-                  strokeLinecap="round"
-                  className="transition-all duration-150 ease-out"
-                />
-              </svg>
+                  {/* Part 2: Community Benefit */}
+                  <div className="space-y-1.5 pt-1">
+                    <span className="text-[10px] font-mono uppercase tracking-widest text-[#16A34A] font-bold block">
+                      Benefit to the Entire Community
+                    </span>
+                    <p className="text-sm sm:text-base text-[#111312] leading-relaxed font-normal">
+                      {stage.communityBenefit}
+                    </p>
+                  </div>
 
-              {/* Central Core Display */}
-              <div className="relative z-10 flex flex-col items-center justify-center text-center p-6 rounded-full bg-white/70 backdrop-blur-md border border-white/80 shadow-[0_15px_35px_rgba(0,0,0,0.06)] w-36 h-36 sm:w-40 sm:h-40">
-                <span className="text-[10px] font-mono uppercase tracking-widest text-black/45 font-bold">
-                  PHASE
-                </span>
-                <span className="text-3xl sm:text-4xl font-mono font-bold tracking-tight text-[#111312] my-0.5">
-                  {TIMELINE_STEPS[activeStep].number}
-                </span>
-                <span className="text-[10px] font-mono text-black/55 uppercase tracking-wider">
-                  {progressPercent}% COMPLETE
-                </span>
-              </div>
-            </div>
+                  {/* Impact Highlight */}
+                  <div className="pt-2 flex items-center gap-2.5 text-xs sm:text-sm font-semibold text-black/85">
+                    <ArrowRight className="w-4 h-4 text-black shrink-0" />
+                    <span>{stage.impactMetric}</span>
+                  </div>
 
-            {/* Micro Metadata Indicator Below Dial */}
-            <div className="mt-6 flex flex-col items-center text-center space-y-1">
-              <span className="text-[11px] font-mono font-bold tracking-widest text-[#111312] uppercase">
-                {TIMELINE_STEPS[activeStep].coordinates}
-              </span>
-              <p className="text-xs text-black/50 font-light max-w-[220px]">
-                Scroll continuously to step through the system lifecycle
-              </p>
-            </div>
+                </div>
 
-            {/* Quick Interactive Phase Selectors (Minimal Horizontal Dots) */}
-            <div className="flex items-center gap-2.5 mt-5">
-              {TIMELINE_STEPS.map((step, idx) => (
-                <button
-                  key={step.number}
-                  type="button"
-                  onClick={() => scrollToStep(idx)}
-                  className={`transition-all duration-300 rounded-full flex items-center justify-center ${
-                    activeStep === idx
-                      ? 'w-7 h-2 bg-[#111312]'
-                      : 'w-2 h-2 bg-black/20 hover:bg-black/40'
-                  }`}
-                  aria-label={`Jump to stage ${step.number}`}
-                />
-              ))}
-            </div>
+                {/* ── COLUMN B: Abstract Kinetic Zone Visual (Zigzags & Moves with Scroll) ── */}
+                <div className="w-full md:w-1/2 flex items-center justify-center select-none py-6">
+                  <div
+                    className="relative w-72 h-72 sm:w-80 sm:h-80 lg:w-96 lg:h-96 flex items-center justify-center transition-transform duration-300 ease-out"
+                    style={{
+                      transform: `translateX(${zigzagOffset}px) scale(${isStageActive ? 1.03 : 0.96})`,
+                    }}
+                  >
+                    {/* Ambient Glow Aura */}
+                    <div
+                      className="absolute inset-0 rounded-full transition-all duration-700 pointer-events-none"
+                      style={{
+                        background: isStageActive
+                          ? 'radial-gradient(circle at center, rgba(200,243,105,0.25) 0%, rgba(17,19,18,0.04) 65%, transparent 80%)'
+                          : 'radial-gradient(circle at center, rgba(17,19,18,0.03) 0%, transparent 70%)',
+                      }}
+                    />
 
-          </div>
+                    {/* Concentric Kinetic SVG Orbit 1 */}
+                    <svg
+                      className="absolute inset-0 w-full h-full pointer-events-none transition-transform duration-300 ease-out"
+                      viewBox="0 0 240 240"
+                      style={{ transform: `rotate(${rotationDeg}deg)` }}
+                    >
+                      <circle
+                        cx="120"
+                        cy="120"
+                        r="105"
+                        fill="none"
+                        stroke="#111312"
+                        strokeWidth="1.2"
+                        strokeDasharray="4 10"
+                        strokeOpacity={isStageActive ? '0.35' : '0.15'}
+                      />
+                      {/* Orbital Satellite Node */}
+                      <circle cx="120" cy="15" r="4.5" fill="#111312" />
+                      <circle cx="120" cy="15" r="9" fill="none" stroke="#111312" strokeWidth="1" strokeOpacity="0.25" />
+                      {/* Opposite Satellite Node */}
+                      <circle cx="120" cy="225" r="3" fill="#111312" fillOpacity="0.6" />
+                    </svg>
 
-          {/* ── RIGHT COLUMN: Editorial Fluid Step Narrative (No Cards, Pure Flow) ── */}
-          <div className="lg:col-span-7 space-y-24 sm:space-y-32 py-6">
-            {TIMELINE_STEPS.map((step, index) => {
-              const isActive = activeStep === index;
-              return (
-                <div
-                  key={step.number}
-                  data-timeline-step={index}
-                  className={`group relative transition-all duration-500 ease-out ${
-                    isActive ? 'opacity-100 translate-x-0' : 'opacity-40 hover:opacity-75 translate-x-1 sm:translate-x-2'
-                  }`}
-                >
-                  {/* Subtle Abstract Left Accent Pulse (Not a generic ruler line) */}
-                  <div className="flex items-start gap-6 sm:gap-8">
-                    
-                    {/* Big Abstract Stage Number */}
-                    <div className="shrink-0 select-none">
-                      <span
-                        className={`text-4xl sm:text-6xl md:text-7xl font-mono font-light tracking-tighter transition-colors duration-300 ${
-                          isActive ? 'text-[#111312] font-semibold' : 'text-black/20'
-                        }`}
-                      >
-                        {step.number}
+                    {/* Concentric Kinetic SVG Orbit 2 (Opposite Spin) */}
+                    <svg
+                      className="absolute inset-0 w-full h-full pointer-events-none transition-transform duration-500 ease-out"
+                      viewBox="0 0 240 240"
+                      style={{ transform: `rotate(${-rotationDeg * 0.75}deg)` }}
+                    >
+                      <circle
+                        cx="120"
+                        cy="120"
+                        r="80"
+                        fill="none"
+                        stroke="#111312"
+                        strokeWidth="1.2"
+                        strokeDasharray="2 12"
+                        strokeOpacity={isStageActive ? '0.45' : '0.2'}
+                      />
+                      <circle cx="200" cy="120" r="3.5" fill="#111312" />
+                    </svg>
+
+                    {/* Dynamic Active Progress Ring */}
+                    <svg className="absolute inset-0 w-full h-full pointer-events-none -rotate-90" viewBox="0 0 240 240">
+                      <circle
+                        cx="120"
+                        cy="120"
+                        r="92"
+                        fill="none"
+                        stroke="#111312"
+                        strokeWidth="2"
+                        strokeOpacity="0.08"
+                      />
+                      <circle
+                        cx="120"
+                        cy="120"
+                        r="92"
+                        fill="none"
+                        stroke="#111312"
+                        strokeWidth="2.5"
+                        strokeDasharray={2 * Math.PI * 92}
+                        strokeDashoffset={2 * Math.PI * 92 * (1 - (index + 1) / STAGES.length)}
+                        strokeLinecap="round"
+                        className="transition-all duration-700 ease-out"
+                      />
+                    </svg>
+
+                    {/* Central Interactive Zone Core */}
+                    <div className="relative z-10 flex flex-col items-center justify-center text-center p-6 rounded-full bg-white/80 backdrop-blur-md border border-white/90 shadow-[0_20px_45px_rgba(0,0,0,0.08)] w-40 h-40 sm:w-44 sm:h-44 group-hover:scale-105 transition-transform">
+                      <div className="w-7 h-7 rounded-full bg-[#111312] text-[#C8F369] flex items-center justify-center mb-1.5 shadow-xs">
+                        <Icon className="w-3.5 h-3.5" />
+                      </div>
+                      <span className="text-[10px] font-mono uppercase tracking-widest text-black/50 font-bold">
+                        {stage.zoneCode.split(' // ')[0]}
+                      </span>
+                      <span className="text-2xl sm:text-3xl font-mono font-bold tracking-tight text-[#111312] leading-none my-1">
+                        {stage.number}
+                      </span>
+                      <span className="text-[9px] font-mono uppercase tracking-wider text-black/60 font-semibold">
+                        {stage.zoneCode.split(' // ')[1]}
                       </span>
                     </div>
 
-                    {/* Step Content */}
-                    <div className="space-y-3.5 flex-1 pt-1 sm:pt-2">
-                      
-                      {/* Abstract Tag & Sub-badge */}
-                      <div className="flex items-center gap-2.5">
-                        <span
-                          className={`text-[11px] font-mono font-bold tracking-widest uppercase transition-colors duration-300 ${
-                            isActive ? 'text-black' : 'text-black/40'
-                          }`}
-                        >
-                          {step.tag}
-                        </span>
-                        <span className="w-1.5 h-1.5 rounded-full bg-black/30" />
-                        <span className="text-[10px] font-mono text-black/45 tracking-wider">
-                          STAGE {index + 1} OF 4
-                        </span>
-                      </div>
-
-                      {/* Main Step Headline */}
-                      <h3
-                        className={`text-2xl sm:text-3xl md:text-4xl font-normal tracking-tight leading-snug transition-colors duration-300 ${
-                          isActive ? 'text-[#111312]' : 'text-black/50'
-                        }`}
-                      >
-                        {step.title}
-                      </h3>
-
-                      {/* Clear, Human, Jargon-Free Explanation */}
-                      <p className="text-base sm:text-lg text-black/70 leading-relaxed font-light max-w-xl">
-                        {step.description}
-                      </p>
-
-                      {/* Detail Highlight Line */}
-                      <div className="pt-2 flex items-center gap-2 text-xs sm:text-sm font-medium text-black/80">
-                        <ArrowRight className="w-3.5 h-3.5 text-black shrink-0" />
-                        <span>{step.highlight}</span>
-                      </div>
-
-                    </div>
                   </div>
                 </div>
-              );
-            })}
-          </div>
 
+              </div>
+            );
+          })}
         </div>
 
       </div>
