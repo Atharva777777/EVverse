@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import Image from 'next/image';
 import { ArrowRight, Sparkles, CheckCircle2, ShieldCheck, Zap, Users } from 'lucide-react';
+import { InteractiveChargingCableHandle } from './InteractiveChargingCableHandle';
 
 interface StageData {
   number: string;
@@ -280,49 +280,13 @@ export function AbstractEditorialTimeline() {
                   }
             }
           >
-            <div className="relative w-52 h-52 lg:w-56 lg:h-56 flex items-center justify-center select-none pointer-events-auto group">
-              
-              {/* Cyan Energy Halo Bloom behind the connector nozzle */}
-              <div
-                className="absolute w-36 h-36 rounded-full pointer-events-none -top-2 -left-2 transition-all duration-300 animate-pulse"
-                style={{
-                  background: 'radial-gradient(circle at center, rgba(0, 229, 255, 0.4) 0%, rgba(200, 243, 105, 0.15) 50%, transparent 75%)',
-                  filter: 'blur(16px)',
-                }}
+            <div className="pointer-events-auto">
+              <InteractiveChargingCableHandle
+                stageNumber={currentStageData.zoneTag}
+                stageName={currentStageData.zoneSub}
+                scrollProgress={scrollProgress}
+                isEvenStage={activeStage % 2 === 0}
               />
-
-              {/* The Hyperrealistic Cable Connector Render */}
-              <div
-                className="relative w-full h-full drop-shadow-[0_20px_35px_rgba(0,0,0,0.22)]"
-                style={{
-                  mixBlendMode: 'multiply',
-                  maskImage: 'radial-gradient(circle at 50% 50%, black 72%, transparent 98%)',
-                  WebkitMaskImage: 'radial-gradient(circle at 50% 50%, black 72%, transparent 98%)',
-                }}
-              >
-                <Image
-                  src="/images/charging-cable-handle.jpg"
-                  alt="Hyperrealistic EV Fast Charging Cable Connector"
-                  fill
-                  priority
-                  className="object-contain"
-                  sizes="(max-width: 1024px) 220px, 240px"
-                />
-              </div>
-
-              {/* Floating Active Telemetry Badge (Docked under the charging gun) */}
-              <div className="absolute -bottom-3 inset-x-0 flex justify-center pointer-events-none">
-                <div className="px-3 py-1 rounded-full bg-white/95 backdrop-blur-md border border-black/10 shadow-[0_8px_20px_rgba(0,0,0,0.08)] flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-[#00E5FF] animate-pulse shadow-[0_0_8px_#00E5FF]" />
-                  <span className="text-[9.5px] font-mono font-bold text-[#111312] tracking-wider uppercase">
-                    {currentStageData.zoneTag} • {currentStageData.zoneSub}
-                  </span>
-                  <span className="text-[8.5px] font-mono text-black/50 border-l border-black/10 pl-1.5">
-                    350kW DC
-                  </span>
-                </div>
-              </div>
-
             </div>
           </div>
 
