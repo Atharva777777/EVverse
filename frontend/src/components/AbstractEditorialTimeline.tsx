@@ -81,14 +81,12 @@ export function AbstractEditorialTimeline() {
     fixedTop: number;
     absTop: number;
     absLeftPct: number;
-    xOffset: number;
   }>({
     mode: 'top',
     fixedLeft: 0,
     fixedTop: 0,
-    absTop: 80,
+    absTop: 40,
     absLeftPct: 75,
-    xOffset: 0,
   });
 
   useEffect(() => {
@@ -98,14 +96,12 @@ export function AbstractEditorialTimeline() {
       if (!journeyArenaRef.current) return;
       const arenaRect = journeyArenaRef.current.getBoundingClientRect();
       const windowHeight = window.innerHeight;
-      const windowWidth = window.innerWidth;
 
-      // Target eye-level Y on viewport
-      const targetEyeY = windowHeight * 0.44;
+      // Target eye-level Y on viewport (centered vertically)
+      const targetEyeY = windowHeight * 0.45;
 
       // Calculate progress through the journey arena
-      // Starts when arena top reaches targetEyeY, ends when arena bottom reaches targetEyeY
-      const totalScrollDistance = arenaRect.height - 240;
+      const totalScrollDistance = arenaRect.height - 180;
       const currentScrollDistance = targetEyeY - arenaRect.top;
       const rawProgress = Math.min(
         Math.max(currentScrollDistance / Math.max(totalScrollDistance, 1), 0),
@@ -113,50 +109,49 @@ export function AbstractEditorialTimeline() {
       );
       setScrollProgress(rawProgress);
 
-      // Max horizontal travel from center (scales with screen width)
       const arenaWidth = arenaRect.width;
-      const maxAmplitude = Math.min(Math.max((arenaWidth / 2) * 0.52, 50), 280);
+
+      // Calculate the exact center of the opposite column (so it NEVER overlaps text)
+      // In a 2-column grid, column center is approximately 25% away from center
+      const columnCenterOffset = Math.min(Math.max(arenaWidth * 0.25, 120), 280);
 
       // Smooth cosine zigzag:
-      // at progress = 0: cos(0) = +1 -> Right
-      // at progress = 0.33: cos(pi) = -1 -> Left
-      // at progress = 0.66: cos(2pi) = +1 -> Right
-      // at progress = 1.0: cos(3pi) = -1 -> Left
-      const currentXOffset = Math.cos(rawProgress * Math.PI * 3) * maxAmplitude;
+      // at progress = 0: cos(0) = +1 -> Center of Right Column
+      // at progress = 0.33: cos(pi) = -1 -> Center of Left Column
+      // at progress = 0.66: cos(2pi) = +1 -> Center of Right Column
+      // at progress = 1.0: cos(3pi) = -1 -> Center of Left Column
+      const currentXOffset = Math.cos(rawProgress * Math.PI * 3) * columnCenterOffset;
 
       // Arena horizontal center in viewport coordinates
       const arenaCenterViewportX = arenaRect.left + arenaWidth / 2;
 
       // Determine positioning mode
       if (arenaRect.top > targetEyeY) {
-        // User is above the arena -> dock at top-right
+        // User is above arena -> dock neatly at top of right column
         setOrbPosition({
           mode: 'top',
-          fixedLeft: arenaCenterViewportX + maxAmplitude,
+          fixedLeft: arenaCenterViewportX + columnCenterOffset,
           fixedTop: targetEyeY,
-          absTop: 80,
-          absLeftPct: 50 + (maxAmplitude / arenaWidth) * 100,
-          xOffset: maxAmplitude,
+          absTop: 40,
+          absLeftPct: 75,
         });
-      } else if (arenaRect.bottom < targetEyeY + 120) {
-        // User has scrolled below the arena -> dock at bottom-left
+      } else if (arenaRect.bottom < targetEyeY + 100) {
+        // User has scrolled below arena -> dock neatly at bottom of left column
         setOrbPosition({
           mode: 'bottom',
-          fixedLeft: arenaCenterViewportX - maxAmplitude,
+          fixedLeft: arenaCenterViewportX - columnCenterOffset,
           fixedTop: targetEyeY,
-          absTop: arenaRect.height - 180,
-          absLeftPct: 50 - (maxAmplitude / arenaWidth) * 100,
-          xOffset: -maxAmplitude,
+          absTop: arenaRect.height - 140,
+          absLeftPct: 25,
         });
       } else {
-        // User is scrolling through the arena -> ACTIVE FIXED TRAVELING ORB
+        // Active fixed traveling orb
         setOrbPosition({
           mode: 'fixed',
           fixedLeft: arenaCenterViewportX + currentXOffset,
           fixedTop: targetEyeY,
           absTop: 0,
           absLeftPct: 50,
-          xOffset: currentXOffset,
         });
       }
     };
@@ -186,27 +181,26 @@ export function AbstractEditorialTimeline() {
   const CurrentIcon = currentStageData.icon;
 
   const rotationAngle = scrollProgress * 540;
-  const pulseScale = 1 + Math.sin(scrollProgress * Math.PI * 6) * 0.04;
   const progressPercent = Math.round(scrollProgress * 100);
 
   return (
     <section
       id="how-it-works"
       ref={containerRef}
-      className="relative px-6 sm:px-12 md:px-16 py-28 sm:py-36 border-t border-black/[0.05] bg-gradient-to-b from-transparent via-white/25 to-transparent"
+      className="relative px-6 sm:px-12 md:px-16 py-16 sm:py-20 border-t border-black/[0.05] bg-gradient-to-b from-transparent via-white/20 to-transparent"
     >
       <div className="max-w-6xl mx-auto">
 
-        {/* ── Section Header ── */}
-        <div className="max-w-3xl space-y-4 mb-20 sm:mb-28">
+        {/* ── Section Header (Tighter Margins, Clean Editorial Flow) ── */}
+        <div className="max-w-3xl space-y-3 mb-14 sm:mb-18">
           <div className="inline-flex items-center gap-2 text-[11px] font-mono uppercase tracking-widest text-black/60 font-bold">
             <Sparkles className="w-3.5 h-3.5 text-black" />
             <span>How EVverse Works & How It Helps Us All</span>
           </div>
-          <h2 className="text-3xl sm:text-5xl md:text-6xl font-normal tracking-tight text-[#111312] leading-[1.08]">
+          <h2 className="text-3xl sm:text-4xl md:text-5xl font-normal tracking-tight text-[#111312] leading-[1.12]">
             Clean energy should be effortless, reliable, and shared by everyone.
           </h2>
-          <p className="text-base sm:text-xl text-black/65 font-light leading-relaxed pt-2">
+          <p className="text-sm sm:text-base text-black/65 font-light leading-relaxed pt-1">
             Here is how EVverse transforms public charging from a guessing game into a reliable community utility that protects our electrical grid and powers our local economy.
           </p>
         </div>
@@ -215,26 +209,25 @@ export function AbstractEditorialTimeline() {
         <div ref={journeyArenaRef} className="relative">
 
           {/* ── ABSTRACT UNDULATING PATH GUIDE (Subtle visual spine) ── */}
-          <div className="absolute inset-0 pointer-events-none hidden md:flex items-center justify-center overflow-hidden opacity-25">
+          <div className="absolute inset-0 pointer-events-none hidden md:flex items-center justify-center overflow-hidden opacity-20">
             <svg
               className="w-full h-full"
-              viewBox="0 0 800 2200"
+              viewBox="0 0 800 1200"
               preserveAspectRatio="none"
               fill="none"
             >
               <path
-                d="M 680 180 C 680 450, 120 500, 120 800 C 120 1100, 680 1150, 680 1450 C 680 1750, 120 1800, 120 2050"
+                d="M 600 120 C 600 300, 200 320, 200 480 C 200 660, 600 680, 600 840 C 600 1020, 200 1040, 200 1150"
                 stroke="#111312"
-                strokeWidth="1.5"
-                strokeDasharray="6 12"
+                strokeWidth="1.2"
+                strokeDasharray="4 8"
               />
             </svg>
           </div>
 
-          {/* ── THE SINGLE INTERACTIVE TRAVELING ZONE BEACON ── */}
-          {/* Positioned dynamically: docked at top or bottom when out of bounds, FIXED at eye level when scrolling */}
+          {/* ── THE SINGLE COMPACT INTERACTIVE TRAVELING ZONE BEACON (Desktop Only) ── */}
           <div
-            className={`z-30 pointer-events-none transition-opacity duration-300 ${
+            className={`hidden md:block z-20 pointer-events-none transition-opacity duration-300 ${
               orbPosition.mode === 'fixed'
                 ? 'fixed'
                 : 'absolute'
@@ -244,115 +237,115 @@ export function AbstractEditorialTimeline() {
                 ? {
                     left: `${orbPosition.fixedLeft}px`,
                     top: `${orbPosition.fixedTop}px`,
-                    transform: `translate(-50%, -50%) scale(${pulseScale})`,
+                    transform: 'translate(-50%, -50%)',
                   }
                 : {
                     top: `${orbPosition.absTop}px`,
                     left: `${orbPosition.absLeftPct}%`,
-                    transform: `translate(-50%, -50%) scale(${pulseScale})`,
+                    transform: 'translate(-50%, -50%)',
                   }
             }
           >
-            <div className="relative w-64 h-64 sm:w-72 sm:h-72 lg:w-80 lg:h-80 flex items-center justify-center select-none pointer-events-auto">
+            {/* Downscaled, compact 200px orbital container (Will NOT overlap text) */}
+            <div className="relative w-48 h-48 lg:w-52 lg:h-52 flex items-center justify-center select-none pointer-events-auto">
               
-              {/* Dynamic Ambient Volt-Green & Deep Charcoal Glow */}
+              {/* Soft Ambient Glow */}
               <div
                 className="absolute inset-0 rounded-full transition-all duration-500 pointer-events-none"
                 style={{
-                  background: `radial-gradient(circle at center, rgba(200,243,105,0.32) 0%, rgba(17,19,18,0.06) 60%, transparent 80%)`,
+                  background: 'radial-gradient(circle at center, rgba(200,243,105,0.28) 0%, rgba(17,19,18,0.04) 60%, transparent 80%)',
                 }}
               />
 
               {/* Concentric Rotating Outer Kinetic Orbit */}
               <svg
                 className="absolute inset-0 w-full h-full pointer-events-none transition-transform duration-200 ease-out"
-                viewBox="0 0 240 240"
+                viewBox="0 0 200 200"
                 style={{ transform: `rotate(${rotationAngle}deg)` }}
               >
                 <circle
-                  cx="120"
-                  cy="120"
-                  r="105"
-                  fill="none"
-                  stroke="#111312"
-                  strokeWidth="1.2"
-                  strokeDasharray="4 10"
-                  strokeOpacity="0.32"
-                />
-                {/* Lead Satellite Waypoint Node */}
-                <circle cx="120" cy="15" r="4.5" fill="#111312" />
-                <circle
-                  cx="120"
-                  cy="15"
-                  r="9"
+                  cx="100"
+                  cy="100"
+                  r="88"
                   fill="none"
                   stroke="#111312"
                   strokeWidth="1"
+                  strokeDasharray="3 8"
+                  strokeOpacity="0.25"
+                />
+                {/* Lead Satellite Waypoint Node */}
+                <circle cx="100" cy="12" r="3.5" fill="#111312" />
+                <circle
+                  cx="100"
+                  cy="12"
+                  r="7"
+                  fill="none"
+                  stroke="#111312"
+                  strokeWidth="0.8"
                   strokeOpacity="0.3"
                 />
-                {/* Counter Satellite Node */}
-                <circle cx="120" cy="225" r="3" fill="#111312" fillOpacity="0.5" />
+                <circle cx="100" cy="188" r="2.5" fill="#111312" fillOpacity="0.5" />
               </svg>
 
               {/* Concentric Counter-Rotating Orbit */}
               <svg
                 className="absolute inset-0 w-full h-full pointer-events-none transition-transform duration-300 ease-out"
-                viewBox="0 0 240 240"
+                viewBox="0 0 200 200"
                 style={{ transform: `rotate(${-rotationAngle * 0.75}deg)` }}
               >
                 <circle
-                  cx="120"
-                  cy="120"
-                  r="82"
+                  cx="100"
+                  cy="100"
+                  r="70"
                   fill="none"
                   stroke="#111312"
-                  strokeWidth="1.2"
-                  strokeDasharray="2 12"
-                  strokeOpacity="0.4"
+                  strokeWidth="1"
+                  strokeDasharray="2 10"
+                  strokeOpacity="0.3"
                 />
-                <circle cx="202" cy="120" r="3.5" fill="#111312" />
+                <circle cx="170" cy="100" r="3" fill="#111312" />
               </svg>
 
               {/* Progress Arc Ring */}
-              <svg className="absolute inset-0 w-full h-full pointer-events-none -rotate-90" viewBox="0 0 240 240">
+              <svg className="absolute inset-0 w-full h-full pointer-events-none -rotate-90" viewBox="0 0 200 200">
                 <circle
-                  cx="120"
-                  cy="120"
-                  r="92"
+                  cx="100"
+                  cy="100"
+                  r="78"
                   fill="none"
                   stroke="#111312"
                   strokeWidth="2"
                   strokeOpacity="0.08"
                 />
                 <circle
-                  cx="120"
-                  cy="120"
-                  r="92"
+                  cx="100"
+                  cy="100"
+                  r="78"
                   fill="none"
                   stroke="#111312"
-                  strokeWidth="2.5"
-                  strokeDasharray={2 * Math.PI * 92}
-                  strokeDashoffset={2 * Math.PI * 92 * (1 - scrollProgress)}
+                  strokeWidth="2"
+                  strokeDasharray={2 * Math.PI * 78}
+                  strokeDashoffset={2 * Math.PI * 78 * (1 - scrollProgress)}
                   strokeLinecap="round"
                   className="transition-all duration-150 ease-out"
                 />
               </svg>
 
-              {/* Central Kinetic Telemetry Orb */}
-              <div className="relative z-10 flex flex-col items-center justify-center text-center p-6 rounded-full bg-white/90 backdrop-blur-md border border-white/95 shadow-[0_25px_50px_rgba(0,0,0,0.12)] w-40 h-40 sm:w-44 sm:h-44 transition-all duration-300">
-                <div className="w-8 h-8 rounded-full bg-[#111312] text-[#C8F369] flex items-center justify-center mb-1 shadow-xs">
-                  <CurrentIcon className="w-4 h-4" />
+              {/* Compact Central Telemetry Core (120px) */}
+              <div className="relative z-10 flex flex-col items-center justify-center text-center p-3 rounded-full bg-white/90 backdrop-blur-md border border-white/95 shadow-[0_15px_35px_rgba(0,0,0,0.08)] w-28 h-28 lg:w-32 lg:h-32 transition-all duration-300">
+                <div className="w-6 h-6 rounded-full bg-[#111312] text-[#C8F369] flex items-center justify-center mb-1 shadow-xs">
+                  <CurrentIcon className="w-3 h-3" />
                 </div>
-                <span className="text-[10px] font-mono uppercase tracking-widest text-black/55 font-bold">
+                <span className="text-[9px] font-mono uppercase tracking-widest text-black/50 font-bold">
                   {currentStageData.zoneTag}
                 </span>
-                <span className="text-2xl sm:text-3xl font-mono font-bold tracking-tight text-[#111312] leading-none my-1">
+                <span className="text-xl sm:text-2xl font-mono font-bold tracking-tight text-[#111312] leading-none my-0.5">
                   {currentStageData.number}
                 </span>
-                <span className="text-[9px] font-mono uppercase tracking-wider text-black/70 font-semibold px-2 py-0.5 rounded-full bg-black/[0.04]">
+                <span className="text-[8px] font-mono uppercase tracking-wider text-black/70 font-semibold px-2 py-0.5 rounded-full bg-black/[0.04]">
                   {currentStageData.zoneSub}
                 </span>
-                <span className="text-[8px] font-mono text-black/40 mt-1">
+                <span className="text-[7.5px] font-mono text-black/40 mt-0.5">
                   {progressPercent}% SYNCED
                 </span>
               </div>
@@ -360,71 +353,83 @@ export function AbstractEditorialTimeline() {
             </div>
           </div>
 
-          {/* ── FOUR ALTERNATING STAGES (One Left, One Right) ── */}
-          <div className="space-y-48 sm:space-y-64 pt-8 pb-20">
+          {/* ── FOUR ALTERNATING STAGES (Tighter Spacing, No Overlap) ── */}
+          <div className="space-y-20 sm:space-y-28 pt-2 pb-10">
             {STAGES.map((stage, index) => {
               const isEven = index % 2 === 0;
               const isStageActive = activeStage === index;
+              const Icon = stage.icon;
 
               return (
                 <div
                   key={stage.number}
-                  className={`grid grid-cols-1 md:grid-cols-2 gap-12 lg:gap-20 items-center transition-all duration-500 ${
-                    isStageActive ? 'opacity-100' : 'opacity-35 hover:opacity-70'
+                  className={`grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-16 items-center transition-opacity duration-400 ${
+                    isStageActive ? 'opacity-100' : 'opacity-40 hover:opacity-75'
                   }`}
                 >
                   {/* TEXT CONTENT: Placed on Left for Even stages, on Right for Odd stages */}
                   <div
-                    className={`space-y-6 ${
-                      isEven ? 'md:col-start-1 md:col-end-2' : 'md:col-start-2 md:col-end-3'
+                    className={`space-y-4 max-w-lg ${
+                      isEven ? 'md:col-start-1 md:col-end-2 md:pr-4' : 'md:col-start-2 md:col-end-3 md:pl-4'
                     }`}
                   >
                     {/* Number and Badge */}
-                    <div className="flex items-center gap-4">
-                      <span className="text-4xl sm:text-6xl font-mono font-light tracking-tighter text-[#111312]">
+                    <div className="flex items-center gap-3">
+                      <span className="text-3xl sm:text-4xl font-mono font-light tracking-tighter text-[#111312]">
                         {stage.number}
                       </span>
-                      <div className="h-6 w-px bg-black/15" />
-                      <span className="text-[11px] font-mono uppercase tracking-widest font-bold text-black/70">
+                      <div className="h-5 w-px bg-black/15" />
+                      <span className="text-[10.5px] font-mono uppercase tracking-widest font-bold text-black/70">
                         {stage.badge}
                       </span>
                     </div>
 
                     {/* Stage Headline */}
-                    <h3 className="text-2xl sm:text-3xl lg:text-4xl font-normal tracking-tight text-[#111312] leading-snug">
+                    <h3 className="text-xl sm:text-2xl lg:text-3xl font-normal tracking-tight text-[#111312] leading-snug">
                       {stage.title}
                     </h3>
 
                     {/* How It Works */}
-                    <div className="space-y-1.5 pt-1">
-                      <span className="text-[10px] font-mono uppercase tracking-widest text-black/45 font-bold block">
+                    <div className="space-y-1">
+                      <span className="text-[9.5px] font-mono uppercase tracking-widest text-black/45 font-bold block">
                         How EVverse Works
                       </span>
-                      <p className="text-sm sm:text-base text-black/75 leading-relaxed font-light">
+                      <p className="text-xs sm:text-sm text-black/75 leading-relaxed font-light">
                         {stage.howItWorks}
                       </p>
                     </div>
 
                     {/* Community Benefit */}
-                    <div className="space-y-1.5 pt-1">
-                      <span className="text-[10px] font-mono uppercase tracking-widest text-[#16A34A] font-bold block">
+                    <div className="space-y-1">
+                      <span className="text-[9.5px] font-mono uppercase tracking-widest text-[#16A34A] font-bold block">
                         Benefit to the Entire Community
                       </span>
-                      <p className="text-sm sm:text-base text-[#111312] leading-relaxed font-normal">
+                      <p className="text-xs sm:text-sm text-[#111312] leading-relaxed font-normal">
                         {stage.communityBenefit}
                       </p>
                     </div>
 
                     {/* Impact Line */}
-                    <div className="pt-2 flex items-center gap-2.5 text-xs sm:text-sm font-semibold text-black/85">
-                      <ArrowRight className="w-4 h-4 text-black shrink-0" />
+                    <div className="pt-1 flex items-center gap-2 text-xs font-semibold text-black/85">
+                      <ArrowRight className="w-3.5 h-3.5 text-black shrink-0" />
                       <span>{stage.impactMetric}</span>
                     </div>
+
+                    {/* Mobile-Only Compact Orbital Badge (Since fixed orb is on desktop) */}
+                    <div className="flex md:hidden items-center gap-2 pt-2">
+                      <div className="w-6 h-6 rounded-full bg-[#111312] text-[#C8F369] flex items-center justify-center">
+                        <Icon className="w-3 h-3" />
+                      </div>
+                      <span className="text-[10px] font-mono font-semibold text-black/60 uppercase">
+                        {stage.zoneTag} • {stage.zoneSub}
+                      </span>
+                    </div>
+
                   </div>
 
-                  {/* EMPTY OPPOSITE COLUMN (Where the single floating Zone travels through) */}
+                  {/* EMPTY OPPOSITE COLUMN (Reserved strictly for the traveling Zone) */}
                   <div
-                    className={`hidden md:block min-h-[240px] ${
+                    className={`hidden md:block min-h-[160px] ${
                       isEven ? 'md:col-start-2 md:col-end-3' : 'md:col-start-1 md:col-end-2'
                     }`}
                     aria-hidden="true"
