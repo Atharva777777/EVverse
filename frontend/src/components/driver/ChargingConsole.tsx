@@ -357,8 +357,13 @@ export function ChargingConsole({
               <div className="w-8 h-8 rounded-full bg-[#C8F369] flex items-center justify-center text-[#111312]">
                 <CheckCircle2 size={18} />
               </div>
-              <div>
-                <h4 className="text-base font-bold text-[#111312]">Session Receipt</h4>
+              <div className="flex-1">
+                <div className="flex items-center gap-1.5">
+                  <h4 className="text-base font-bold text-[#111312]">Session Receipt</h4>
+                  <span className="text-[9.5px] font-mono px-1.5 py-0.2 rounded-full bg-black/[0.04] text-black/50 border border-black/[0.06]">
+                    Simulated Session
+                  </span>
+                </div>
                 <div className="text-[10px] font-mono text-[#767D78]">
                   Invoice #{invoiceId}
                 </div>

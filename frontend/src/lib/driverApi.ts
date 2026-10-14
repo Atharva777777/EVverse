@@ -63,8 +63,7 @@ async function driverRequest<T>(
     headers["X-Driver-Token"] = token;
   }
 
-  const baseUrl = getApiBaseUrl();
-  const url = `${baseUrl}${path}`;
+  const url = `${BASE_URL}${path}`;
   let response: Response;
 
   try {

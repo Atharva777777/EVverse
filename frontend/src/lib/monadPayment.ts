@@ -196,35 +196,97 @@ export function truncateTxHash(hash: string): string {
 }
 
 /**
- * Extracts friendly human-readable messages from Web3 / EIP-1193 errors.
+ * Extracts friendly, actionable human-readable messages from Web3, RPC, and persistence errors.
  */
 export function parseWeb3Error(error: unknown): string {
-  if (!error) return "An unknown wallet error occurred.";
+  if (!error) return "An unknown wallet error occurred. Please try again.";
 
-  const err = error as { code?: number | string; message?: string };
-
-  if (err.code === 4001 || (err.message && err.message.includes("User rejected"))) {
-    return "Transaction was rejected in your wallet. No funds were debited.";
+  if (typeof error === "string") {
+    return error;
   }
 
+  const err = error as { code?: number | string; message?: string; detail?: string };
+  const rawMsg = (err.message || err.detail || "").toString();
+  const lowerMsg = rawMsg.toLowerCase();
+
+  // 1. User rejection / cancellation
+  if (
+    err.code === 4001 ||
+    lowerMsg.includes("user rejected") ||
+    lowerMsg.includes("user denied") ||
+    lowerMsg.includes("action rejected")
+  ) {
+    return "Transaction was cancelled in your wallet. No testnet MON was transferred. You can click 'Approve & Pay' again when you are ready.";
+  }
+
+  // 2. Insufficient testnet funds / gas
   if (
     err.code === -32000 ||
-    (err.message &&
-      (err.message.toLowerCase().includes("insufficient funds") ||
-        err.message.toLowerCase().includes("exceeds balance")))
+    lowerMsg.includes("insufficient funds") ||
+    lowerMsg.includes("exceeds balance") ||
+    lowerMsg.includes("insufficient balance")
   ) {
-    return "Insufficient testnet MON balance for this transaction + gas. Request testnet MON from the official faucet.";
+    return "Insufficient testnet MON balance to cover the hold deposit + gas fee. Claim free testnet tokens from the official Monad Faucet at testnet.monad.xyz.";
   }
 
-  if (err.code === 4902) {
-    return "Monad Testnet was not found in your wallet. Please approve adding the network.";
+  // 3. Request already pending in wallet extension
+  if (
+    err.code === -32002 ||
+    lowerMsg.includes("already pending") ||
+    lowerMsg.includes("resource unavailable")
+  ) {
+    return "A wallet confirmation request is already pending. Please open your wallet extension window to approve or dismiss it.";
   }
 
-  if (err.message && err.message.length < 120) {
-    return err.message;
+  // 4. Unauthorized / locked wallet
+  if (
+    err.code === 4100 ||
+    lowerMsg.includes("unauthorized") ||
+    lowerMsg.includes("locked")
+  ) {
+    return "Wallet is locked or not authorized. Please unlock your browser wallet extension and reconnect.";
   }
 
-  return "Transaction could not be completed. Check your wallet status and try again.";
+  // 5. Wrong network / unadded chain
+  if (
+    err.code === 4902 ||
+    lowerMsg.includes("unrecognized chain") ||
+    lowerMsg.includes("unknown chain") ||
+    lowerMsg.includes("switch chain")
+  ) {
+    return "Monad Testnet (Chain ID 10143) is required. Please approve adding or switching to Monad Testnet in your wallet.";
+  }
+
+  // 6. Transaction reverted on-chain
+  if (lowerMsg.includes("reverted")) {
+    return "Transaction was submitted but reverted on-chain on Monad Testnet (status 0x0). Payment could not be confirmed.";
+  }
+
+  // 7. Security verification failure (recipient/amount mismatch)
+  if (lowerMsg.includes("security verification fail") || lowerMsg.includes("recipient on-chain")) {
+    return rawMsg;
+  }
+
+  // 8. Duplicate transaction hash rejection
+  if (lowerMsg.includes("already been registered")) {
+    return "This transaction hash has already been registered in the EVverse booking ledger. Duplicate submissions are prevented.";
+  }
+
+  // 9. Timeout / RPC network error
+  if (
+    lowerMsg.includes("timed out") ||
+    lowerMsg.includes("timeout") ||
+    lowerMsg.includes("failed to fetch") ||
+    lowerMsg.includes("network error")
+  ) {
+    return "Network error or timeout communicating with Monad Testnet RPC. Please verify your internet connection and inspect the transaction status on Monad Explorer.";
+  }
+
+  if (rawMsg && rawMsg.length < 180 && !rawMsg.includes("{")) {
+    return rawMsg;
+  }
+
+  return "Transaction could not be completed. Please check your wallet connection and try again.";
 }
 
 /**

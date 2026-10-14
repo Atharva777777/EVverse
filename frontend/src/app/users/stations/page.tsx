@@ -986,7 +986,16 @@ export default function EVVerseDriverPage() {
                         Hold Deposit: <strong className="font-mono text-[#16A34A]">₹49</strong> (0.025 MON)
                       </span>
                       <span className="text-black/20 hidden xs:inline">•</span>
-                      <span className="inline-flex items-center gap-1 font-mono text-[10.5px]">
+                      <span
+                        title={
+                          driverWalletAddress
+                            ? isDriverMonadActive
+                              ? "Connected to Monad Testnet (Chain ID 10143)"
+                              : "Wrong Network: Wallet is not on Monad Testnet"
+                            : "Wallet Disconnected"
+                        }
+                        className="inline-flex items-center gap-1 font-mono text-[10.5px]"
+                      >
                         <span
                           className={`w-2 h-2 rounded-full shrink-0 ${
                             driverWalletAddress
@@ -1001,6 +1010,11 @@ export default function EVVerseDriverPage() {
                             ? truncateAddress(driverWalletAddress)
                             : "Disconnected"}
                         </span>
+                        {driverWalletAddress && !isDriverMonadActive && (
+                          <span className="text-[9px] text-[#B45309] font-sans font-bold bg-[#FEF3C7] px-1 py-0.2 rounded border border-[#FDE68A]">
+                            Wrong Net
+                          </span>
+                        )}
                       </span>
                     </div>
                   </div>

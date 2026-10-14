@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   TrendingUp,
   ArrowUpRight,
@@ -20,6 +20,7 @@ import {
   Loader2,
   Coins,
   AlertCircle,
+  RefreshCw,
 } from 'lucide-react';
 import {
   getStationOwnerBookings,
@@ -109,6 +110,7 @@ export function StationOwnerPaymentsConsole() {
   // Live on-chain bookings from SQLite persistence
   const [onChainBookings, setOnChainBookings] = useState<BookingResponseItem[]>([]);
   const [isLoadingBookings, setIsLoadingBookings] = useState<boolean>(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [copiedTxHash, setCopiedTxHash] = useState<string | null>(null);
 
   // Interactive rates
@@ -116,23 +118,48 @@ export function StationOwnerPaymentsConsole() {
   const [parkingRatePerHour, setParkingRatePerHour] = useState(50);
   const [savedSuccess, setSavedSuccess] = useState(false);
 
-  useEffect(() => {
-    let isMounted = true;
+  const fetchBookings = useCallback(() => {
+    setIsLoadingBookings(true);
+    setLoadError(null);
     getStationOwnerBookings()
       .then((res) => {
-        if (isMounted) {
+        setOnChainBookings(res.items || []);
+      })
+      .catch((err) => {
+        console.warn("[StationOwner] Failed to load on-chain bookings:", err);
+        setLoadError(
+          err?.message || "Unable to reach EVverse backend server."
+        );
+      })
+      .finally(() => {
+        setIsLoadingBookings(false);
+      });
+  }, []);
+
+  useEffect(() => {
+    let ignore = false;
+    getStationOwnerBookings()
+      .then((res) => {
+        if (!ignore) {
           setOnChainBookings(res.items || []);
         }
       })
       .catch((err) => {
-        console.warn("[StationOwner] Failed to load on-chain bookings:", err);
+        if (!ignore) {
+          console.warn("[StationOwner] Failed to load on-chain bookings:", err);
+          setLoadError(
+            err?.message || "Unable to reach EVverse backend server."
+          );
+        }
       })
       .finally(() => {
-        if (isMounted) setIsLoadingBookings(false);
+        if (!ignore) {
+          setIsLoadingBookings(false);
+        }
       });
 
     return () => {
-      isMounted = false;
+      ignore = true;
     };
   }, []);
 
@@ -179,9 +206,14 @@ export function StationOwnerPaymentsConsole() {
 
         {/* Top bar with time switcher */}
         <div className="flex items-center justify-between pb-3 border-b border-white/10">
-          <span className="text-[11px] font-medium tracking-wide uppercase text-white/50">
-            Total Revenue
-          </span>
+          <div className="flex items-center gap-2">
+            <span className="text-[11px] font-medium tracking-wide uppercase text-white/50">
+              Total Revenue
+            </span>
+            <span className="text-[9.5px] font-mono px-2 py-0.5 rounded-full bg-white/10 text-white/70 border border-white/10">
+              Simulated Telemetry
+            </span>
+          </div>
           <div className="flex items-center gap-1 bg-white/10 p-0.5 rounded-full">
             {(['today', 'week', 'month'] as const).map((range) => (
               <button
@@ -374,9 +406,21 @@ export function StationOwnerPaymentsConsole() {
               Live Monad Testnet Receipts
             </h3>
           </div>
-          <span className="text-[10px] font-mono text-[#2563EB] bg-[#EFF6FF] px-2 py-0.5 rounded-full border border-[#BFDBFE] font-semibold">
-            Chain ID 10143
-          </span>
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={fetchBookings}
+              disabled={isLoadingBookings}
+              title="Refresh on-chain receipts"
+              aria-label="Refresh on-chain receipts"
+              className="p-1 rounded-md text-[#767D78] hover:text-[#111312] hover:bg-black/[0.05] transition-colors cursor-pointer disabled:opacity-40"
+            >
+              <RefreshCw size={12} className={isLoadingBookings ? "animate-spin" : ""} />
+            </button>
+            <span className="text-[10px] font-mono text-[#2563EB] bg-[#EFF6FF] px-2 py-0.5 rounded-full border border-[#BFDBFE] font-semibold">
+              Chain ID 10143
+            </span>
+          </div>
         </div>
 
         {/* Clear Testnet vs Physical Charger Activation Distinction Notice */}
@@ -396,6 +440,20 @@ export function StationOwnerPaymentsConsole() {
           <div className="py-6 flex items-center justify-center gap-2 text-xs text-[#767D78]">
             <Loader2 className="w-4 h-4 animate-spin text-[#2563EB]" />
             <span>Syncing Monad Testnet receipts from database...</span>
+          </div>
+        ) : loadError ? (
+          <div className="p-4 bg-[#FEF2F2] rounded-xl border border-[#FECACA] text-center space-y-2">
+            <AlertCircle className="w-5 h-5 text-[#DC2626] mx-auto" />
+            <p className="text-xs font-semibold text-[#991B1B]">Unable to Load On-Chain Ledger</p>
+            <p className="text-[10.5px] text-[#7F1D1D]">{loadError}</p>
+            <button
+              type="button"
+              onClick={fetchBookings}
+              className="inline-flex items-center gap-1 px-3 py-1 bg-[#111312] text-white rounded-lg text-xs font-semibold hover:bg-[#252826] cursor-pointer"
+            >
+              <RefreshCw size={11} />
+              <span>Retry Sync</span>
+            </button>
           </div>
         ) : onChainBookings.length === 0 ? (
           <div className="p-4 bg-[#FAF9F6] rounded-xl border border-dashed border-black/[0.1] text-center space-y-1">
@@ -478,7 +536,12 @@ export function StationOwnerPaymentsConsole() {
       {/* ── Clean Recent Activity List (Mobile Ledger) ── */}
       <div className="rounded-2xl bg-white p-4 border border-black/[0.06] shadow-2xs space-y-3">
         <div className="flex items-center justify-between pb-2 border-b border-black/[0.06]">
-          <span className="text-xs font-bold text-[#111312]">Recent Sessions</span>
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-[#111312]">Recent Sessions</span>
+            <span className="text-[9.5px] font-mono px-2 py-0.5 rounded-full bg-black/[0.04] text-black/50 border border-black/[0.06]">
+              Simulated History
+            </span>
+          </div>
           {/* Quick filter pills */}
           <div className="flex items-center gap-1 bg-black/[0.04] p-0.5 rounded-full">
             {(['all', 'charging', 'parking'] as const).map((f) => (

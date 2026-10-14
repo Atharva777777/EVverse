@@ -5,69 +5,16 @@
 
 import type { OptimizeRequest, OptimizeResponse, LiveDataResponse } from "@/types/api";
 
-export const DEPLOYED_BACKEND_URL = "https://evverse-backend.onrender.com";
-export const LOCAL_BACKEND_URL = "http://localhost:8000";
+const rawBaseUrl =
+  process.env.NEXT_PUBLIC_API_URL ||
+  process.env.NEXT_PUBLIC_API_BASE_URL ||
+  "http://localhost:8000";
 
-/**
- * Resolves the backend API base URL with the following precedence:
- * 1. Explicit NEXT_PUBLIC_API_BASE_URL or NEXT_PUBLIC_API_URL if set and not a placeholder.
- * 2. In browser environments:
- *    - Defaults to LOCAL_BACKEND_URL when accessed from localhost / 127.0.0.1.
- *    - Defaults to DEPLOYED_BACKEND_URL when deployed to a remote domain (e.g. Vercel).
- * 3. In server / build environments:
- *    - Defaults to DEPLOYED_BACKEND_URL in production (e.g. VERCEL build).
- *    - Otherwise defaults to LOCAL_BACKEND_URL.
- */
+export const BASE_URL = rawBaseUrl.trim().replace(/\/+$/, "");
+
 export function getApiBaseUrl(): string {
-  const envUrl = (
-    process.env.NEXT_PUBLIC_API_BASE_URL ||
-    process.env.NEXT_PUBLIC_API_URL ||
-    ""
-  ).trim();
-
-  // If a valid custom URL is provided that is not a placeholder:
-  if (
-    envUrl &&
-    !envUrl.includes("YOUR-BACKEND-URL") &&
-    !envUrl.includes("your-backend-url")
-  ) {
-    // If running in browser on a production/remote domain (not localhost),
-    // prevent localhost URLs from being used (which get blocked by Mixed Content or fail):
-    if (typeof window !== "undefined") {
-      const isLocalHost =
-        window.location.hostname === "localhost" ||
-        window.location.hostname === "127.0.0.1" ||
-        window.location.hostname.endsWith(".local");
-
-      if (!isLocalHost && (envUrl.includes("localhost") || envUrl.includes("127.0.0.1"))) {
-        return DEPLOYED_BACKEND_URL;
-      }
-    }
-    return envUrl.replace(/\/+$/, "");
-  }
-
-  // Client-side host detection fallback
-  if (typeof window !== "undefined") {
-    const isLocalHost =
-      window.location.hostname === "localhost" ||
-      window.location.hostname === "127.0.0.1" ||
-      window.location.hostname.endsWith(".local");
-
-    if (!isLocalHost) {
-      return DEPLOYED_BACKEND_URL;
-    }
-    return LOCAL_BACKEND_URL;
-  }
-
-  // Server-side / build-time detection
-  if (process.env.NODE_ENV === "production") {
-    return DEPLOYED_BACKEND_URL;
-  }
-
-  return LOCAL_BACKEND_URL;
+  return BASE_URL;
 }
-
-export const BASE_URL = getApiBaseUrl();
 
 // ── Sanitise error messages ───────────────────────────────────────────────────
 // Backend 500 detail strings can contain raw binary data from Qiskit/C
@@ -106,8 +53,7 @@ export class ApiClientError extends Error {
 }
 
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const baseUrl = getApiBaseUrl();
-  const url = `${baseUrl}${path}`;
+  const url = `${BASE_URL}${path}`;
   let response: Response;
 
   try {
@@ -118,11 +64,9 @@ async function request<T>(path: string, options?: RequestInit): Promise<T> {
   } catch (err) {
     // Network error — server not reachable
     console.error("[QuantEV] Network error calling", url, err);
-    const isLocal = baseUrl.includes("localhost") || baseUrl.includes("127.0.0.1");
-    const message = isLocal
-      ? "Cannot reach the QuantEV backend. Make sure the server is running on port 8000."
-      : "Cannot reach the EVverse backend. The server may be waking up or temporarily unreachable. Please try again in a few moments.";
-    throw new ApiClientError(message);
+    throw new ApiClientError(
+      "Cannot reach the QuantEV backend. Make sure the server is running on port 8000.",
+    );
   }
 
   if (!response.ok) {

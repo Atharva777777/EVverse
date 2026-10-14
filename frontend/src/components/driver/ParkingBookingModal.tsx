@@ -85,6 +85,8 @@ export interface ParkingBooking {
   explorerUrl?: string;
   gasUsed?: string;
   onChainVerified?: boolean;
+  backendSynced?: boolean;
+  backendNotice?: string | null;
 }
 
 interface ParkingBookingModalProps {
@@ -158,6 +160,8 @@ function createConfirmedBookingRecord({
   explorerUrl,
   gasUsed,
   onChainVerified,
+  backendSynced,
+  backendNotice,
 }: {
   station: LiveStation;
   bayNumber: string;
@@ -176,6 +180,8 @@ function createConfirmedBookingRecord({
   explorerUrl?: string;
   gasUsed?: string;
   onChainVerified?: boolean;
+  backendSynced?: boolean;
+  backendNotice?: string | null;
 }): ParkingBooking {
   const now = Date.now();
   const expiryTimestamp = now + durationMinutes * 60 * 1000;
@@ -215,6 +221,8 @@ function createConfirmedBookingRecord({
     explorerUrl,
     gasUsed,
     onChainVerified,
+    backendSynced,
+    backendNotice,
   };
 }
 
@@ -574,6 +582,8 @@ export function ParkingBookingModal({
 
       // 2. Persist booking on backend with independent RPC verification & SQLite persistence
       let persistedId = `RES-${Math.floor(1000 + Math.random() * 9000)}-EV`;
+      let isBackendSynced = false;
+      let backendNotice: string | null = null;
       try {
         const backendBooking = await createDriverBooking({
           station_id: station.station_id,
@@ -596,9 +606,21 @@ export function ParkingBookingModal({
         });
         if (backendBooking && backendBooking.id) {
           persistedId = backendBooking.id;
+          isBackendSynced = true;
         }
       } catch (backendErr: unknown) {
+        const backendErrMsg = (backendErr as Error)?.message || "";
+        // If backend explicitly rejected due to duplicate hash or verification failure, stop and report
+        if (
+          backendErrMsg.includes("already been registered") ||
+          backendErrMsg.includes("Security verification failed") ||
+          backendErrMsg.includes("reverted")
+        ) {
+          throw new Error(backendErrMsg);
+        }
+        // If backend server is unreachable (offline), on-chain payment succeeded but sync is pending
         console.warn("[EVverse] Backend booking persistence notice:", backendErr);
+        backendNotice = "Station ledger sync pending (offline). On-chain payment verified.";
       }
 
       setTxStatus("success");
@@ -626,6 +648,8 @@ export function ParkingBookingModal({
         explorerUrl: receipt.explorerUrl,
         gasUsed: receipt.gasUsed,
         onChainVerified: true,
+        backendSynced: isBackendSynced,
+        backendNotice: backendNotice,
       });
       booking.id = persistedId;
 
@@ -1400,10 +1424,31 @@ export function ParkingBookingModal({
                 {/* Error Notification */}
                 {txError && (
                   <div className="p-3 bg-[#FEF2F2] border border-[#FECACA] rounded-xl text-[11px] text-[#B91C1C] space-y-2">
-                    <div className="flex items-start gap-1.5">
-                      <AlertCircle size={14} className="shrink-0 mt-0.5" />
-                      <div className="leading-snug">{txError}</div>
+                    <div className="flex items-start justify-between gap-1.5">
+                      <div className="flex items-start gap-1.5 flex-1 min-w-0">
+                        <AlertCircle size={14} className="shrink-0 mt-0.5" />
+                        <div className="leading-snug">{txError}</div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setTxError(null)}
+                        aria-label="Dismiss error notice"
+                        className="text-[#991B1B] hover:text-[#7F1D1D] p-0.5 rounded cursor-pointer shrink-0"
+                      >
+                        <X size={12} />
+                      </button>
                     </div>
+                    {txError.toLowerCase().includes("faucet") && (
+                      <a
+                        href="https://testnet.monad.xyz"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 font-bold text-[#B91C1C] underline hover:text-[#7F1D1D] text-[10.5px] pt-0.5"
+                      >
+                        <span>Open Official Monad Testnet Faucet</span>
+                        <ExternalLink size={10} />
+                      </a>
+                    )}
                     {txHash && (
                       <div className="pt-2 border-t border-[#FECACA]/60 flex items-center justify-between text-[10.5px]">
                         <span className="font-mono text-[#7F1D1D]">
@@ -1592,11 +1637,18 @@ export function ParkingBookingModal({
                     </span>
                   </div>
                   <div className="flex justify-between text-[#525854]">
-                    <span>Settlement Mode:</span>
-                    <span className="font-mono font-semibold text-[#2563EB]">
-                      {activeBooking.txHash
-                        ? "Settled on Monad Testnet"
-                        : "Sandbox Staged"}
+                    <span>Settlement Status:</span>
+                    <span className="font-mono font-semibold text-[#15803D] flex items-center gap-1">
+                      <CheckCircle2 size={12} className="text-[#16A34A]" />
+                      <span>{activeBooking.txHash ? "Settled on Monad Testnet" : "Sandbox Staged"}</span>
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-[#525854]">
+                    <span>Station Registry:</span>
+                    <span className="font-mono font-medium text-[11px] text-[#111312]">
+                      {activeBooking.backendSynced
+                        ? "Confirmed in Station Ledger ✓"
+                        : activeBooking.backendNotice || "Local Session"}
                     </span>
                   </div>
                   <div className="flex justify-between text-[#525854]">
