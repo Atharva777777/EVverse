@@ -5,14 +5,14 @@ import Link from 'next/link';
 import Image from 'next/image';
 import {
   Zap,
-  ArrowRight,
+  ArrowUpRight,
   ChevronDown,
-  ArrowUpRight
+  BookOpen
 } from 'lucide-react';
 
 export function EditorialLandingPage() {
   const [scrollY, setScrollY] = useState(0);
-  const [activeRole, setActiveRole] = useState<'user' | 'owner' | 'investor'>('user');
+  const [hoveredCard, setHoveredCard] = useState<number | null>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
   useEffect(() => {
@@ -34,11 +34,11 @@ export function EditorialLandingPage() {
     setMousePos({ x: 0, y: 0 });
   };
 
-  // Subtle 3D parallax tilt
+  // 3D parallax tilt values
   const tiltX = mousePos.y * -6;
   const tiltY = mousePos.x * 10;
-  const heroParallax = Math.min(scrollY * 0.2, 100);
-  const textParallax = Math.min(scrollY * 0.1, 60);
+  const heroParallax = Math.min(scrollY * 0.18, 90);
+  const textParallax = Math.min(scrollY * 0.1, 50);
 
   return (
     <div className="min-h-screen bg-[#D8DCDE] p-2 sm:p-4 md:p-6 text-[#111312] selection:bg-[#111312] selection:text-white font-sans antialiased">
@@ -51,29 +51,38 @@ export function EditorialLandingPage() {
             <div className="w-8 h-8 rounded-xl bg-[#111312] flex items-center justify-center text-white shadow-xs group-hover:scale-105 transition-transform">
               <Zap className="w-4 h-4 fill-white text-white" />
             </div>
-            <span className="text-base font-bold tracking-tight text-[#111312]">
-              QuantEV
-            </span>
+            <div className="flex flex-col">
+              <span className="text-base font-bold tracking-tight text-[#111312] leading-none">
+                QuantEV
+              </span>
+              <span className="text-[10px] tracking-widest uppercase text-black/40 font-mono mt-0.5">
+                EVverse
+              </span>
+            </div>
           </Link>
 
-          {/* Minimal Text Links */}
-          <nav className="flex items-center gap-6 sm:gap-10 text-xs tracking-wider uppercase font-medium text-black/60">
+          {/* Minimal Links */}
+          <nav className="flex items-center gap-6 sm:gap-8 text-xs tracking-wider uppercase font-medium text-black/60">
             <a href="#hero" className="hover:text-black transition-colors">
               Home
             </a>
             <a href="#roles" className="hover:text-black transition-colors">
-              Platform
-            </a>
-            <a href="#intelligence" className="hover:text-black transition-colors hidden sm:inline">
-              AI Engine
+              Roles
             </a>
             <Link
-              href="/users/stations"
+              href="/users/knowledge"
+              className="flex items-center gap-1.5 hover:text-black transition-colors"
+            >
+              <BookOpen size={13} className="text-[#16A34A]" />
+              <span className="hidden sm:inline">Guide</span>
+            </Link>
+            <a
+              href="#roles"
               className="text-black font-bold flex items-center gap-1 hover:opacity-80 transition-opacity"
             >
-              <span>Launch</span>
+              <span>Explore</span>
               <ArrowUpRight className="w-3.5 h-3.5" />
-            </Link>
+            </a>
           </nav>
         </header>
 
@@ -84,7 +93,7 @@ export function EditorialLandingPage() {
           id="hero"
           onMouseMove={handleMouseMove}
           onMouseLeave={handleMouseLeave}
-          className="relative min-h-[740px] sm:min-h-[820px] md:min-h-[880px] w-full flex items-center justify-center px-6 sm:px-12 py-10 overflow-hidden select-none"
+          className="relative min-h-[720px] sm:min-h-[800px] md:min-h-[860px] w-full flex items-center justify-center px-6 sm:px-12 py-10 overflow-hidden select-none"
         >
           {/* ── GIANT TYPOGRAPHY: CHARGING ── */}
           <div
@@ -115,7 +124,7 @@ export function EditorialLandingPage() {
             </p>
           </div>
 
-          {/* ── Central 3D Monolith Render ── */}
+          {/* ── Central 3D Monolith Render with Mouse Parallax Tilt ── */}
           <div
             className="relative z-10 w-full max-w-[380px] sm:max-w-[460px] md:max-w-[500px] flex items-center justify-center transition-transform duration-200 ease-out"
             style={{
@@ -163,7 +172,7 @@ export function EditorialLandingPage() {
             <div className="w-32 h-9 bg-[#D8DCDE] rounded-t-full flex items-center justify-center shadow-inner">
               <a
                 href="#roles"
-                aria-label="Scroll to user roles"
+                aria-label="Scroll down to roles"
                 className="pointer-events-auto p-1.5 text-black/40 hover:text-black transition-colors"
               >
                 <ChevronDown className="w-4 h-4 animate-bounce" />
@@ -173,197 +182,166 @@ export function EditorialLandingPage() {
         </section>
 
         {/* ══════════════════════════════════════════════════════════════ */}
-        {/* ── SECTION 2: THE 3 USERS (NO BOXES, PURE EDITORIAL) ───────── */}
+        {/* ── SECTION 2: THE 3 USERS (EXACTLY AS IT WAS BEFORE) ───────── */}
         {/* ══════════════════════════════════════════════════════════════ */}
         <section
           id="roles"
-          className="relative px-6 sm:px-12 md:px-16 py-20 sm:py-24 border-t border-black/[0.05]"
+          className="relative px-6 sm:px-10 md:px-14 py-20 border-t border-black/[0.05] bg-white/40 backdrop-blur-md"
         >
-          <div className="max-w-5xl mx-auto space-y-16">
-            {/* Editorial Heading */}
-            <div className="space-y-3">
-              <span className="text-xs font-mono uppercase tracking-widest text-black/40 block">
-                The Ecosystem
-              </span>
-              <h2 className="text-3xl sm:text-5xl font-bold tracking-tight text-[#111312]">
-                Tailored for Three Stakeholders
+          <div className="max-w-6xl mx-auto space-y-12">
+            {/* Title Section */}
+            <div className="text-center max-w-2xl mx-auto space-y-2">
+              <h2 className="text-3xl sm:text-4xl font-semibold tracking-tight text-[#1d1d1f]">
+                Welcome to EVverse
               </h2>
+              <p className="text-sm sm:text-base text-[#86868b] leading-relaxed">
+                Select your role to access tailored infrastructure planning, deployment insights, and optimization tools.
+              </p>
             </div>
 
-            {/* 3 User Sections — Clean, Horizontal, Box-Free Typography */}
-            <div className="space-y-16 divide-y divide-black/[0.08]">
+            {/* Three Distinct Role Cards (Preserved Exactly as Before) */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-7 w-full">
               
-              {/* 01: EV USER */}
-              <div className="pt-12 first:pt-0 flex flex-col md:flex-row md:items-start justify-between gap-8 group">
-                <div className="space-y-2 md:w-1/3">
-                  <span className="text-xs font-mono font-bold text-emerald-600 block">
-                    01 / DRIVER
-                  </span>
-                  <h3 className="text-2xl sm:text-3xl font-bold text-[#111312] group-hover:translate-x-1 transition-transform">
-                    EV User
-                  </h3>
-                  <p className="text-xs text-black/50 font-mono">
-                    Zero wait time • Pre-booked spots
-                  </p>
-                </div>
+              {/* ── CARD 1: INVESTOR ─────────────────────────── */}
+              <Link href="/investor" className="no-underline group">
+                <div
+                  onMouseEnter={() => setHoveredCard(1)}
+                  onMouseLeave={() => setHoveredCard(null)}
+                  className={`h-full flex flex-col bg-white rounded-[22px] overflow-hidden border border-black/[0.08] transition-all duration-300 cursor-pointer ${
+                    hoveredCard === 1
+                      ? 'shadow-[0_20px_40px_rgba(0,0,0,0.1)] -translate-y-1.5'
+                      : 'shadow-[0_2px_10px_rgba(0,0,0,0.03)]'
+                  }`}
+                >
+                  <div className="relative w-full h-[220px] overflow-hidden bg-[#f5f5f7]">
+                    <Image
+                      src="/images/card-investor.png"
+                      alt="EV Charging Infrastructure Investment Modeling"
+                      fill
+                      sizes="(max-width: 768px) 100vw, 360px"
+                      className={`object-cover transition-transform duration-500 ${
+                        hoveredCard === 1 ? 'scale-105' : 'scale-100'
+                      }`}
+                    />
+                  </div>
 
-                <div className="md:w-1/2 space-y-4">
-                  <p className="text-sm sm:text-base text-black/70 leading-relaxed font-normal">
-                    Pair your electric vehicle in seconds. QuantEV matches your plug type, monitors real-world battery range, plans long-distance highway routes, and lets you reserve a charging spot ahead of time with a 4-digit PIN so a stall is always open for you.
-                  </p>
-                  <div>
-                    <Link
-                      href="/users/stations"
-                      className="inline-flex items-center gap-2 text-xs font-bold text-[#111312] hover:text-black group/link pt-1"
-                    >
-                      <span>Enter as EV User</span>
-                      <ArrowRight className="w-3.5 h-3.5 group-hover/link:translate-x-1 transition-transform" />
-                    </Link>
+                  <div className="p-6 flex flex-col flex-1">
+                    <div className="flex items-center justify-between mb-2.5">
+                      <h3 className="text-[22px] font-semibold text-[#1d1d1f] tracking-tight">
+                        Investor
+                      </h3>
+                      <ArrowUpRight
+                        size={18}
+                        className={`transition-all duration-200 ${
+                          hoveredCard === 1
+                            ? 'text-[#0071e3] translate-x-0.5 -translate-y-0.5'
+                            : 'text-[#86868b]'
+                        }`}
+                      />
+                    </div>
+                    <p className="text-sm leading-relaxed text-[#6e6e73] m-0">
+                      Identify high-demand areas, plan strategic deployments, and analyze ROI scenarios.
+                    </p>
                   </div>
                 </div>
-              </div>
+              </Link>
 
-              {/* 02: CHARGING STATION OWNER */}
-              <div className="pt-12 flex flex-col md:flex-row md:items-start justify-between gap-8 group">
-                <div className="space-y-2 md:w-1/3">
-                  <span className="text-xs font-mono font-bold text-[#111312] block">
-                    02 / OPERATOR
-                  </span>
-                  <h3 className="text-2xl sm:text-3xl font-bold text-[#111312] group-hover:translate-x-1 transition-transform">
-                    Station Owner
-                  </h3>
-                  <p className="text-xs text-black/50 font-mono">
-                    Mobile command • Daily revenue
-                  </p>
-                </div>
+              {/* ── CARD 2: EV STATION OWNERS ───────────────────────── */}
+              <Link href="/station-owners" className="no-underline group">
+                <div
+                  onMouseEnter={() => setHoveredCard(2)}
+                  onMouseLeave={() => setHoveredCard(null)}
+                  className={`h-full flex flex-col bg-white rounded-[22px] overflow-hidden border border-black/[0.08] transition-all duration-300 cursor-pointer ${
+                    hoveredCard === 2
+                      ? 'shadow-[0_20px_40px_rgba(0,0,0,0.1)] -translate-y-1.5'
+                      : 'shadow-[0_2px_10px_rgba(0,0,0,0.03)]'
+                  }`}
+                >
+                  <div className="relative w-full h-[220px] overflow-hidden bg-[#f5f5f7]">
+                    <Image
+                      src="/images/card-station-owners.png"
+                      alt="Real-World Commercial EV Charging Plaza"
+                      fill
+                      sizes="(max-width: 768px) 100vw, 360px"
+                      className={`object-cover transition-transform duration-500 ${
+                        hoveredCard === 2 ? 'scale-105' : 'scale-100'
+                      }`}
+                    />
+                  </div>
 
-                <div className="md:w-1/2 space-y-4">
-                  <p className="text-sm sm:text-base text-black/70 leading-relaxed font-normal">
-                    Your entire station business in your pocket. Track real-time earnings from charging energy and parking spot holds, adjust electricity rates on the fly, see live power draw across installed chargers, and view regional demand signals to know when to add more bays.
-                  </p>
-                  <div>
-                    <Link
-                      href="/station-owners"
-                      className="inline-flex items-center gap-2 text-xs font-bold text-[#111312] hover:text-black group/link pt-1"
-                    >
-                      <span>Enter as Station Owner</span>
-                      <ArrowRight className="w-3.5 h-3.5 group-hover/link:translate-x-1 transition-transform" />
-                    </Link>
+                  <div className="p-6 flex flex-col flex-1">
+                    <div className="flex items-center justify-between mb-2.5">
+                      <h3 className="text-[22px] font-semibold text-[#1d1d1f] tracking-tight">
+                        EV Station Owners
+                      </h3>
+                      <ArrowUpRight
+                        size={18}
+                        className={`transition-all duration-200 ${
+                          hoveredCard === 2
+                            ? 'text-[#0071e3] translate-x-0.5 -translate-y-0.5'
+                            : 'text-[#86868b]'
+                        }`}
+                      />
+                    </div>
+                    <p className="text-sm leading-relaxed text-[#6e6e73] m-0">
+                      Manage charging hubs, monitor charger utilization, optimize tariffs, and track grid power uptime.
+                    </p>
                   </div>
                 </div>
-              </div>
+              </Link>
 
-              {/* 03: INVESTOR */}
-              <div className="pt-12 flex flex-col md:flex-row md:items-start justify-between gap-8 group">
-                <div className="space-y-2 md:w-1/3">
-                  <span className="text-xs font-mono font-bold text-sky-600 block">
-                    03 / CAPITAL
-                  </span>
-                  <h3 className="text-2xl sm:text-3xl font-bold text-[#111312] group-hover:translate-x-1 transition-transform">
-                    Investor
-                  </h3>
-                  <p className="text-xs text-black/50 font-mono">
-                    AI placement • CapEx payback
-                  </p>
-                </div>
+              {/* ── CARD 3: EV USERS ─────────────────────────── */}
+              <Link href="/users/stations" className="no-underline group">
+                <div
+                  onMouseEnter={() => setHoveredCard(3)}
+                  onMouseLeave={() => setHoveredCard(null)}
+                  className={`h-full flex flex-col bg-white rounded-[22px] overflow-hidden border border-black/[0.08] transition-all duration-300 cursor-pointer ${
+                    hoveredCard === 3
+                      ? 'shadow-[0_20px_40px_rgba(0,0,0,0.1)] -translate-y-1.5'
+                      : 'shadow-[0_2px_10px_rgba(0,0,0,0.03)]'
+                  }`}
+                >
+                  <div className="relative w-full h-[220px] overflow-hidden bg-[#f5f5f7]">
+                    <Image
+                      src="/images/card-users.png"
+                      alt="EV Users Vehicle and Fast Charger"
+                      fill
+                      sizes="(max-width: 768px) 100vw, 360px"
+                      className={`object-cover transition-transform duration-500 ${
+                        hoveredCard === 3 ? 'scale-105' : 'scale-100'
+                      }`}
+                    />
+                  </div>
 
-                <div className="md:w-1/2 space-y-4">
-                  <p className="text-sm sm:text-base text-black/70 leading-relaxed font-normal">
-                    High-conviction site selection backed by evolutionary AI. Eliminate charger cannibalization and grid transformer overloads, model CapEx payback curves in seconds, and identify high-demand charging deserts with heavy electric vehicle traffic before competitors.
-                  </p>
-                  <div>
-                    <Link
-                      href="/investor"
-                      className="inline-flex items-center gap-2 text-xs font-bold text-[#111312] hover:text-black group/link pt-1"
-                    >
-                      <span>Enter as Investor</span>
-                      <ArrowRight className="w-3.5 h-3.5 group-hover/link:translate-x-1 transition-transform" />
-                    </Link>
+                  <div className="p-6 flex flex-col flex-1">
+                    <div className="flex items-center justify-between mb-2.5">
+                      <h3 className="text-[22px] font-semibold text-[#1d1d1f] tracking-tight">
+                        EV Users
+                      </h3>
+                      <ArrowUpRight
+                        size={18}
+                        className={`transition-all duration-200 ${
+                          hoveredCard === 3
+                            ? 'text-[#0071e3] translate-x-0.5 -translate-y-0.5'
+                            : 'text-[#86868b]'
+                        }`}
+                      />
+                    </div>
+                    <p className="text-sm leading-relaxed text-[#6e6e73] m-0">
+                      Discover charging stations and plan seamless journeys across the network.
+                    </p>
                   </div>
                 </div>
-              </div>
+              </Link>
 
             </div>
           </div>
         </section>
 
-        {/* ══════════════════════════════════════════════════════════════ */}
-        {/* ── SECTION 3: THE AI MODELS (CLEAN TYPOGRAPHIC HIGHLIGHTS) ──── */}
-        {/* ══════════════════════════════════════════════════════════════ */}
-        <section
-          id="intelligence"
-          className="relative px-6 sm:px-12 md:px-16 py-20 border-t border-black/[0.06] bg-[#111312] text-white"
-        >
-          <div className="max-w-5xl mx-auto space-y-12">
-            <div className="space-y-3">
-              <span className="text-xs font-mono uppercase tracking-widest text-[#C8F369] block font-bold">
-                Artificial Intelligence
-              </span>
-              <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-white">
-                Powered by Dual Optimization Models
-              </h2>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-10 pt-2">
-              <div className="space-y-3">
-                <span className="text-xs font-mono text-emerald-400 font-bold block">
-                  DEMAND FORECASTING
-                </span>
-                <h3 className="text-xl font-bold text-white">Random Forest Model</h3>
-                <p className="text-xs sm:text-sm text-white/60 leading-relaxed font-normal">
-                  Learns city-wide commute patterns and vehicle movement to anticipate charging demand before queues form, preventing local transformer overloads.
-                </p>
-              </div>
-
-              <div className="space-y-3">
-                <span className="text-xs font-mono text-[#C8F369] font-bold block">
-                  NETWORK PLACEMENT
-                </span>
-                <h3 className="text-xl font-bold text-white">Genetic Algorithm</h3>
-                <p className="text-xs sm:text-sm text-white/60 leading-relaxed font-normal">
-                  Bio-inspired evolutionary solver that tests millions of candidate location combinations, mutating network layouts to discover the ideal placements with zero station overlap.
-                </p>
-              </div>
-            </div>
-
-            {/* Clean Key Numbers — No Heavy Boxes, Just Minimal Dividers */}
-            <div className="pt-8 border-t border-white/10 grid grid-cols-3 gap-6 text-center">
-              <div>
-                <span className="text-2xl sm:text-4xl font-bold text-[#C8F369] font-mono block">
-                  2.4s
-                </span>
-                <span className="text-[11px] text-white/50 mt-1 block">
-                  Combinatorial Solve Speed
-                </span>
-              </div>
-              <div>
-                <span className="text-2xl sm:text-4xl font-bold text-white font-mono block">
-                  +38%
-                </span>
-                <span className="text-[11px] text-white/50 mt-1 block">
-                  Corridor Demand Captured
-                </span>
-              </div>
-              <div>
-                <span className="text-2xl sm:text-4xl font-bold text-emerald-400 font-mono block">
-                  99.8%
-                </span>
-                <span className="text-[11px] text-white/50 mt-1 block">
-                  Grid Feeder Stability
-                </span>
-              </div>
-            </div>
-          </div>
-        </section>
-
-        {/* ── Footer ── */}
-        <footer className="px-6 sm:px-12 py-10 border-t border-black/[0.06] flex flex-col sm:flex-row items-center justify-between text-xs text-black/50 font-mono gap-4">
-          <span>QuantEV Mobility System © 2026</span>
-          <div className="flex items-center gap-6">
-            <Link href="/users/stations" className="hover:text-black">EV User</Link>
-            <Link href="/station-owners" className="hover:text-black">Station Owner</Link>
-            <Link href="/investor" className="hover:text-black">Investor</Link>
-          </div>
+        {/* ── FOOTER ─────────────────────────────────────────── */}
+        <footer className="border-t border-black/[0.06] px-6 sm:px-12 py-6 flex flex-col sm:flex-row justify-between items-center text-xs text-[#86868b] gap-2">
+          <div>EVverse</div>
+          <div>Decision Intelligence for EV Infrastructure</div>
         </footer>
 
       </div>
