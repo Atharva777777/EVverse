@@ -22,11 +22,9 @@ import type {
   ChargingSessionInput,
   ChargingSessionItem,
 } from "@/types/api";
+import { getApiBaseUrl } from "./api";
 
-const BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ||
-  process.env.NEXT_PUBLIC_API_BASE_URL ||
-  "http://localhost:8000";
+const BASE_URL = getApiBaseUrl();
 const SESSION_TOKEN_KEY = "evverse_driver_session_token";
 
 // ── Token Storage Helpers ─────────────────────────────────────────────────────
@@ -65,7 +63,8 @@ async function driverRequest<T>(
     headers["X-Driver-Token"] = token;
   }
 
-  const url = `${BASE_URL}${path}`;
+  const baseUrl = getApiBaseUrl();
+  const url = `${baseUrl}${path}`;
   let response: Response;
 
   try {
