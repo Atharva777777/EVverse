@@ -1,8 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import {
+  getDeployedStations,
+  subscribeToEcosystem,
+  type DeployedCommunityStation,
+} from '@/lib/ecosystemStore';
 import {
   Zap,
   Building2,
@@ -107,7 +112,42 @@ const OWNED_STATIONS: OwnedStation[] = [
 type OwnerTab = 'hub' | 'earnings' | 'demand' | 'reviews';
 
 export function StationOwnerMobileApp() {
-  const [selectedStationId, setSelectedStationId] = useState<string>(OWNED_STATIONS[0].id);
+  const [deployedStations, setDeployedStations] = useState<DeployedCommunityStation[]>([]);
+
+  useEffect(() => {
+    setDeployedStations(getDeployedStations());
+    const unsub = subscribeToEcosystem(() => {
+      setDeployedStations(getDeployedStations());
+    });
+    return unsub;
+  }, []);
+
+  const allStations = useMemo<OwnedStation[]>(() => {
+    const dynamicStations: OwnedStation[] = deployedStations.map((d) => ({
+      id: d.id,
+      name: d.name,
+      location: `${d.area}, ${d.city}`,
+      address: d.address,
+      status: d.status,
+      totalBays: d.bays,
+      activeBays: Math.max(1, Math.floor(d.bays * 0.75)),
+      peakKw: d.powerKw,
+      todayRevenue: `₹${(d.bays * 2800).toLocaleString("en-IN")}`,
+      monthlyRevenue: `₹${(d.bays * 84000).toLocaleString("en-IN")}`,
+      parkingFeeToday: `₹${(d.bays * 350).toLocaleString("en-IN")}`,
+      totalSessionsToday: d.bays * 6,
+      kwhDeliveredToday: `${d.bays * 95} kWh`,
+      rating: d.rating,
+      reviewCount: 32,
+      ratePerKwh: d.ratePerKwh,
+      parkingFeePerHour: d.parkingFeePerHour,
+    }));
+    return [...dynamicStations, ...OWNED_STATIONS];
+  }, [deployedStations]);
+
+  const [selectedStationId, setSelectedStationId] = useState<string>(
+    OWNED_STATIONS[0].id
+  );
   const [showStationPicker, setShowStationPicker] = useState<boolean>(false);
   const [activeTab, setActiveTab] = useState<OwnerTab>('hub');
   const [isFramed, setIsFramed] = useState<boolean>(true);
@@ -117,7 +157,7 @@ export function StationOwnerMobileApp() {
   const [nightIllumination, setNightIllumination] = useState<boolean>(true);
   const [parkingReservationsActive, setParkingReservationsActive] = useState<boolean>(true);
 
-  const currentStation = OWNED_STATIONS.find((s) => s.id === selectedStationId) || OWNED_STATIONS[0];
+  const currentStation = allStations.find((s) => s.id === selectedStationId) || allStations[0];
 
   return (
     <div
@@ -135,23 +175,23 @@ export function StationOwnerMobileApp() {
         <div className="flex items-center gap-3">
           <Link
             href="/"
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold text-white/90 hover:text-white bg-white/10 hover:bg-white/15 transition-all border border-white/10"
-            title="Return to EVverse Landing Page"
+            className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-white/90 hover:text-white bg-white/10 hover:bg-white/15 transition-all border border-white/10"
+            title="Return to Home Page"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
-            <span>Back to EVverse</span>
+            <span>Back</span>
           </Link>
           <div className="flex items-center gap-2 group">
-            <div className="relative w-5 h-5 shrink-0">
+            <div className="relative w-10 h-10 shrink-0">
               <Image
                 src="/images/evverse-logo.png"
                 alt="EVverse Logo"
-                width={20}
-                height={20}
-                className="object-contain"
+                width={40}
+                height={40}
+                priority
+                className="object-contain w-full h-full"
               />
             </div>
-            <span className="font-bold text-white tracking-tight">EVverse Station Owner</span>
           </div>
           <span className="text-[11px] bg-white/10 text-white/80 px-2 py-0.5 rounded-md font-mono">
             Port 3001
@@ -335,7 +375,7 @@ export function StationOwnerMobileApp() {
                         Select Station
                       </div>
                       <div className="space-y-1">
-                        {OWNED_STATIONS.map((st) => {
+                        {allStations.map((st) => {
                           const isSel = st.id === currentStation.id;
                           return (
                             <button

@@ -191,10 +191,10 @@ export function AbstractEditorialTimeline() {
     >
       {/* ── Seamless Energy Handover Receiver Node from Hero Bottom Notch ── */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 z-20 pointer-events-none flex flex-col items-center">
-        <div className="w-3.5 h-3.5 rounded-full bg-[#111312] border-2 border-[#C8F369] shadow-[0_0_14px_rgba(200,243,105,0.7)] flex items-center justify-center">
-          <div className="w-1 h-1 rounded-full bg-[#C8F369] animate-ping" />
+        <div className="w-3.5 h-3.5 rounded-full bg-[#111312] border-2 border-[#14F1D9] shadow-[0_0_14px_rgba(20,241,217,0.75)] flex items-center justify-center">
+          <div className="w-1 h-1 rounded-full bg-[#14F1D9] animate-ping" />
         </div>
-        <div className="w-px h-8 bg-gradient-to-b from-[#C8F369] to-black/20" />
+        <div className="w-px h-8 bg-gradient-to-b from-[#14F1D9] to-black/20" />
       </div>
 
       <div className="max-w-6xl mx-auto">
@@ -226,10 +226,10 @@ export function AbstractEditorialTimeline() {
             >
               <defs>
                 <linearGradient id="energySpline" x1="0%" y1="0%" x2="0%" y2="100%">
-                  <stop offset="0%" stopColor="#C8F369" stopOpacity="0.8" />
+                  <stop offset="0%" stopColor="#14F1D9" stopOpacity="0.85" />
                   <stop offset="25%" stopColor="#111312" stopOpacity="0.6" />
                   <stop offset="75%" stopColor="#111312" stopOpacity="0.6" />
-                  <stop offset="100%" stopColor="#C8F369" stopOpacity="0.4" />
+                  <stop offset="100%" stopColor="#14F1D9" stopOpacity="0.45" />
                 </linearGradient>
               </defs>
               <path
@@ -269,7 +269,7 @@ export function AbstractEditorialTimeline() {
               <div
                 className="absolute inset-0 rounded-full transition-all duration-500 pointer-events-none"
                 style={{
-                  background: 'radial-gradient(circle at center, rgba(200,243,105,0.28) 0%, rgba(17,19,18,0.04) 60%, transparent 80%)',
+                  background: 'radial-gradient(circle at center, rgba(20,241,217,0.3) 0%, rgba(17,19,18,0.04) 60%, transparent 80%)',
                 }}
               />
 
@@ -349,7 +349,7 @@ export function AbstractEditorialTimeline() {
 
               {/* Compact Central Telemetry Core (120px) */}
               <div className="relative z-10 flex flex-col items-center justify-center text-center p-3 rounded-full bg-white/90 backdrop-blur-md border border-white/95 shadow-[0_15px_35px_rgba(0,0,0,0.08)] w-28 h-28 lg:w-32 lg:h-32 transition-all duration-300">
-                <div className="w-6 h-6 rounded-full bg-[#111312] text-[#C8F369] flex items-center justify-center mb-1 shadow-xs">
+                <div className="w-6 h-6 rounded-full bg-[#111312] text-[#14F1D9] flex items-center justify-center mb-1 shadow-xs">
                   <CurrentIcon className="w-3 h-3" />
                 </div>
                 <span className="text-[9px] font-mono uppercase tracking-widest text-black/50 font-bold">
@@ -417,7 +417,7 @@ export function AbstractEditorialTimeline() {
 
                     {/* Community Benefit */}
                     <div className="space-y-1">
-                      <span className="text-[9.5px] font-mono uppercase tracking-widest text-[#16A34A] font-bold block">
+                      <span className="text-[9.5px] font-mono uppercase tracking-widest text-[#0D9488] font-bold block">
                         Benefit to the Entire Community
                       </span>
                       <p className="text-xs sm:text-sm text-[#111312] leading-relaxed font-normal">
@@ -433,7 +433,7 @@ export function AbstractEditorialTimeline() {
 
                     {/* Mobile-Only Compact Orbital Badge (Since fixed orb is on desktop) */}
                     <div className="flex md:hidden items-center gap-2 pt-2">
-                      <div className="w-6 h-6 rounded-full bg-[#111312] text-[#C8F369] flex items-center justify-center">
+                      <div className="w-6 h-6 rounded-full bg-[#111312] text-[#14F1D9] flex items-center justify-center">
                         <Icon className="w-3 h-3" />
                       </div>
                       <span className="text-[10px] font-mono font-semibold text-black/60 uppercase">

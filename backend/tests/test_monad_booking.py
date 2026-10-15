@@ -11,6 +11,8 @@ from backend.api.routers.driver import (
     mask_rpc_url,
     get_rpc_status,
 )
+from backend.api.main import app
+from fastapi.testclient import TestClient
 from backend.data import driver_db
 
 
@@ -430,4 +432,39 @@ async def test_verify_monad_payment_alchemy_http_403_failover_to_public():
             assert verified["is_alchemy"] is False
             assert verified["fallback_used"] is True
             assert verified["block_number"] == 1792
+
+
+def test_driver_booking_upi_rail():
+    """Verify that instant UPI / Bharat QR bookings succeed and return correct settlement note."""
+    client = TestClient(app)
+    sess_res = client.post("/api/v1/driver/session", json={"name": "Pune Community Host Driver"})
+    assert sess_res.status_code == 200
+    token = sess_res.json()["token"]
+
+    booking_payload = {
+        "station_id": "STN-PUNE-SWAR-02",
+        "station_name": "Swargate Junction Community Charger",
+        "bay_number": "Bay 02",
+        "connector_type": "Type 2 (AC)",
+        "duration_minutes": 45,
+        "total_cost": "₹49",
+        "mon_amount": "₹49 UPI",
+        "payment_method": "sandbox_upi",
+        "tx_hash": "UPI-994821049381"
+    }
+
+    res = client.post(
+        "/api/v1/driver/bookings",
+        json=booking_payload,
+        headers={"X-Driver-Token": token}
+    )
+    assert res.status_code == 201
+    data = res.json()
+    assert data["payment_status"] == "confirmed"
+    assert data["payment_method"] == "sandbox_upi"
+    assert data["total_cost"] == "₹49"
+    assert data["explorer_url"] is None
+    assert "Bharat QR" in data["settlement_note"]
+    assert len(data["pin_code"]) == 4
+
 

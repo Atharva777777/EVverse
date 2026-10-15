@@ -56,29 +56,16 @@ export function EditorialLandingPage() {
         
         {/* ── Top Header: Minimal Glyph & Navigation ── */}
         <header className="relative z-40 w-full px-6 sm:px-12 py-6 sm:py-8 flex items-center justify-between border-b border-black/[0.04]">
-          <Link href="/" className="flex items-center gap-3 group">
-            <div className="relative w-9 h-9 sm:w-10 sm:h-10 flex-shrink-0 group-hover:scale-105 transition-transform">
+          <Link href="/" className="flex items-center group" aria-label="Home">
+            <div className="relative w-14 h-14 sm:w-16 sm:h-16 flex-shrink-0 group-hover:scale-105 transition-transform">
               <Image
                 src="/images/evverse-logo.png"
                 alt="EVverse Logo"
-                width={40}
-                height={40}
+                width={64}
+                height={64}
                 priority
                 className="object-contain w-full h-full"
               />
-            </div>
-            <div className="flex flex-col">
-              <div className="flex items-baseline">
-                <span className="text-xl font-extrabold tracking-tight text-[#111312]">
-                  EV
-                </span>
-                <span className="text-xl font-serif italic text-black/80 ml-0.5">
-                  verse
-                </span>
-              </div>
-              <span className="text-[9px] tracking-widest uppercase text-black/45 font-mono leading-none">
-                Decision Intelligence
-              </span>
             </div>
           </Link>
 
@@ -95,14 +82,14 @@ export function EditorialLandingPage() {
             </a>
             <Link
               href="/users/knowledge"
-              className="flex items-center gap-1.5 hover:text-black transition-colors"
+              className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#14F1D9]/15 border border-[#14F1D9]/30 text-black hover:text-[#0D9488] transition-colors"
             >
-              <BookOpen size={13} className="text-[#16A34A]" />
-              <span className="hidden sm:inline">Guide</span>
+              <BookOpen size={12} className="text-[#0D9488]" />
+              <span className="text-[11px] font-bold">Guide</span>
             </Link>
             <a
               href="#roles"
-              className="text-black font-bold flex items-center gap-1 hover:opacity-80 transition-opacity"
+              className="text-black font-bold flex items-center gap-1 hover:text-[#0D9488] transition-colors"
             >
               <span>Explore</span>
               <ArrowUpRight className="w-3.5 h-3.5" />
@@ -153,36 +140,39 @@ export function EditorialLandingPage() {
 
           {/* ── Central 3D Monolith Render with Mouse Parallax Tilt & Scroll Handover ── */}
           <div
-            className="relative z-10 w-full max-w-[380px] sm:max-w-[460px] md:max-w-[500px] flex items-center justify-center transition-all duration-200 ease-out"
+            className="relative z-10 w-full max-w-[460px] sm:max-w-[560px] md:max-w-[640px] lg:max-w-[700px] flex items-center justify-center transition-all duration-200 ease-out -mt-4 sm:-mt-8 md:-mt-12"
             style={{
-              transform: `translateY(${heroParallax}px) perspective(1000px) rotateX(${tiltX}deg) rotateY(${tiltY}deg) scale(${monolithScale})`,
+              transform: `translateY(${heroParallax - 52}px) perspective(1000px) rotateX(${tiltX}deg) rotateY(${tiltY}deg) scale(${monolithScale})`,
               opacity: monolithOpacity,
             }}
           >
-            <div className="relative w-full aspect-[4/5] drop-shadow-[0_45px_70px_rgba(0,0,0,0.18)]">
+            {/* Ambient Fresh Bright Teal Glow matching station lighting */}
+            <div className="absolute inset-0 bg-gradient-to-t from-[#14F1D9]/30 via-teal-400/20 to-transparent rounded-full blur-3xl pointer-events-none -bottom-10" />
+
+            <div className="relative w-full aspect-[1284/1225] drop-shadow-[0_40px_70px_rgba(0,0,0,0.22)]">
               <Image
-                src="/images/editorial-monolith-hero.jpg"
-                alt="EVverse 3D Charger Monolith"
+                src="/images/hero-unknown-station.png"
+                alt="EVverse E-Flow Smart Fast Charging Station"
                 fill
                 priority
                 className="object-contain"
-                sizes="(max-width: 768px) 100vw, 500px"
+                sizes="(max-width: 768px) 100vw, (max-width: 1200px) 700px, 800px"
               />
             </div>
 
             {/* Spec Pointer Dot and Leader Line (Fades smoothly on scroll) */}
             <div
-              className="absolute -left-6 sm:left-0 bottom-16 z-20 hidden sm:flex items-center gap-3 transition-opacity duration-200"
+              className="absolute -left-4 sm:left-2 bottom-12 z-20 hidden sm:flex items-center gap-3 transition-opacity duration-200"
               style={{ opacity: leaderLineOpacity }}
             >
               <div className="relative flex items-center">
-                <div className="w-2.5 h-2.5 rounded-full bg-[#111312]" />
+                <div className="w-2.5 h-2.5 rounded-full bg-[#111312] ring-2 ring-[#14F1D9] shadow-[0_0_10px_rgba(20,241,217,0.7)]" />
                 <div className="w-14 h-px bg-black/30" />
               </div>
-              <div className="text-left">
-                <p className="text-xs font-bold text-[#111312]">SK Signet Ultra</p>
-                <p className="text-[10px] text-black/50 font-mono">
-                  Output 350kW DC • Dual Outlet
+              <div className="text-left bg-white/70 backdrop-blur-md px-2.5 py-1.5 rounded-xl border border-white/80 shadow-xs">
+                <p className="text-xs font-bold text-[#111312]">E-Flow Smart Kiosk</p>
+                <p className="text-[10px] text-black/60 font-mono">
+                  48-180kW DC Fast Charge • 0kg CO₂
                 </p>
               </div>
             </div>
@@ -206,8 +196,8 @@ export function EditorialLandingPage() {
             className="absolute left-1/2 -translate-x-1/2 bottom-0 w-px pointer-events-none transition-all duration-150 ease-out z-20"
             style={{
               height: `${energyBeamHeight}px`,
-              background: 'linear-gradient(to bottom, rgba(200,243,105,0.95), rgba(17,19,18,0.4), transparent)',
-              boxShadow: '0 0 14px rgba(200,243,105,0.6)',
+              background: 'linear-gradient(to bottom, rgba(20,241,217,0.95), rgba(17,19,18,0.4), transparent)',
+              boxShadow: '0 0 16px rgba(20,241,217,0.75)',
             }}
           />
 
@@ -218,7 +208,7 @@ export function EditorialLandingPage() {
               <div
                 className="absolute inset-0 pointer-events-none transition-opacity duration-300"
                 style={{
-                  background: 'radial-gradient(circle at 50% 100%, rgba(200,243,105,0.45) 0%, transparent 70%)',
+                  background: 'radial-gradient(circle at 50% 100%, rgba(20,241,217,0.5) 0%, transparent 70%)',
                   opacity: Math.min(scrollY / 100, 1),
                 }}
               />
@@ -399,9 +389,26 @@ export function EditorialLandingPage() {
         </section>
 
         {/* ── FOOTER ─────────────────────────────────────────── */}
-        <footer className="border-t border-black/[0.06] px-6 sm:px-12 py-6 flex flex-col sm:flex-row justify-between items-center text-xs text-[#86868b] gap-2">
-          <div>EVverse</div>
-          <div>Decision Intelligence for EV Infrastructure</div>
+        <footer className="border-t border-black/[0.06] px-6 sm:px-12 py-6 flex flex-col sm:flex-row justify-between items-center text-xs text-[#86868b] gap-3">
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-[#111312]">EVverse</span>
+            <span>•</span>
+            <span>Decision Intelligence for EV Infrastructure</span>
+          </div>
+          <div className="flex items-center gap-4 text-[11px]">
+            <Link href="/users/knowledge" className="hover:text-black transition-colors font-semibold text-[#0D9488]">
+              Driver & Host Guide
+            </Link>
+            <Link href="/users/stations" className="hover:text-black transition-colors">
+              Driver Cockpit
+            </Link>
+            <Link href="/station-owners" className="hover:text-black transition-colors">
+              Station Owners
+            </Link>
+            <Link href="/investor" className="hover:text-black transition-colors">
+              Investors
+            </Link>
+          </div>
         </footer>
 
       </div>

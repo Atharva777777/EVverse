@@ -55,6 +55,7 @@ import {
   syncAutoCompatibility,
 } from "@/lib/vehicleStorage";
 import { initDriverSession, recordChargingSession } from "@/lib/driverApi";
+import { getDeployedStations, subscribeToEcosystem } from "@/lib/ecosystemStore";
 
 import {
   Search,
@@ -129,12 +130,12 @@ export default function EVVerseDriverPage() {
   const effectiveViewMode = isMobileScreen ? "fluid" : viewMode;
 
   // Selected city & live data
-  const [selectedCity, setSelectedCity] = useState("Mumbai");
-  const cityConfig = CITY_CONFIGS[selectedCity] || CITY_CONFIGS["Mumbai"];
+  const [selectedCity, setSelectedCity] = useState("Pune");
+  const cityConfig = CITY_CONFIGS[selectedCity] || CITY_CONFIGS["Pune"];
 
   // Active Vehicle & Fleet State (persisted with backend/storage adapter)
   const [vehicles, setVehicles] = useState<EVVehicle[]>(VERIFIED_GARAGE_VEHICLES);
-  const [activeVehicleId, setActiveVehicleId] = useState<string>("porsche-taycan-gts");
+  const [activeVehicleId, setActiveVehicleId] = useState<string>("tata-nexon-ev");
   const [autoCompatibility, setAutoCompatibility] = useState<boolean>(true);
   const [isGarageLoading, setIsGarageLoading] = useState<boolean>(true);
   const [garageErrorMessage, setGarageErrorMessage] = useState<string | null>(null);
@@ -277,14 +278,45 @@ export default function EVVerseDriverPage() {
     };
   }, []);
 
-  // Compute stations with real Haversine distance from driver
+  const [deployedStations, setDeployedStations] = useState(getDeployedStations());
+
+  useEffect(() => {
+    setDeployedStations(getDeployedStations());
+    const unsub = subscribeToEcosystem(() => {
+      setDeployedStations(getDeployedStations());
+    });
+    return unsub;
+  }, []);
+
+  // Compute stations with real Haversine distance from driver (merging investor-deployed community hubs)
   const stationsWithDistance = useMemo<DriverStation[]>(() => {
-    if (!liveData?.stations) return [];
-    return liveData.stations.map((st) => ({
+    const baseline = (liveData?.stations || []).map((st) => ({
       ...st,
       distanceKm: haversineKm(userLocation[0], userLocation[1], st.latitude, st.longitude),
     }));
-  }, [liveData, userLocation]);
+
+    const communityInCity: DriverStation[] = deployedStations
+      .filter((d) => d.city.toLowerCase() === selectedCity.toLowerCase())
+      .map((d) => ({
+        station_id: d.id,
+        name: d.name,
+        latitude: d.lat,
+        longitude: d.lng,
+        address: d.address,
+        operator: d.operator,
+        status: "Operational (Community Hub)",
+        is_operational: true,
+        power_kw: d.powerKw,
+        bays: d.bays,
+        connector_types: d.connectorTypes,
+        usage_cost: `₹${d.ratePerKwh}/kWh`,
+        source: "open_charge_map" as const,
+        last_status_update: new Date().toISOString(),
+        distanceKm: haversineKm(userLocation[0], userLocation[1], d.lat, d.lng),
+      }));
+
+    return [...communityInCity, ...baseline];
+  }, [liveData, userLocation, deployedStations, selectedCity]);
 
   // Filter stations based on driver inputs
   const filteredStations = useMemo(() => {
@@ -906,29 +938,26 @@ export default function EVVerseDriverPage() {
               <div className="flex items-center gap-2 min-w-0">
                 <Link
                   href="/"
-                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#111312] bg-white border border-[rgba(17,19,18,0.08)] px-2.5 py-1.5 rounded-xl shadow-2xs hover:bg-[#F5F4EF] transition-colors shrink-0 focus-visible:outline-2 focus-visible:outline-[#111312]"
-                  title="Return to EVverse Landing Page"
-                  aria-label="Back to EVverse"
+                  className="inline-flex items-center gap-1 text-[11px] font-semibold text-[#111312] bg-white border border-[rgba(17,19,18,0.08)] p-2 rounded-xl shadow-2xs hover:bg-[#F5F4EF] transition-colors shrink-0 focus-visible:outline-2 focus-visible:outline-[#111312]"
+                  title="Return to Home Page"
+                  aria-label="Back"
                 >
-                  <ArrowLeft size={13} />
-                  <span className="hidden xs:inline">EVverse</span>
+                  <ArrowLeft size={14} />
                 </Link>
-                <div className="w-px h-5 bg-[rgba(17,19,18,0.08)] shrink-0" />
-                <div className="flex items-center gap-2 min-w-0">
-                  <div className="relative w-7 h-7 shrink-0 flex items-center justify-center">
+                <div className="w-px h-6 bg-[rgba(17,19,18,0.08)] shrink-0" />
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="relative w-10 h-10 sm:w-11 sm:h-11 shrink-0 flex items-center justify-center">
                     <Image
                       src="/images/evverse-logo.png"
                       alt="EVverse Logo"
-                      width={28}
-                      height={28}
-                      className="object-contain"
+                      width={44}
+                      height={44}
+                      priority
+                      className="object-contain w-full h-full"
                     />
                   </div>
                   <div className="min-w-0">
-                    <span className="text-xs font-bold tracking-tight text-[#111312] block leading-none">
-                      EVverse
-                    </span>
-                    <span className="text-[9.5px] font-mono text-[#8C938E] leading-none mt-0.5 block truncate max-w-[80px] xs:max-w-[110px] sm:max-w-[140px]">
+                    <span className="text-[10px] font-mono font-semibold text-[#8C938E] leading-none block truncate max-w-[100px] xs:max-w-[130px] sm:max-w-[180px]">
                       {activeVehicle.make} {activeVehicle.model}
                     </span>
                   </div>

@@ -53,7 +53,7 @@ def test_driver_vehicles_initial_seed_and_pagination():
     assert len(data["items"]) == 2
     assert data["page"] == 1
     assert data["limit"] == 2
-    assert data["items"][0]["make"] == "Porsche"
+    assert data["items"][0]["make"] == "Tata"
 
 
 def test_driver_vehicle_crud():

@@ -743,7 +743,13 @@ async def create_booking(
             # Safe idempotent retry: if already confirmed for this station, return existing
             if existing.get("station_id") == payload.station_id and existing.get("payment_status") == "confirmed":
                 log.info(f"Idempotent retry for existing booking {existing['id']} with tx {payload.tx_hash}")
-                explorer_url = f"{MONAD_EXPLORER_URL}/tx/{existing['tx_hash']}" if existing.get("tx_hash") else None
+                tx_val = existing.get("tx_hash")
+                explorer_url = f"{MONAD_EXPLORER_URL}/tx/{tx_val}" if (tx_val and str(tx_val).startswith("0x")) else None
+                settle_msg = (
+                    "Instant UPI 2.0 direct host payment confirmed via Bharat QR. Micro-kiosk reservation hold active."
+                    if existing.get("payment_method") == "sandbox_upi"
+                    else "Testnet on-chain payment verified. Cryptographic reservation hold confirmed. Physical charging and hardware activation remain decoupled in testnet mode."
+                )
                 return DriverBookingResponse(
                     id=existing["id"],
                     station_id=existing["station_id"],
@@ -770,6 +776,7 @@ async def create_booking(
                     session_type=existing.get("session_type"),
                     target_kwh=existing.get("target_kwh"),
                     target_battery_pct=existing.get("target_battery_pct"),
+                    settlement_note=settle_msg,
                 )
             raise HTTPException(
                 status_code=status.HTTP_409_CONFLICT,
@@ -808,7 +815,16 @@ async def create_booking(
     booking_dict["verified_at"] = verified_at
 
     record = driver_db.create_driver_booking(driver["driver_id"], booking_dict)
-    explorer_url = f"{MONAD_EXPLORER_URL}/tx/{record['tx_hash']}" if record.get("tx_hash") else None
+    tx_val = record.get("tx_hash")
+    explorer_url = f"{MONAD_EXPLORER_URL}/tx/{tx_val}" if (tx_val and str(tx_val).startswith("0x")) else None
+
+    if record.get("payment_method") == "sandbox_upi":
+        settlement_note = "Instant UPI 2.0 direct host payment confirmed via Bharat QR. Micro-kiosk reservation hold active."
+    else:
+        settlement_note = (
+            "Testnet on-chain payment verified. Cryptographic reservation hold confirmed. "
+            "Physical charging and hardware activation remain decoupled in testnet mode."
+        )
 
     return DriverBookingResponse(
         id=record["id"],
@@ -837,6 +853,7 @@ async def create_booking(
         target_kwh=record.get("target_kwh"),
         target_battery_pct=record.get("target_battery_pct"),
         verification_provider=verified_meta.get("provider"),
+        settlement_note=settlement_note,
     )
 
 

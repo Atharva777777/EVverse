@@ -31,6 +31,13 @@ import {
   Check,
   Loader2,
   AlertTriangle,
+  Smartphone,
+  Play,
+  Square,
+  RotateCcw,
+  Cpu,
+  Power,
+  Terminal,
 } from "lucide-react";
 import type { LiveStation } from "@/types/api";
 import type { EVVehicle } from "./VehicleCockpit";
@@ -58,6 +65,7 @@ import {
   type VerifiedOnChainReceipt,
 } from "@/lib/monadPayment";
 import { createDriverBooking } from "@/lib/driverApi";
+import { registerDriverBooking, updateSessionStatus } from "@/lib/ecosystemStore";
 
 export interface ParkingBooking {
   id: string;
@@ -87,6 +95,7 @@ export interface ParkingBooking {
   onChainVerified?: boolean;
   backendSynced?: boolean;
   backendNotice?: string | null;
+  upiUtr?: string;
 }
 
 interface ParkingBookingModalProps {
@@ -162,6 +171,7 @@ function createConfirmedBookingRecord({
   onChainVerified,
   backendSynced,
   backendNotice,
+  upiUtr,
 }: {
   station: LiveStation;
   bayNumber: string;
@@ -182,6 +192,7 @@ function createConfirmedBookingRecord({
   onChainVerified?: boolean;
   backendSynced?: boolean;
   backendNotice?: string | null;
+  upiUtr?: string;
 }): ParkingBooking {
   const now = Date.now();
   const expiryTimestamp = now + durationMinutes * 60 * 1000;
@@ -223,7 +234,51 @@ function createConfirmedBookingRecord({
     onChainVerified,
     backendSynced,
     backendNotice,
+    upiUtr,
   };
+}
+
+// Sound helper for mechanical contactor click
+function playContactorClickSound() {
+  if (typeof window === "undefined") return;
+  try {
+    const AudioCtx =
+      window.AudioContext ||
+      (window as unknown as { webkitAudioContext: typeof AudioContext })
+        .webkitAudioContext;
+    if (!AudioCtx) return;
+    const ctx = new AudioCtx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = "sawtooth";
+    osc.frequency.setValueAtTime(140, ctx.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(35, ctx.currentTime + 0.08);
+    gain.gain.setValueAtTime(0.35, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.08);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.08);
+
+    setTimeout(() => {
+      try {
+        const beepOsc = ctx.createOscillator();
+        const beepGain = ctx.createGain();
+        beepOsc.type = "sine";
+        beepOsc.frequency.setValueAtTime(920, ctx.currentTime);
+        beepGain.gain.setValueAtTime(0.12, ctx.currentTime);
+        beepGain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.12);
+        beepOsc.connect(beepGain);
+        beepGain.connect(ctx.destination);
+        beepOsc.start();
+        beepOsc.stop(ctx.currentTime + 0.12);
+      } catch {
+        // ignore
+      }
+    }, 85);
+  } catch {
+    // audio blocked or unsupported
+  }
 }
 
 export function ParkingBookingModal({
@@ -245,7 +300,23 @@ export function ParkingBookingModal({
   const [targetBatteryLimit, setTargetBatteryLimit] = useState<number>(80);
   const [paymentMethod, setPaymentMethod] = useState<
     "monad_testnet" | "sandbox_card" | "sandbox_upi"
-  >("monad_testnet");
+  >("sandbox_upi");
+
+  // UPI Payment States
+  const [isUpiVerifying, setIsUpiVerifying] = useState<boolean>(false);
+  const [upiUtrInput, setUpiUtrInput] = useState<string>("");
+  const [showManualUtrField, setShowManualUtrField] = useState<boolean>(false);
+
+  // Edge Hardware Actuator / Smart Kiosk Simulation State (Step 3: Active Pass)
+  const [hardwareState, setHardwareState] = useState<
+    "standby" | "arming" | "energized" | "stopped"
+  >("standby");
+  const [hardwarePowerKw, setHardwarePowerKw] = useState<number>(0);
+  const [hardwareKwhDelivered, setHardwareKwhDelivered] = useState<number>(0);
+  const [hardwareSocPct, setHardwareSocPct] = useState<number>(42);
+  const [hardwareCo2SavedKg, setHardwareCo2SavedKg] = useState<number>(0);
+  const [pinInputValue, setPinInputValue] = useState<string>("");
+  const [pinError, setPinError] = useState<string | null>(null);
 
   // Booking storage and UI state
   const [activeBooking, setActiveBooking] = useState<ParkingBooking | null>(null);
@@ -663,8 +734,22 @@ export function ParkingBookingModal({
         window.dispatchEvent(
           new CustomEvent("evverse-spot-booking-changed", { detail: booking })
         );
+        registerDriverBooking({
+          stationId: station.station_id || station.name,
+          stationName: station.name,
+          city: "Pune",
+          bayNumber: booking.bayNumber,
+          connectorType: booking.connectorType,
+          vehicleName: booking.vehicleMakeModel,
+          vehicleId: currentVehicle.id,
+          paymentRail: "monad",
+          paymentAmount: `${displayMon} MON`,
+          paymentRef: submittedHash,
+          pinCode: booking.pinCode,
+          durationMinutes: booking.durationMinutes,
+        });
       } catch (e) {
-        console.warn("Storage error:", e);
+        console.warn("Storage/ecosystem error:", e);
       }
     } catch (err: unknown) {
       setTxStatus("error");
@@ -674,8 +759,133 @@ export function ParkingBookingModal({
     }
   };
 
-  // Sandbox Staging Handler (Mock fallback)
-  const handleStageSandboxBooking = () => {
+  // Sync hardwareSocPct when currentVehicle is loaded
+  useEffect(() => {
+    if (currentVehicle?.currentBatteryPct !== undefined) {
+      setHardwareSocPct(currentVehicle.currentBatteryPct);
+    }
+  }, [currentVehicle]);
+
+  // Real-time telemetry simulation when hardware actuator is energized
+  useEffect(() => {
+    if (hardwareState !== "energized") return;
+
+    const basePower = currentBayObj?.isDc
+      ? (station?.power_kw || 50)
+      : 7.2;
+
+    const interval = setInterval(() => {
+      // Realistic power flutter (+/- 2%)
+      const flutter = (Math.random() - 0.5) * 0.3;
+      setHardwarePowerKw(Math.max(1.0, +(basePower + flutter).toFixed(1)));
+
+      // Scaled demo delivery: +0.03 kWh every 1.2s
+      setHardwareKwhDelivered((prev) => {
+        const next = +(prev + 0.03).toFixed(2);
+        // Clean energy avoided: 0.82 kg CO2 per kWh vs Indian coal grid
+        setHardwareCo2SavedKg(+(next * 0.82).toFixed(2));
+        return next;
+      });
+
+      // Battery SoC progression towards target
+      setHardwareSocPct((prev) => {
+        if (prev >= targetSoc) return prev;
+        return prev + 1;
+      });
+    }, 1200);
+
+    return () => clearInterval(interval);
+  }, [hardwareState, currentBayObj, station, targetSoc]);
+
+  const handleStartHardwareCharging = () => {
+    const entered = (pinInputValue || "").trim();
+    const correctPin = activeBooking?.pinCode || "";
+    if (entered && entered !== correctPin) {
+      setPinError(`PIN does not match stall authorization (${correctPin})`);
+      return;
+    }
+    setPinError(null);
+    setHardwareState("arming");
+
+    setTimeout(() => {
+      playContactorClickSound();
+      setHardwareState("energized");
+      const basePower = currentBayObj?.isDc
+        ? (station?.power_kw || 50)
+        : 7.2;
+      setHardwarePowerKw(basePower);
+
+      if (activeBooking) {
+        updateSessionStatus(activeBooking.id, "energized", {
+          activeKw: basePower,
+          kwhDelivered: 0.15,
+          co2OffsetKg: 0.12,
+        });
+      }
+    }, 1400);
+  };
+
+  const handleStopHardwareCharging = () => {
+    playContactorClickSound();
+    setHardwareState("stopped");
+    setHardwarePowerKw(0);
+
+    if (activeBooking) {
+      updateSessionStatus(activeBooking.id, "completed", {
+        activeKw: 0,
+        kwhDelivered: hardwareKwhDelivered,
+        co2OffsetKg: hardwareCo2SavedKg,
+        vehicleBatteryPct: hardwareSocPct,
+      });
+    }
+  };
+
+  // Instant UPI / Bharat QR Payment Execution
+  const handleExecuteUpiPayment = async () => {
+    if (isSubmittingRef.current || isUpiVerifying) return;
+    isSubmittingRef.current = true;
+    setIsUpiVerifying(true);
+    setTxError(null);
+
+    // Simulate 1.1s round-trip via NPCI UPI Switch
+    await new Promise((res) => setTimeout(res, 1100));
+
+    const generatedUtr =
+      upiUtrInput.trim() ||
+      `4289${Math.floor(10000000 + Math.random() * 90000000)}`;
+
+    let persistedId = `RES-${Math.floor(1000 + Math.random() * 9000)}-EV`;
+    let isBackendSynced = false;
+    let backendNotice: string | null = null;
+
+    try {
+      const backendBooking = await createDriverBooking({
+        station_id: station.station_id,
+        station_name: station.name,
+        bay_number: currentBayObj ? currentBayObj.bayNumber : "Bay 01",
+        connector_type: currentBayObj
+          ? currentBayObj.connectorType
+          : station.connector_types?.[0] || "CCS2 Combo",
+        duration_minutes: selectedMins,
+        total_cost: currentHoldOption.feeDisplay,
+        mon_amount: currentHoldOption.monEquivalent,
+        tx_hash: `UPI-UTR-${generatedUtr}`,
+        payment_method: "sandbox_upi",
+        session_type: sessionType,
+        target_kwh:
+          sessionType === "charging_session" ? estimatedKwh : undefined,
+        target_battery_pct:
+          sessionType === "charging_session" ? targetSoc : undefined,
+      });
+      if (backendBooking && backendBooking.id) {
+        persistedId = backendBooking.id;
+        isBackendSynced = true;
+      }
+    } catch (backendErr: unknown) {
+      console.warn("[EVverse] Backend booking persistence notice:", backendErr);
+      backendNotice = "Local UPI pass issued. Backend ledger sync queued.";
+    }
+
     const booking = createConfirmedBookingRecord({
       station,
       bayNumber: currentBayObj ? currentBayObj.bayNumber : "Bay 01",
@@ -688,23 +898,50 @@ export function ParkingBookingModal({
       targetKwh: sessionType === "charging_session" ? estimatedKwh : undefined,
       targetBatteryPct:
         sessionType === "charging_session" ? targetSoc : undefined,
-      paymentMethod,
+      paymentMethod: "sandbox_upi",
       monAmount: currentHoldOption.monEquivalent,
       vehicleMakeModel: `${currentVehicle.make} ${currentVehicle.model}`,
+      txHash: `UPI-UTR-${generatedUtr}`,
+      onChainVerified: false,
+      backendSynced: isBackendSynced,
+      backendNotice,
+      upiUtr: generatedUtr,
     });
+    booking.id = persistedId;
 
     setActiveBooking(booking);
     setSecondsRemaining(selectedMins * 60);
     setStep("pass");
+    setIsUpiVerifying(false);
+    isSubmittingRef.current = false;
 
     try {
       localStorage.setItem("evverse_active_spot_booking", JSON.stringify(booking));
       window.dispatchEvent(
         new CustomEvent("evverse-spot-booking-changed", { detail: booking })
       );
+      registerDriverBooking({
+        stationId: station.station_id || station.name,
+        stationName: station.name,
+        city: "Pune",
+        bayNumber: booking.bayNumber,
+        connectorType: booking.connectorType,
+        vehicleName: booking.vehicleMakeModel,
+        vehicleId: currentVehicle.id,
+        paymentRail: "upi",
+        paymentAmount: "₹49",
+        paymentRef: `UPI-${generatedUtr}`,
+        pinCode: booking.pinCode,
+        durationMinutes: booking.durationMinutes,
+      });
     } catch (e) {
-      console.warn("Storage error:", e);
+      console.warn("Storage/ecosystem error:", e);
     }
+  };
+
+  // Sandbox Staging Handler (Mock fallback)
+  const handleStageSandboxBooking = () => {
+    handleExecuteUpiPayment();
   };
 
   const handleCancelBooking = () => {
@@ -777,7 +1014,10 @@ export function ParkingBookingModal({
               <div>
                 <h3 className="text-sm font-bold tracking-tight text-[#111312]">
                   {step === "config" && "Configure Stall & Session"}
-                  {step === "review" && "Review & Monad Settlement"}
+                  {step === "review" &&
+                    (paymentMethod === "sandbox_upi"
+                      ? "Review & Instant UPI Payment"
+                      : "Review & Monad Settlement")}
                   {step === "pass" && "Active Stall Reservation Pass"}
                 </h3>
                 <p className="text-[11px] text-[#767D78] truncate max-w-[210px] sm:max-w-[240px]">
@@ -796,93 +1036,164 @@ export function ParkingBookingModal({
             </button>
           </div>
 
-          {/* ── 4-Step Monad Payment Pipeline Tracker ──────────────── */}
-          <div className="bg-[#FAF9F6] p-3 rounded-2xl border border-black/[0.06] space-y-2">
-            <div className="flex items-center justify-between text-[10px] font-mono font-semibold uppercase tracking-wider text-[#767D78]">
-              <span className="flex items-center gap-1.5">
-                <Coins size={12} className="text-[#2563EB]" />
-                <span>Monad Testnet Settlement</span>
-              </span>
-              <span className="text-[#2563EB] font-bold">
-                {step === "pass"
-                  ? "Step 4 of 4: Receipt Verified"
-                  : !walletAddress
-                  ? "Step 1 of 4: Connect Wallet"
-                  : !isMonadTestnetActive
-                  ? "Step 1 of 4: Switch Network"
-                  : txStatus === "awaiting_approval"
-                  ? "Step 3 of 4: Approve in Wallet"
-                  : txStatus === "verifying_onchain"
-                  ? "Step 3 of 4: Verifying on Monad"
-                  : "Step 2 of 4: Review Payment"}
-              </span>
-            </div>
-
-            {/* Stepper Grid */}
-            <div className="grid grid-cols-4 gap-1.5 text-center">
-              {/* 1. Connect */}
-              <div
-                className={`p-1.5 rounded-xl border text-[10px] transition-all ${
-                  walletAddress && isMonadTestnetActive
-                    ? "bg-[#DCFCE7] text-[#15803D] border-[#86EFAC] font-semibold"
-                    : !walletAddress || !isMonadTestnetActive
-                    ? "bg-white text-[#1D4ED8] border-[#3B82F6] font-bold shadow-xs ring-1 ring-[#3B82F6]/30"
-                    : "bg-[#F4F3EE] text-[#767D78] border-black/[0.04]"
-                }`}
-              >
-                <div className="font-bold">1. Connect</div>
-                <div className="text-[8.5px] font-mono mt-0.5 truncate">
-                  {walletAddress ? (isMonadTestnetActive ? "Connected ✓" : "Wrong Chain") : "Required"}
-                </div>
+          {/* ── 4-Step Payment Pipeline Tracker (Adaptive UPI / Monad) ─ */}
+          {paymentMethod === "sandbox_upi" ? (
+            <div className="bg-[#FAF9F6] p-3 rounded-2xl border border-black/[0.06] space-y-2">
+              <div className="flex items-center justify-between text-[10px] font-mono font-semibold uppercase tracking-wider text-[#767D78]">
+                <span className="flex items-center gap-1.5">
+                  <Smartphone size={12} className="text-[#16A34A]" />
+                  <span>Bharat QR / UPI Instant Settlement</span>
+                </span>
+                <span className="text-[#16A34A] font-bold">
+                  {step === "pass"
+                    ? "Step 4 of 4: Pass & Actuator Ready"
+                    : isUpiVerifying
+                    ? "Step 3 of 4: Verifying UTR..."
+                    : step === "config"
+                    ? "Step 1 of 4: Select Window"
+                    : "Step 2 of 4: Scan & Pay"}
+                </span>
               </div>
 
-              {/* 2. Review */}
-              <div
-                className={`p-1.5 rounded-xl border text-[10px] transition-all ${
-                  step === "pass"
-                    ? "bg-[#DCFCE7] text-[#15803D] border-[#86EFAC] font-semibold"
-                    : walletAddress && isMonadTestnetActive && txStatus === "idle"
-                    ? "bg-white text-[#111312] border-[#111312] font-bold shadow-xs ring-1 ring-black/10"
-                    : "bg-[#F4F3EE] text-[#767D78] border-black/[0.04]"
-                }`}
-              >
-                <div className="font-bold">2. Review</div>
-                <div className="text-[8.5px] font-mono mt-0.5 truncate">
-                  {currentHoldOption.monEquivalent}
+              {/* Stepper Grid */}
+              <div className="grid grid-cols-4 gap-1.5 text-center">
+                <div
+                  className={`p-1.5 rounded-xl border text-[10px] transition-all ${
+                    step !== "config"
+                      ? "bg-[#DCFCE7] text-[#15803D] border-[#86EFAC] font-semibold"
+                      : "bg-white text-[#111312] border-[#111312] font-bold shadow-xs ring-1 ring-black/10"
+                  }`}
+                >
+                  <div className="font-bold">1. Hold Window</div>
+                  <div className="text-[8.5px] font-mono mt-0.5 truncate">{selectedMins} Mins</div>
                 </div>
-              </div>
 
-              {/* 3. Approve */}
-              <div
-                className={`p-1.5 rounded-xl border text-[10px] transition-all ${
-                  step === "pass"
-                    ? "bg-[#DCFCE7] text-[#15803D] border-[#86EFAC] font-semibold"
-                    : txStatus === "awaiting_approval" || txStatus === "verifying_onchain"
-                    ? "bg-[#EFF6FF] text-[#1D4ED8] border-[#3B82F6] font-bold animate-pulse ring-1 ring-[#3B82F6]/30"
-                    : "bg-[#F4F3EE] text-[#767D78] border-black/[0.04]"
-                }`}
-              >
-                <div className="font-bold">3. Approve</div>
-                <div className="text-[8.5px] font-mono mt-0.5 truncate">
-                  {txStatus === "verifying_onchain" ? "Verifying..." : "Wallet Sign"}
+                <div
+                  className={`p-1.5 rounded-xl border text-[10px] transition-all ${
+                    step === "pass"
+                      ? "bg-[#DCFCE7] text-[#15803D] border-[#86EFAC] font-semibold"
+                      : step === "review" && !isUpiVerifying
+                      ? "bg-white text-[#15803D] border-[#16A34A] font-bold shadow-xs ring-1 ring-[#16A34A]/30"
+                      : "bg-[#F4F3EE] text-[#767D78] border-black/[0.04]"
+                  }`}
+                >
+                  <div className="font-bold">2. Bharat QR</div>
+                  <div className="text-[8.5px] font-mono mt-0.5 truncate">{currentHoldOption.feeDisplay}</div>
                 </div>
-              </div>
 
-              {/* 4. Receipt */}
-              <div
-                className={`p-1.5 rounded-xl border text-[10px] transition-all ${
-                  step === "pass"
-                    ? "bg-[#DCFCE7] text-[#15803D] border-[#86EFAC] font-bold shadow-xs ring-1 ring-[#16A34A]/30"
-                    : "bg-[#F4F3EE] text-[#767D78] border-black/[0.04]"
-                }`}
-              >
-                <div className="font-bold">4. Receipt</div>
-                <div className="text-[8.5px] font-mono mt-0.5 truncate">
-                  {step === "pass" ? "Verified ✓" : "On-Chain"}
+                <div
+                  className={`p-1.5 rounded-xl border text-[10px] transition-all ${
+                    step === "pass"
+                      ? "bg-[#DCFCE7] text-[#15803D] border-[#86EFAC] font-semibold"
+                      : isUpiVerifying
+                      ? "bg-[#DCFCE7] text-[#15803D] border-[#16A34A] font-bold animate-pulse ring-1 ring-[#16A34A]/40"
+                      : "bg-[#F4F3EE] text-[#767D78] border-black/[0.04]"
+                  }`}
+                >
+                  <div className="font-bold">3. Bank UTR</div>
+                  <div className="text-[8.5px] font-mono mt-0.5 truncate">
+                    {isUpiVerifying ? "Verifying..." : "Instant Pay"}
+                  </div>
+                </div>
+
+                <div
+                  className={`p-1.5 rounded-xl border text-[10px] transition-all ${
+                    step === "pass"
+                      ? "bg-[#DCFCE7] text-[#15803D] border-[#86EFAC] font-bold shadow-xs ring-1 ring-[#16A34A]/30"
+                      : "bg-[#F4F3EE] text-[#767D78] border-black/[0.04]"
+                  }`}
+                >
+                  <div className="font-bold">4. IoT Actuator</div>
+                  <div className="text-[8.5px] font-mono mt-0.5 truncate">
+                    {step === "pass" ? "Active ✓" : "Unlock PIN"}
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          ) : (
+            <div className="bg-[#FAF9F6] p-3 rounded-2xl border border-black/[0.06] space-y-2">
+              <div className="flex items-center justify-between text-[10px] font-mono font-semibold uppercase tracking-wider text-[#767D78]">
+                <span className="flex items-center gap-1.5">
+                  <Coins size={12} className="text-[#2563EB]" />
+                  <span>Monad Testnet Settlement</span>
+                </span>
+                <span className="text-[#2563EB] font-bold">
+                  {step === "pass"
+                    ? "Step 4 of 4: Receipt Verified"
+                    : !walletAddress
+                    ? "Step 1 of 4: Connect Wallet"
+                    : !isMonadTestnetActive
+                    ? "Step 1 of 4: Switch Network"
+                    : txStatus === "awaiting_approval"
+                    ? "Step 3 of 4: Approve in Wallet"
+                    : txStatus === "verifying_onchain"
+                    ? "Step 3 of 4: Verifying on Monad"
+                    : "Step 2 of 4: Review Payment"}
+                </span>
+              </div>
+
+              {/* Stepper Grid */}
+              <div className="grid grid-cols-4 gap-1.5 text-center">
+                <div
+                  className={`p-1.5 rounded-xl border text-[10px] transition-all ${
+                    walletAddress && isMonadTestnetActive
+                      ? "bg-[#DCFCE7] text-[#15803D] border-[#86EFAC] font-semibold"
+                      : !walletAddress || !isMonadTestnetActive
+                      ? "bg-white text-[#1D4ED8] border-[#3B82F6] font-bold shadow-xs ring-1 ring-[#3B82F6]/30"
+                      : "bg-[#F4F3EE] text-[#767D78] border-black/[0.04]"
+                  }`}
+                >
+                  <div className="font-bold">1. Connect</div>
+                  <div className="text-[8.5px] font-mono mt-0.5 truncate">
+                    {walletAddress ? (isMonadTestnetActive ? "Connected ✓" : "Wrong Chain") : "Required"}
+                  </div>
+                </div>
+
+                <div
+                  className={`p-1.5 rounded-xl border text-[10px] transition-all ${
+                    step === "pass"
+                      ? "bg-[#DCFCE7] text-[#15803D] border-[#86EFAC] font-semibold"
+                      : walletAddress && isMonadTestnetActive && txStatus === "idle"
+                      ? "bg-white text-[#111312] border-[#111312] font-bold shadow-xs ring-1 ring-black/10"
+                      : "bg-[#F4F3EE] text-[#767D78] border-black/[0.04]"
+                  }`}
+                >
+                  <div className="font-bold">2. Review</div>
+                  <div className="text-[8.5px] font-mono mt-0.5 truncate">
+                    {currentHoldOption.monEquivalent}
+                  </div>
+                </div>
+
+                <div
+                  className={`p-1.5 rounded-xl border text-[10px] transition-all ${
+                    step === "pass"
+                      ? "bg-[#DCFCE7] text-[#15803D] border-[#86EFAC] font-semibold"
+                      : txStatus === "awaiting_approval" || txStatus === "verifying_onchain"
+                      ? "bg-[#EFF6FF] text-[#1D4ED8] border-[#3B82F6] font-bold animate-pulse ring-1 ring-[#3B82F6]/30"
+                      : "bg-[#F4F3EE] text-[#767D78] border-black/[0.04]"
+                  }`}
+                >
+                  <div className="font-bold">3. Approve</div>
+                  <div className="text-[8.5px] font-mono mt-0.5 truncate">
+                    {txStatus === "verifying_onchain" ? "Verifying..." : "Wallet Sign"}
+                  </div>
+                </div>
+
+                <div
+                  className={`p-1.5 rounded-xl border text-[10px] transition-all ${
+                    step === "pass"
+                      ? "bg-[#DCFCE7] text-[#15803D] border-[#86EFAC] font-bold shadow-xs ring-1 ring-[#16A34A]/30"
+                      : "bg-[#F4F3EE] text-[#767D78] border-black/[0.04]"
+                  }`}
+                >
+                  <div className="font-bold">4. Receipt</div>
+                  <div className="text-[8.5px] font-mono mt-0.5 truncate">
+                    {step === "pass" ? "Verified ✓" : "On-Chain"}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* ═══════════════════════════════════════════════════════════ */}
           {/* STEP 1: CONFIGURATION                                      */}
@@ -1146,7 +1457,7 @@ export function ParkingBookingModal({
                   onClick={() => setStep("review")}
                   className="w-full min-h-[46px] py-3 bg-[#111312] text-white text-xs font-bold rounded-2xl flex items-center justify-center gap-2 hover:bg-[#252826] active:scale-[0.99] transition-all cursor-pointer shadow-md"
                 >
-                  <span>Review Monad Settlement ({currentHoldOption.feeDisplay} • {currentHoldOption.monEquivalent})</span>
+                  <span>Review Booking ({currentHoldOption.feeDisplay} • {currentHoldOption.monEquivalent})</span>
                   <ArrowRight size={14} className="text-[#C8F369]" />
                 </button>
               </div>
@@ -1211,7 +1522,9 @@ export function ParkingBookingModal({
 
                 {/* Due Now Total */}
                 <div className="pt-2 border-t border-black/[0.06] flex justify-between items-baseline font-bold text-[#111312] px-1">
-                  <span className="text-xs">Due Now (Monad Settlement):</span>
+                  <span className="text-xs">
+                    Due Now ({paymentMethod === "sandbox_upi" ? "Instant UPI" : "Monad Settlement"}):
+                  </span>
                   <span className="text-sm font-mono text-[#16A34A]">
                     {currentHoldOption.feeDisplay}{" "}
                     <span className="text-[11px] text-[#525854] font-normal">
@@ -1221,8 +1534,223 @@ export function ParkingBookingModal({
                 </div>
               </div>
 
+              {/* Payment Mode Selector */}
+              <div className="space-y-1.5">
+                <label className="text-[10.5px] font-semibold text-[#525854] uppercase tracking-wider font-mono flex items-center justify-between">
+                  <span>Select Settlement Layer</span>
+                  <span className="text-[9.5px] text-[#16A34A] font-bold">Dual-Rail Architecture</span>
+                </label>
+                <div className="grid grid-cols-2 gap-1.5 p-1 bg-[#FAF9F6] rounded-2xl border border-black/[0.08]">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPaymentMethod("sandbox_upi");
+                      setTxError(null);
+                    }}
+                    className={`py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                      paymentMethod === "sandbox_upi"
+                        ? "bg-[#111312] text-white shadow-xs"
+                        : "text-[#525854] hover:text-[#111312] hover:bg-black/[0.03]"
+                    }`}
+                  >
+                    <Smartphone
+                      size={14}
+                      className={
+                        paymentMethod === "sandbox_upi"
+                          ? "text-[#C8F369]"
+                          : "text-[#16A34A]"
+                      }
+                    />
+                    <span>UPI / Bharat QR ({currentHoldOption.feeDisplay})</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPaymentMethod("monad_testnet");
+                      setTxError(null);
+                    }}
+                    className={`py-2.5 px-3 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                      paymentMethod === "monad_testnet"
+                        ? "bg-[#111312] text-white shadow-xs"
+                        : "text-[#525854] hover:text-[#111312] hover:bg-black/[0.03]"
+                    }`}
+                  >
+                    <Coins
+                      size={14}
+                      className={
+                        paymentMethod === "monad_testnet"
+                          ? "text-[#C8F369]"
+                          : "text-[#2563EB]"
+                      }
+                    />
+                    <span>Monad L1 ({currentHoldOption.monEquivalent})</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* ── Bharat QR & Instant UPI Card ─────────────────── */}
+              {paymentMethod === "sandbox_upi" && (
+                <div className="p-4 bg-[#F0FDF4] rounded-2xl border border-[#BBF7D0] space-y-3 text-xs">
+                  <div className="flex items-center justify-between pb-2 border-b border-[#BBF7D0]">
+                    <div className="flex items-center gap-1.5 font-bold text-[#15803D]">
+                      <Smartphone size={15} />
+                      <span>Instant UPI & Bharat QR Settlement</span>
+                    </div>
+                    <span className="text-[9.5px] font-mono px-2 py-0.5 rounded-full bg-[#DCFCE7] text-[#15803D] border border-[#86EFAC] font-bold">
+                      Zero Gateway Fee
+                    </span>
+                  </div>
+
+                  {/* QR Code and Payment Details */}
+                  <div className="flex items-center gap-3 bg-white p-3 rounded-xl border border-[#BBF7D0]">
+                    {/* Stylized QR Code SVG */}
+                    <div className="w-24 h-24 bg-[#FAF9F6] border-2 border-[#16A34A]/30 rounded-xl p-1.5 flex flex-col items-center justify-center relative shrink-0 shadow-2xs">
+                      <svg
+                        viewBox="0 0 100 100"
+                        className="w-full h-full text-[#111312]"
+                        fill="currentColor"
+                      >
+                        {/* 3 Corner Alignment Targets */}
+                        <rect x="5" y="5" width="28" height="28" rx="4" fill="#111312" />
+                        <rect x="9" y="9" width="20" height="20" rx="2" fill="white" />
+                        <rect x="13" y="13" width="12" height="12" rx="1" fill="#16A34A" />
+
+                        <rect x="67" y="5" width="28" height="28" rx="4" fill="#111312" />
+                        <rect x="71" y="9" width="20" height="20" rx="2" fill="white" />
+                        <rect x="75" y="13" width="12" height="12" rx="1" fill="#16A34A" />
+
+                        <rect x="5" y="67" width="28" height="28" rx="4" fill="#111312" />
+                        <rect x="9" y="71" width="20" height="20" rx="2" fill="white" />
+                        <rect x="13" y="75" width="12" height="12" rx="1" fill="#16A34A" />
+
+                        {/* QR Matrix Data Blocks */}
+                        <rect x="40" y="8" width="6" height="6" rx="1" fill="#111312" />
+                        <rect x="52" y="8" width="8" height="6" rx="1" fill="#111312" />
+                        <rect x="40" y="20" width="8" height="8" rx="1" fill="#16A34A" />
+                        <rect x="54" y="20" width="6" height="6" rx="1" fill="#111312" />
+                        <rect x="8" y="40" width="6" height="6" rx="1" fill="#111312" />
+                        <rect x="20" y="40" width="8" height="8" rx="1" fill="#111312" />
+                        <rect x="36" y="36" width="28" height="28" rx="3" fill="#111312" />
+                        <rect x="72" y="40" width="8" height="6" rx="1" fill="#111312" />
+                        <rect x="86" y="40" width="6" height="6" rx="1" fill="#16A34A" />
+                        <rect x="40" y="72" width="6" height="8" rx="1" fill="#111312" />
+                        <rect x="52" y="72" width="8" height="8" rx="1" fill="#111312" />
+                        <rect x="72" y="68" width="8" height="6" rx="1" fill="#16A34A" />
+                        <rect x="84" y="76" width="8" height="8" rx="1" fill="#111312" />
+                      </svg>
+                      {/* Center EV Verse Icon Overlay */}
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="w-6 h-6 rounded-full bg-[#111312] border-2 border-white flex items-center justify-center text-[#C8F369]">
+                          <Zap size={11} />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex-1 min-w-0 space-y-1">
+                      <div className="text-[10px] text-[#15803D] uppercase font-mono font-bold tracking-wider">
+                        Scan with any UPI App
+                      </div>
+                      <div className="text-sm font-bold text-[#111312] flex items-center gap-1.5">
+                        <span>{currentHoldOption.feeDisplay}</span>
+                        <span className="text-[10px] font-normal text-[#525854]">
+                          (Fixed Stall Hold Deposit)
+                        </span>
+                      </div>
+                      <div className="text-[10.5px] text-[#525854] truncate">
+                        VPA: <code className="font-mono bg-black/[0.04] px-1 py-0.5 rounded text-[#111312]">evverse.community@icici</code>
+                      </div>
+                      <div className="text-[9.5px] text-[#166534] flex items-center gap-1">
+                        <span>PhonePe • GPay • Paytm • BHIM • CRED</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Grassroots Community Impact Note */}
+                  <div className="p-2.5 bg-white rounded-xl border border-[#BBF7D0] text-[10.5px] text-[#166534] space-y-1">
+                    <div className="font-bold flex items-center gap-1 text-[#15803D]">
+                      <ShieldCheck size={13} />
+                      <span>Grassroots Direct Host Payout</span>
+                    </div>
+                    <p className="leading-snug">
+                      100% of this reservation deposit is credited directly into the local Pune station operator&apos;s bank account with zero platform commission.
+                    </p>
+                  </div>
+
+                  {/* Verification Pending Feedback */}
+                  {isUpiVerifying && (
+                    <div className="p-3 bg-white border border-[#86EFAC] rounded-xl text-[11px] text-[#15803D] flex items-center gap-2 animate-pulse">
+                      <Loader2 size={15} className="animate-spin text-[#16A34A] shrink-0" />
+                      <div className="font-semibold">
+                        Verifying Transaction via Bank UPI Gateway...
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Optional Manual UTR Toggle */}
+                  <div className="pt-1">
+                    {!showManualUtrField ? (
+                      <button
+                        type="button"
+                        onClick={() => setShowManualUtrField(true)}
+                        className="text-[10px] text-[#15803D] hover:underline font-semibold cursor-pointer"
+                      >
+                        + Enter 12-digit Bank UTR / Reference Manually
+                      </button>
+                    ) : (
+                      <div className="p-2.5 bg-white rounded-xl border border-[#BBF7D0] space-y-1.5">
+                        <label className="text-[10.5px] font-semibold text-[#111312]">
+                          Bank Reference (12-Digit UTR):
+                        </label>
+                        <div className="flex gap-1.5">
+                          <input
+                            type="text"
+                            maxLength={16}
+                            value={upiUtrInput}
+                            onChange={(e) => setUpiUtrInput(e.target.value)}
+                            placeholder="e.g. 428919284712"
+                            className="flex-1 font-mono text-[11px] p-2 bg-[#FAF9F6] border border-black/[0.08] rounded-lg focus:outline-hidden focus:border-[#16A34A]"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowManualUtrField(false)}
+                            className="px-2 text-[10px] text-[#767D78] hover:text-[#111312] cursor-pointer"
+                          >
+                            Close
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Primary UPI Action Button */}
+                  <div className="pt-1">
+                    <button
+                      type="button"
+                      disabled={isUpiVerifying}
+                      onClick={handleExecuteUpiPayment}
+                      className="w-full min-h-[48px] py-3.5 bg-[#16A34A] text-white text-xs font-bold rounded-2xl flex items-center justify-center gap-2 hover:bg-[#15803D] active:scale-[0.99] transition-all cursor-pointer shadow-md disabled:opacity-50"
+                    >
+                      {isUpiVerifying ? (
+                        <>
+                          <Loader2 size={15} className="animate-spin text-white" />
+                          <span>Confirming Settlement...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Smartphone size={15} />
+                          <span>Simulate Instant UPI Payment ({currentHoldOption.feeDisplay})</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* ── Monad Testnet Settlement Card ───────────────────── */}
-              <div className="p-3.5 bg-[#FAF9F6] rounded-2xl border border-black/[0.08] space-y-2.5 text-xs">
+              {paymentMethod === "monad_testnet" && (
+                <>
+                  <div className="p-3.5 bg-[#FAF9F6] rounded-2xl border border-black/[0.08] space-y-2.5 text-xs">
                 <div className="flex items-center justify-between pb-2 border-b border-black/[0.06]">
                   <div className="flex items-center gap-1.5 font-bold text-[#111312]">
                     <Wallet size={14} className="text-[#2563EB]" />
@@ -1563,17 +2091,22 @@ export function ParkingBookingModal({
                     )}
                   </button>
                 )}
+                </div>
+              </>
+            )}
 
-                <button
-                  type="button"
-                  onClick={() => setStep("config")}
-                  className="w-full min-h-[36px] py-1.5 text-xs font-semibold text-[#525854] hover:text-[#111312] text-center cursor-pointer transition-colors"
-                >
-                  Adjust Reservation Parameters
-                </button>
-              </div>
+            {/* Universal Back / Adjust Button */}
+            <div className="pt-1">
+              <button
+                type="button"
+                onClick={() => setStep("config")}
+                className="w-full min-h-[36px] py-1.5 text-xs font-semibold text-[#525854] hover:text-[#111312] text-center cursor-pointer transition-colors"
+              >
+                Adjust Reservation Parameters
+              </button>
             </div>
-          )}
+          </div>
+        )}
 
           {/* ═══════════════════════════════════════════════════════════ */}
           {/* STEP 3: ACTIVE RESERVATION PASS & ON-CHAIN RECEIPT          */}
@@ -1640,7 +2173,13 @@ export function ParkingBookingModal({
                     <span>Settlement Status:</span>
                     <span className="font-mono font-semibold text-[#15803D] flex items-center gap-1">
                       <CheckCircle2 size={12} className="text-[#16A34A]" />
-                      <span>{activeBooking.txHash ? "Settled on Monad Testnet" : "Sandbox Staged"}</span>
+                      <span>
+                        {activeBooking.paymentMethod === "sandbox_upi"
+                          ? "Settled via Instant UPI (Bharat QR)"
+                          : activeBooking.txHash
+                          ? "Settled on Monad Testnet"
+                          : "Confirmed Stall Pass"}
+                      </span>
                     </span>
                   </div>
                   <div className="flex justify-between text-[#525854]">
@@ -1660,8 +2199,63 @@ export function ParkingBookingModal({
                   </div>
                 </div>
 
-                {/* ── Verified On-Chain Receipt Section ────────────────── */}
-                {activeBooking.txHash && (
+                {/* ── Verified UPI Settlement Receipt ────────────────── */}
+                {activeBooking.paymentMethod === "sandbox_upi" && (
+                  <div className="mt-3 p-3 bg-white rounded-xl border border-[#BBF7D0] space-y-2 text-xs">
+                    <div className="flex items-center justify-between font-bold text-[#15803D]">
+                      <span className="flex items-center gap-1.5 text-[11px]">
+                        <CheckCircle2 size={13} />
+                        <span>Verified Instant UPI Receipt</span>
+                      </span>
+                      <span className="text-[9.5px] font-mono bg-[#DCFCE7] px-2 py-0.5 rounded-full text-[#15803D]">
+                        NPCI Fast Rail
+                      </span>
+                    </div>
+
+                    <div className="space-y-1 text-[11px] text-[#525854]">
+                      <div className="flex justify-between items-center">
+                        <span>Bank Reference / UTR:</span>
+                        <div className="flex items-center gap-1">
+                          <span className="font-mono text-[#111312] font-bold">
+                            {activeBooking.upiUtr || activeBooking.txHash || "428919284712"}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() =>
+                              copyToClipboard(activeBooking.upiUtr || activeBooking.txHash || "", "tx")
+                            }
+                            aria-label="Copy UTR reference"
+                            className="p-1 hover:bg-black/[0.05] rounded-sm text-[#767D78] cursor-pointer"
+                          >
+                            {copiedTxHash ? (
+                              <Check size={11} className="text-[#16A34A]" />
+                            ) : (
+                              <Copy size={11} />
+                            )}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="flex justify-between">
+                        <span>Payment Rail:</span>
+                        <span className="font-mono text-[#111312]">Bharat QR (Direct P2P VPA)</span>
+                      </div>
+
+                      <div className="flex justify-between">
+                        <span>Beneficiary Host:</span>
+                        <span className="font-mono text-[#111312]">evverse.community@icici</span>
+                      </div>
+
+                      <div className="flex justify-between">
+                        <span>Amount Paid:</span>
+                        <span className="font-mono font-bold text-[#16A34A]">{activeBooking.totalCost}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* ── Verified On-Chain Receipt Section (Monad) ────────── */}
+                {activeBooking.paymentMethod === "monad_testnet" && activeBooking.txHash && (
                   <div className="mt-3 p-3 bg-white rounded-xl border border-[#BBF7D0] space-y-2 text-xs">
                     <div className="flex items-center justify-between font-bold text-[#15803D]">
                       <span className="flex items-center gap-1.5 text-[11px]">
@@ -1735,10 +2329,214 @@ export function ParkingBookingModal({
                 <div className="p-2.5 bg-white rounded-xl border border-black/[0.04] text-[10.5px] text-[#525854] flex items-start gap-2">
                   <ShieldCheck size={14} className="text-[#16A34A] shrink-0 mt-0.5" />
                   <span>
-                    Cryptographic testnet proof verified on Monad Testnet.
-                    (Note: Testnet settlement does not trigger physical charging or barrier hardware activation).
+                    Cryptographic reservation hold registered in station ledger. Proceed to stall to initiate physical unlatch and dispense.
                   </span>
                 </div>
+              </div>
+
+              {/* ── Edge Micro-Kiosk Actuator Simulator ─────────────── */}
+              <div className="p-3.5 bg-[#0B0F19] text-white rounded-2xl border border-white/10 space-y-3 shadow-lg">
+                {/* Embedded Hardware Header */}
+                <div className="flex items-center justify-between pb-2 border-b border-white/10 text-[10.5px]">
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-[#10B981] animate-ping" />
+                    <span className="font-mono font-bold text-[#10B981] uppercase tracking-wider flex items-center gap-1">
+                      <Cpu size={12} />
+                      <span>ESP32-S3 IoT Actuator Node</span>
+                    </span>
+                  </div>
+                  <span className="font-mono text-[9px] text-white/50 bg-white/5 px-1.5 py-0.5 rounded">
+                    OCPP 2.0.1 MQTT #PUNE-04
+                  </span>
+                </div>
+
+                {/* Physical Hardware Status Indicators */}
+                <div className="grid grid-cols-2 gap-2 text-[10.5px]">
+                  <div className="p-2 rounded-xl bg-white/5 border border-white/10">
+                    <div className="text-[9px] uppercase font-mono text-white/50">
+                      Contactor Relay
+                    </div>
+                    <div className="font-mono font-bold mt-0.5 flex items-center gap-1">
+                      {hardwareState === "energized" ? (
+                        <span className="text-[#10B981] flex items-center gap-1">
+                          <Zap size={11} className="fill-[#10B981]" />
+                          <span>ENERGIZED (230V/32A)</span>
+                        </span>
+                      ) : hardwareState === "arming" ? (
+                        <span className="text-[#F59E0B] flex items-center gap-1 animate-pulse">
+                          <Loader2 size={11} className="animate-spin" />
+                          <span>ARMING CONTACTOR...</span>
+                        </span>
+                      ) : (
+                        <span className="text-white/60">⚪ OPEN (AIR-GAP 0V)</span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="p-2 rounded-xl bg-white/5 border border-white/10">
+                    <div className="text-[9px] uppercase font-mono text-white/50">
+                      Holster Solenoid
+                    </div>
+                    <div className="font-mono font-bold mt-0.5 flex items-center gap-1">
+                      {hardwareState === "energized" ? (
+                        <span className="text-[#10B981]">🔓 UNLATCHED (DRAWN)</span>
+                      ) : (
+                        <span className="text-[#F59E0B]">🔒 LOCKED (ENGAGED)</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Standby State: Driver enters PIN to unlock relay */}
+                {hardwareState === "standby" && (
+                  <div className="p-3 bg-white/5 rounded-xl border border-white/10 space-y-2.5">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-white/70">Physical Plug Activation:</span>
+                      <button
+                        type="button"
+                        onClick={() => setPinInputValue(activeBooking.pinCode)}
+                        className="text-[10px] font-mono text-[#C8F369] hover:underline font-bold cursor-pointer"
+                      >
+                        Auto-fill PIN ({activeBooking.pinCode})
+                      </button>
+                    </div>
+
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        maxLength={4}
+                        value={pinInputValue}
+                        onChange={(e) => {
+                          setPinInputValue(e.target.value);
+                          setPinError(null);
+                        }}
+                        placeholder="Enter 4-Digit PIN"
+                        className="flex-1 font-mono text-center tracking-widest text-xs px-3 py-2 bg-black/40 border border-white/20 rounded-xl text-white focus:outline-hidden focus:border-[#C8F369]"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleStartHardwareCharging}
+                        className="px-4 py-2 bg-[#10B981] hover:bg-[#059669] text-[#111312] font-bold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer shadow-sm active:scale-95 transition-all"
+                      >
+                        <Play size={12} className="fill-[#111312]" />
+                        <span>Energize Relay</span>
+                      </button>
+                    </div>
+
+                    {pinError && (
+                      <p className="text-[10px] text-[#EF4444] font-semibold">{pinError}</p>
+                    )}
+
+                    <p className="text-[9.5px] text-white/50 leading-tight">
+                      Simulates physical ESP32 contactor closure and smart plug unlock upon driver arrival at the stall.
+                    </p>
+                  </div>
+                )}
+
+                {/* Arming State */}
+                {hardwareState === "arming" && (
+                  <div className="p-3 bg-white/5 rounded-xl border border-white/10 text-center space-y-1.5">
+                    <Loader2 size={18} className="animate-spin text-[#C8F369] mx-auto" />
+                    <div className="text-xs font-mono font-bold text-white">
+                      Latching 32A Contactors & Ground Loop Check...
+                    </div>
+                    <div className="text-[10px] text-white/50">
+                      Zero voltage switching synchronized to AC mains cycle.
+                    </div>
+                  </div>
+                )}
+
+                {/* Energized State: Live Dispensing Telemetry */}
+                {hardwareState === "energized" && (
+                  <div className="space-y-2.5">
+                    {/* Telemetry Metric Grid */}
+                    <div className="grid grid-cols-4 gap-1.5 text-center">
+                      <div className="p-2 rounded-xl bg-white/5 border border-white/10">
+                        <div className="text-[8.5px] font-mono uppercase text-white/50">Power</div>
+                        <div className="text-xs font-mono font-bold text-[#C8F369] mt-0.5">
+                          {hardwarePowerKw} kW
+                        </div>
+                      </div>
+
+                      <div className="p-2 rounded-xl bg-white/5 border border-white/10">
+                        <div className="text-[8.5px] font-mono uppercase text-white/50">Battery</div>
+                        <div className="text-xs font-mono font-bold text-[#10B981] mt-0.5">
+                          {hardwareSocPct}%
+                        </div>
+                      </div>
+
+                      <div className="p-2 rounded-xl bg-white/5 border border-white/10">
+                        <div className="text-[8.5px] font-mono uppercase text-white/50">Delivered</div>
+                        <div className="text-xs font-mono font-bold text-white mt-0.5">
+                          +{hardwareKwhDelivered} kWh
+                        </div>
+                      </div>
+
+                      <div className="p-2 rounded-xl bg-white/5 border border-white/10">
+                        <div className="text-[8.5px] font-mono uppercase text-white/50">CO₂ Saved</div>
+                        <div className="text-xs font-mono font-bold text-[#10B981] mt-0.5">
+                          +{hardwareCo2SavedKg} kg
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Live Battery Progress Bar */}
+                    <div className="space-y-1">
+                      <div className="flex justify-between text-[10px] font-mono text-white/60">
+                        <span>Target: {targetSoc}%</span>
+                        <span className="text-[#C8F369] font-bold">Actively Dispensing</span>
+                      </div>
+                      <div className="h-2 w-full bg-white/10 rounded-full overflow-hidden">
+                        <div
+                          className="h-full bg-gradient-to-r from-[#10B981] to-[#C8F369] transition-all duration-500 rounded-full"
+                          style={{ width: `${Math.min(100, hardwareSocPct)}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Hardware Stop Button */}
+                    <button
+                      type="button"
+                      onClick={handleStopHardwareCharging}
+                      className="w-full py-2 bg-white/10 hover:bg-white/20 text-[#EF4444] border border-[#EF4444]/40 font-mono text-xs font-bold rounded-xl flex items-center justify-center gap-1.5 cursor-pointer transition-all"
+                    >
+                      <Square size={12} className="fill-[#EF4444]" />
+                      <span>Stop Dispense & Lock Contactor</span>
+                    </button>
+                  </div>
+                )}
+
+                {/* Stopped State: Summary Receipt */}
+                {hardwareState === "stopped" && (
+                  <div className="p-3 bg-white/5 rounded-xl border border-white/10 space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="font-bold text-[#10B981] flex items-center gap-1">
+                        <CheckCircle2 size={13} />
+                        <span>Dispense Safely Concluded</span>
+                      </span>
+                      <span className="text-[10px] font-mono text-white/60">Relay De-energized</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-[10.5px] pt-1">
+                      <div className="text-white/70">
+                        Total Energy Dispensed: <strong className="text-white font-mono">{hardwareKwhDelivered} kWh</strong>
+                      </div>
+                      <div className="text-white/70">
+                        Clean CO₂ Avoided: <strong className="text-[#10B981] font-mono">{hardwareCo2SavedKg} kg</strong>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setHardwareState("standby");
+                        setPinInputValue("");
+                      }}
+                      className="w-full py-1.5 mt-1 bg-white/10 hover:bg-white/15 text-white text-[11px] font-semibold rounded-lg flex items-center justify-center gap-1 cursor-pointer"
+                    >
+                      <RotateCcw size={11} />
+                      <span>Restart Actuator Test</span>
+                    </button>
+                  </div>
+                )}
               </div>
 
               {/* Actions */}
