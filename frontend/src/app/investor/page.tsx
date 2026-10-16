@@ -213,7 +213,7 @@ export default function InvestorDashboard() {
           <div className="space-y-1">
             <div className="flex items-center gap-2 text-xs font-mono uppercase tracking-wider text-black/45 font-semibold">
               <Activity className="w-3.5 h-3.5 text-emerald-600" />
-              <span>Decentralized Mobility Infrastructure • IEEE Tech for Tomorrow</span>
+              <span>Decentralized Mobility Infrastructure</span>
             </div>
             <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight text-[#111312]">
               Ecosystem Capital & Grid Yield Center
